@@ -46,7 +46,12 @@ lemma [simp]: "hat_hom f (Inr a#xs) = [Inr a] @ hat_hom f xs"
     
 lemma [simp]: "hat_hom f (xs@ys) = hat_hom f xs @ hat_hom f ys"
   by (simp add: hat_hom_def)
-  
+
+(* lemma hat_hom_map "hat_hom f (map  *)
+
+lemma hat_hom_right_ignore: "hat_hom f (map Inr xs) = map Inr xs"  
+  by (induction xs, auto)
+
 definition comp :: "[ ('a, 'b) update,  ('a, 'b) update] \<Rightarrow>  ('a, 'b) update" where
   "comp f g == (hat_hom f) o g"
   

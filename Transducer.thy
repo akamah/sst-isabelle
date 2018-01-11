@@ -15,11 +15,6 @@ record ('q, 'a, 'b) transducer =
   eta :: "('q, 'a, 'b) out"
   final :: "'q \<Rightarrow> bool"
 
-(*
-type_synonym ('q, 'a, 'b) transducer = 
-  "'q \<times> ('q, 'a) trans \<times> ('q, 'a, 'b) out \<times> ('q \<Rightarrow> bool)"
-
-*)
 
 fun hat1 :: "('q, 'a) trans \<Rightarrow> ('q, 'a list) trans" where
   "hat1 t (q, [])   = q" |

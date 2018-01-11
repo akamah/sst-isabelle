@@ -137,8 +137,9 @@ lemma eta_append: "hat2 tf to (q, as @ bs) = comp (hat2 tf to (q, as)) (hat2 tf 
 
 
 
-lemma delta2f_apply_hat: 
-  "hat1 (delta2f (delta2f_apply f tr theta) tr) (q, u) = hat1 (delta2f f tr) (q, hat_hom theta u)"
+proposition delta2f_apply_hat: 
+  "hat1 (delta2f (delta2f_apply f tr theta) tr) (q, u) =
+   hat1 (delta2f f tr) (q, hat_hom theta u)"
 proof (induction u arbitrary: q)
   case Nil
     show ?case by auto
@@ -182,7 +183,7 @@ next
 qed
 
 
-lemma eta2f_apply_hat:
+proposition eta2f_apply_hat:
   "hat_hom (eta2f_apply f t_trans t_out theta) (Transducer.hat2 (delta2f (delta2f_apply f t_trans theta) t_trans) (eta2f t_out) (q, u)) =
    Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta u)"
 proof (induction u arbitrary: q)
@@ -201,7 +202,8 @@ next
     also have "... = ?g' (q, x) @ hat_hom ?g' (Transducer.hat2 (delta2f ?f' t_trans) (eta2f t_out) (?f' (q, x), v))" by (simp)
     also have "... = ?g' (q, x) @ Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (?f' (q, x), hat_hom theta v)"
       by (simp add: Cons)
-    also have "... = Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta [Inl x]) @ Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (?f' (q, x), hat_hom theta v)"
+    also have "... = Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta [Inl x]) @
+                     Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (?f' (q, x), hat_hom theta v)"
       by (simp add: eta2f_apply_def)
     also have "... = Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta (ax # v))"
       by (auto simp add: Transducer.eta_append delta2f_apply_def asm)
@@ -219,9 +221,77 @@ next
   qed
 qed
  
+lemma compose_delta_hat: "hat1 (compose_delta sst transducer) ((q1, f), w) = 
+         (hat1 (delta sst) (q1, w), delta2f_apply f (Transducer.delta transducer) (SST.hat2 (delta sst) (eta sst) (q1, w)))"
+proof (induction w arbitrary: q1 f)
+  case Nil
+  show ?case by (simp add: delta2f_apply_def idU_def)
+next
+  fix a u
+  case (Cons a u)
+  let ?q1'  = "SST.delta sst (q1, a)"
+  let ?tr = "Transducer.delta transducer"
+  let ?f'  = "delta2f_apply f ?tr (SST.eta sst (q1, a))"
+  let ?f'' = "delta2f_apply ?f' ?tr (SST.hat2 (delta sst) (eta sst) (?q1', u))"
+  let ?f'''= "delta2f_apply f ?tr (SST.hat2 (delta sst) (eta sst) (q1, a # u))"
+  have "hat1 (compose_delta sst transducer) ((q1, f), a # u) =
+          (hat1 (compose_delta sst transducer) ((?q1', ?f'), u))" by (simp add: compose_delta_def delta2f_apply_def)
+  also have "... = (hat1 (delta sst) (q1, a # u), ?f'')" by (simp add: Cons)
+  also have "... = (hat1 (delta sst) (q1, a # u), ?f''')" proof -
+    have "\<And>q2 x1. ?f'' (q2, x1) = ?f''' (q2, x1)" proof -
+      fix q2 x1
+      let ?u' = "SST.hat2 (SST.delta sst) (SST.eta sst) (SST.delta sst (q1, a), u) x1"
+      have "SST.hat1 (delta2f (delta2f_apply f ?tr (SST.eta sst (q1, a))) ?tr) (q2, ?u')
+            = SST.hat1 (delta2f f ?tr) (q2, hat_hom (SST.eta sst (q1, a)) ?u')" by (simp add: delta2f_apply_hat)
+      thus "?f'' (q2, x1) = ?f''' (q2, x1)" by (simp add: delta2f_apply_def Update.comp_def)
+    qed
+    then show "(hat1 (delta sst) (q1, a # u), ?f'') = (hat1 (delta sst) (q1, a # u), ?f''')" by auto
+  qed
+  finally show ?case .
+qed
 
-definition trans_apply :: "('q, 'b) trans => ('a => 'b list) => ('q, 'a) trans" where
-  "trans_apply \<delta> \<theta> = (\<lambda>q a. hat1 \<delta> q (\<theta> a))"
+
+lemma compose_eta_hat: "hat2 (compose_delta sst transducer) (compose_eta sst transducer) ((q1, f), w) (q2, x1) = 
+         eta2f_apply f (Transducer.delta transducer) (Transducer.eta transducer) (SST.hat2 (delta sst) (eta sst) (q1, w)) (q2, x1)"
+proof (induction w arbitrary: q1 f q2 x1)
+  case Nil
+  then show ?case by (simp add: eta2f_apply_def idU_def)
+next
+  case (Cons a u)
+  let ?tr = "Transducer.delta transducer"
+  let ?to = "Transducer.eta transducer"
+  let ?f'  = "delta2f_apply f ?tr (SST.eta sst (q1, a))"
+  let ?g'  = "eta2f_apply f ?tr ?to (SST.eta sst (q1, a))"
+  let ?cd = "compose_delta sst transducer"
+  let ?ce = "compose_eta sst transducer"
+  let ?q1' = "SST.delta sst (q1, a)"
+  let ?u   = "SST.hat2 (SST.delta sst) (SST.eta sst) (?q1', u) x1"
+  let ?\<theta>  = "SST.eta sst (q1, a)"
+  have "hat2 ?cd ?ce ((q1, f), a # u) (q2, x1) = hat_hom (?ce ((q1, f), a)) (hat2 ?cd ?ce (?cd ((q1, f), a), u) (q2, x1))"
+    by (simp add: compose_delta_def compose_eta_def comp_def)
+  also have "... = hat_hom (eta2f_apply f ?tr ?to (SST.eta sst (q1, a))) (hat2 ?cd ?ce ((?q1', ?f'), u) (q2, x1))"
+    by (simp add: delta2f_apply_def eta2f_apply_def compose_eta_def compose_delta_def)
+  also have "... = hat_hom (eta2f_apply f ?tr ?to (SST.eta sst (q1, a)))
+                    (eta2f_apply ?f' ?tr ?to (SST.hat2 (delta sst) (eta sst) (?q1', u)) (q2, x1))"
+    by (simp add: Cons) 
+  also have "... = hat_hom (eta2f_apply f ?tr ?to (SST.eta sst (q1, a)))
+                    (Transducer.hat2 (delta2f ?f' ?tr) (eta2f ?to) (q2, ?u))"
+    by (simp add: delta2f_apply_def eta2f_apply_def)
+  also have "... = Transducer.hat2 (delta2f f ?tr) (eta2f ?to) (q2, hat_hom ?\<theta> ?u)"
+    by (rule eta2f_apply_hat)
+  also have "... = Transducer.hat2 (delta2f f ?tr) (eta2f ?to) (q2, SST.hat2 (SST.delta sst) (SST.eta sst) (q1, a # u) x1)"
+    by (auto simp add: Update.comp_def)
+  finally show ?case by (simp add: eta2f_apply_def)
+qed
+
+thm compose_delta_hat
+thm compose_eta_hat
+
+
+
+
+definition trans_apply :: "('q, 'b) trans => ('a => 'b list) => ('q, 'a) trans" 
+where "trans_apply \<delta> \<theta> = (\<lambda>q a. hat1 \<delta> q (\<theta> a))"
 
 definition out_apply :: "('q, 'b) trans => ('q, 'b, 'c) out => ('a => 'b list) => ('q, 'a, 'c) out" where
   "out_apply \<delta> \<eta> \<theta> = (\<lambda>q a. Transducer.hat2 \<delta> \<eta> q (\<theta> a))"

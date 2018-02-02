@@ -57,12 +57,15 @@ definition run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b l
                  None   => None)"
 
 
+(* Combine two transition function (q \<times> x \<Rightarrow> q and q \<times> b \<Rightarrow> q) into 
+  a new trans func
+*)
 fun delta2f ::
   "('q, 'x) trans_f => ('q, 'b) trans_f => ('q, 'x + 'b) trans_f" where
   "delta2f f g (q, Inl x) = f (q, x)" |
   "delta2f f g (q, Inr a) = g (q, a)"
 
-
+(* eta2f is a function described in Akama's graduate thesis *)
 fun eta2f :: 
   "('q, 'b, 'c) trans_out => ('q, 'x + 'b, 'q \<times> 'x + 'c) trans_out" where
   "eta2f e2 (q, Inl x) = [Inl (q, x)]" |
@@ -75,6 +78,8 @@ abbreviation d2f :: "('q2, 'x1) trans_f => ('q2, 'b, 'c) transducer => ('q2, 'x1
 abbreviation e2f :: "('q, 'b, 'c) transducer => ('q, 'x + 'b, 'q \<times> 'x + 'c) trans_out" where
   "e2f T \<equiv> eta2f (\<lambda>(q, a). Transducer.eta T (q, a))"
 
+
+(* those compose_* functions are using OLD NOTATION *)
 definition compose_delta ::
   "('q1, 'x1, 'a, 'b) SST => ('q2, 'b, 'c) transducer => ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'a) trans_f" where
   "compose_delta S1 T2 =
@@ -134,7 +139,6 @@ lemma delta_append: "hat1 t (q, (as @ bs)) = hat1 t (hat1 t (q, as), bs)"
 
 lemma eta_append: "hat2 tf to (q, as @ bs) = comp (hat2 tf to (q, as)) (hat2 tf to (hat1 tf (q, as), bs))"
   by (induction as arbitrary: q, auto simp add: comp_assoc comp_left_neutral)
-
 
 
 proposition delta2f_apply_hat: 
@@ -288,7 +292,7 @@ thm compose_delta_hat
 thm compose_eta_hat
 
 
-
+(*
 
 definition trans_apply :: "('q, 'b) trans => ('a => 'b list) => ('q, 'a) trans" 
 where "trans_apply \<delta> \<theta> = (\<lambda>q a. hat1 \<delta> q (\<theta> a))"
@@ -350,7 +354,7 @@ definition compose_SST_delta ::
 
 lemma trans_apply_idU: "trans_apply (d2f f T2) idU = f"
   by (simp add: idU_def trans_apply_def delta2f_def)
-
+*)
 
 (*
 lemma trans_apply_sum: 
@@ -400,14 +404,14 @@ qed
 definition rev :: "(nat, nat, nat, nat) SST" where
   "rev = (|
     initial = 0, 
-    delta = \<lambda>q a. 0,
-    eta = \<lambda>q a x. [Inr a, Inl 0],
+    delta = \<lambda>(q, a). 0,
+    eta = \<lambda>(q, a) x. [Inr a, Inl 0],
     final = \<lambda>q. Some [Inl 0] |)"
 
 lemma "run rev [2, 3, 4] = Some [4, 3, 2]"
   by (simp add: run_def rev_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def)
 
-
+end
 
 
 

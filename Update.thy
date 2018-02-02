@@ -8,11 +8,12 @@ primrec fold_sum :: "['a \<Rightarrow> 'c, 'b \<Rightarrow> 'c, 'a + 'b] \<Right
 
 
 type_synonym ('a, 'b) update = "'a \<Rightarrow> ('a + 'b) list"
+type_synonym ('x, 'y, 'b) update' = "'x \<Rightarrow> ('y + 'b) list"
 
 definition idU :: "('a, 'b) update" where
   "idU x == [Inl x]"
 
-definition update2hom :: "('a, 'b) update \<Rightarrow> ('a + 'b) \<Rightarrow> ('a + 'b) list" where
+definition update2hom :: "('x, 'y, 'b) update' \<Rightarrow> ('x + 'b) \<Rightarrow> ('y + 'b) list" where
   "update2hom f = fold_sum f (\<lambda>b. [Inr b])"
 
 
@@ -22,7 +23,7 @@ lemma [simp]: "update2hom f (Inl x) = f x"
 lemma [simp]: "update2hom f (Inr x) = [Inr x]"  
   by(auto simp add: update2hom_def idU_def) 
    
-definition hat_hom :: "('a, 'b) update \<Rightarrow> ('a + 'b) list \<Rightarrow> ('a + 'b) list" where
+definition hat_hom :: "('x, 'y, 'b) update' \<Rightarrow> ('x + 'b) list \<Rightarrow> ('y + 'b) list" where
   "hat_hom f = concat o map (update2hom f)"
 
 lemma [simp]: "update2hom idU x = [x]"
@@ -52,8 +53,8 @@ lemma [simp]: "hat_hom f (xs@ys) = hat_hom f xs @ hat_hom f ys"
 lemma hat_hom_right_ignore: "hat_hom f (map Inr xs) = map Inr xs"  
   by (induction xs, auto)
 
-definition comp :: "[ ('a, 'b) update,  ('a, 'b) update] \<Rightarrow>  ('a, 'b) update" where
-  "comp f g == (hat_hom f) o g"
+definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>  ('x, 'z, 'b) update'" (infix "\<bullet>" 100)
+  where "comp f g == (hat_hom f) o g"
   
 lemma comp_lem: "hat_hom f (hat_hom g xs) = hat_hom (hat_hom f o g) xs"
 proof (induct xs)

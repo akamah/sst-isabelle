@@ -20,12 +20,16 @@ definition split_SST :: "('q, 'x, 'a, 'b) SST \<Rightarrow> ('q, 'x, 'a, 'b) SST
     accept = (\<lambda>q. case SST.final sst q of Some(_) \<Rightarrow> True | None \<Rightarrow> False)
   \<rparr>"
 
+
+definition remove_var :: "('x, 'b) update" where
+  "remove_var x = []"
+
 (* BUG: we don't care accept or not, now *)
 definition run_SST2 :: "('q, 'x, 'a, 'b) SST2 \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run_SST2 sst w = (let q = SST.hat1 (delta sst) (initial sst, w)
                      in let \<xi> = SST.hat2 (delta sst) (eta sst) (initial sst, w)
                      in if accept sst q
-                     then Some (valuate (((\<lambda>x. [] :: ('x + 'b) list) \<bullet> \<xi> \<bullet> final sst) q))
+                     then Some (valuate ((remove_var \<bullet> \<xi> \<bullet> final sst) q))
                      else None)"
 
 term "SOME x. True"
@@ -33,7 +37,7 @@ term "SOME x. True"
 definition run_total_SST2 :: "('q, 'x, 'a, 'b) SST2 \<Rightarrow> 'a list \<Rightarrow> 'b list" where
   "run_total_SST2 sst w = (let q = SST.hat1 (delta sst) (initial sst, w)
                      in let \<xi> = SST.hat2 (delta sst) (eta sst) (initial sst, w)
-                     in valuate (((\<lambda>x. ([] :: ('x + 'b) list)) \<bullet> \<xi> \<bullet> (\<lambda>x. final sst q)) (SOME x :: 'x. True)))"
+                     in valuate ((remove_var \<bullet> \<xi> \<bullet> final sst) q))"
 
 
 (* This file includes a proof of SST-Transducer composition (in progress) 
@@ -68,7 +72,7 @@ definition compose_\<eta> :: "('q1, 'x1, 'a, 'b) SST2 \<Rightarrow> ('q2, 'b, 'c
 
 definition compose_final :: "('q1, 'x1, 'a, 'b) SST2 \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2) \<Rightarrow> ('q2 \<times> 'x1 + 'c) list)" where
-  "compose_final sst td = (\<lambda>(q1, f). H (Transducer.delta td) (Transducer.eta td) (f, \<lambda>x. final sst q1) (Transducer.initial td, SOME x :: 'x1. True))"
+  "compose_final sst td = (\<lambda>(q1, f). H (Transducer.delta td) (Transducer.eta td) (f, final sst) (Transducer.initial td, q1))"
 
 definition compose_accept :: "('q1, 'x1, 'a, 'b) SST2 \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                               ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2) \<Rightarrow> bool)" where
@@ -126,11 +130,11 @@ next
 qed
 
 
-lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, \<lambda>x. []) = (\<lambda>(q, x). q)"
-  by (simp add: \<Delta>_def)
+lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, remove_var) = (\<lambda>(q, x). q)"
+  by (simp add: \<Delta>_def remove_var_def)
 
-lemma initial_eta: "H tr to (\<lambda>(q, x). q, \<lambda>x. []) = (\<lambda>(q, x). [])"
-  by (simp add: H_def)
+lemma initial_eta: "H tr to (\<lambda>(q, x). q, remove_var) = remove_var"
+  by (auto simp add: H_def remove_var_def)
 
 lemma valuate_distrib: "valuate (as @ bs) == valuate as @ valuate bs"
 proof (induction as)
@@ -164,10 +168,9 @@ lemma valuate_eta_hat: "valuate (H tr td (\<lambda>(q, x). q, u) (q2_0, x)) = Tr
   by (simp add: H_def valuate_eta_hat_0)
 
 lemma valuate_eta_hat_2:
-  assumes "u (q2_0, x) = H tr td (\<lambda>(q, x). q, u') (q2_0, x)"
-  shows "valuate (u (q2_0, x)) = Transducer.hat2 tr td (q2_0, valuate (u' x))"
+  assumes "u = H tr td (\<lambda>(q, x). q, u') (q2_0, x)"
+  shows "valuate u = Transducer.hat2 tr td (q2_0, valuate (u' x))"
   using assms by (simp add: valuate_eta_hat)
-
 
 
 (* TODO: this is total version of composition *)
@@ -177,20 +180,21 @@ theorem can_compose_SST_Transducer_total:
 proof -
   let ?tr = "Transducer.delta td"
   let ?to = "Transducer.eta td"
+  let ?H  = "H ?tr ?to"
   let ?f0 = "\<lambda>(q, x). q"
-  let ?e0 = "\<lambda>x. []"
   let ?q' = "SST.hat1 (SST2.delta sst) (SST2.initial sst, w)"
   let ?xi = "SST.hat2 (SST2.delta sst) (SST2.eta sst) (SST2.initial sst, w)"
-  have H_inner: "H ?tr ?to (?f0, ?e0 \<bullet> ?xi \<bullet> (\<lambda>x. SST2.final sst ?q'))
-      = H ?tr ?to (?f0, ?e0) \<bullet> H ?tr ?to (?f0, ?xi) \<bullet> H ?tr ?to (\<Delta> ?tr (?f0, ?xi), (\<lambda>x. SST2.final sst ?q'))"
-    by (simp add: H_assoc initial_delta)
-  
+
+  have H_inner: "remove_var \<bullet> ?H (?f0, ?xi) \<bullet> ?H (\<Delta> ?tr (?f0, ?xi), SST2.final sst) 
+               = ?H (?f0, remove_var \<bullet> ?xi \<bullet> SST2.final sst)"
+    by (simp add: H_assoc initial_delta initial_eta)
+  have H_swap: "\<And>\<psi> \<phi> q f x g. (\<psi> \<bullet> \<phi> \<bullet> (\<lambda>(q, f). ?H (f, g) (x, q))) (q, f) = (\<psi> \<bullet> \<phi> \<bullet> ?H (f, g)) (x, q)"
+    by (simp add: comp_def)
   show ?thesis
-    apply (simp add: compose_SST_Transducer_def run_total_SST2_def run_total_def compose_final_def compose_\<delta>_hat compose_\<eta>_hat)
-    apply (rule valuate_eta_hat_2[where u' = "(\<lambda>x. []) \<bullet> SST.hat2 (SST2.delta sst) (SST2.eta sst) (SST2.initial sst, w) \<bullet> (\<lambda>x. SST2.final sst (SST.hat1 (SST2.delta sst) (SST2.initial sst, w)))"])
-    apply (simp add: H_inner initial_eta)
-    thm valuate_eta_hat_2[where u' = "(\<lambda>x. []) \<bullet> SST.hat2 (SST2.delta sst) (SST2.eta sst) (SST2.initial sst, w) \<bullet> (\<lambda>x. SST2.final sst (SST.hat1 (SST2.delta sst) (SST2.initial sst, w)))"]
-    
-(*
-    ((\<lambda>x. []) \<bullet> SST.hat2 (SST2.delta sst) (SST2.eta sst) (SST2.initial sst, w) \<bullet> (\<lambda>x. SST2.final sst (SST.hat1 (SST2.delta sst) (SST2.initial sst, w)
-*)
+    apply (simp add: compose_SST_Transducer_def run_total_SST2_def run_total_def)
+    apply (simp add: compose_final_def compose_\<delta>_hat compose_\<eta>_hat)
+    apply (simp add: H_swap)
+    apply (simp add: H_inner)
+    apply (simp add: valuate_eta_hat remove_var_def)
+    done
+qed

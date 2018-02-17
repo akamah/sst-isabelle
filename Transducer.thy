@@ -26,9 +26,9 @@ fun hat2 :: "('q, 'a) trans \<Rightarrow> ('q, 'a, 'b) out \<Rightarrow> ('q, 'a
 
 
 definition run :: "('q, 'a, 'b) transducer \<Rightarrow> 'a list \<Rightarrow> ('b list) option" where
-  "run T as = (let q' = hat1 (delta T) (initial T, as) in
-               let bs = hat2 (delta T) (eta T) (initial T, as) 
-               in if (final T q') then Some bs else None)"
+  "run T as = (if final T (hat1 (delta T) (initial T, as))
+               then Some (hat2 (delta T) (eta T) (initial T, as)) 
+               else None)"
 
 definition run_total :: "('q, 'a, 'b) transducer \<Rightarrow> 'a list \<Rightarrow> 'b list" where
   "run_total T as = (let q' = hat1 (delta T) (initial T, as) in

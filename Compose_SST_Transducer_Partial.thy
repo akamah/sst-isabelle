@@ -32,17 +32,100 @@ definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out
               \<Rightarrow> ('q, 'x) trans \<times> ('a, 'x, 'b) update' \<Rightarrow> ('q \<times> 'a, 'q \<times> 'x, 'c) update'"
   where "H tr to = (\<lambda>(f, \<theta>). (\<lambda>(q, a). Transducer.hat2 (delta2f f tr) (eta2f to) (q, \<theta> a)))"
 
+term   "delta2f_apply f t_trans theta = (\<lambda>(q2, x1). hat1 (delta2f f t_trans) (q2, theta x1))"
+term  "eta2f_apply f t_trans t_out theta = (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))"
+
+proposition \<Delta>_assoc_string: 
+  "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
+   hat1 (delta2f f tr) (q, hat_hom theta u)"
+proof (induction u arbitrary: q)
+  case Nil
+    show ?case by auto
+next
+  let ?f' = "\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)"
+  fix xORa axs
+  case (Cons ax v)
+  show ?case
+  proof (cases ax)
+    fix x assume asm: "ax = Inl x"
+    hence "hat1 (delta2f ?f' tr) (q, ax#v) = hat1 (delta2f ?f' tr) (?f' (q, x), v)"
+      by (simp)
+    also have "... = hat1 (delta2f f tr) (?f' (q, x), hat_hom theta v)"
+      by (simp add: Cons)
+    also have "... = hat1 (delta2f f tr) (q, theta x @ hat_hom theta v)"
+      by (simp add: delta_append)
+    also have "... = hat1 (delta2f f tr) (q, hat_hom theta (Inl x # v))" by auto
+    also have "... = hat1 (delta2f f tr) (q, hat_hom theta (ax # v))" by (simp add: asm)
+    finally show "?thesis" .
+  next
+    fix a assume asm: "ax = Inr a"
+    hence "hat1 (delta2f ?f' tr) (q, ax#v) = hat1 (delta2f ?f' tr) (tr (q, a), v)"
+      by (simp)
+    also have "... = hat1 (delta2f f tr) (tr (q, a), hat_hom theta v)"
+      by (simp add: Cons)
+    also have "... = hat1 (delta2f f tr) (q, Inr a # hat_hom theta v)"
+      by (simp)
+    also have "... = hat1 (delta2f f tr) (q, hat_hom theta (Inr a # v))" by auto
+    also have "... = hat1 (delta2f f tr) (q, hat_hom theta (ax # v))" by (simp add: asm)
+    finally show "?thesis" .
+  qed
+qed
+
 
 (* those lemmata are unfinished, but can construct from 
   lemma delta2f_apply_hat and eta2f_apply_hat in SST.thy *)
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
-  sorry
+  by (simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
 
-lemma H_assoc_hom: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
+
+proposition H_assoc_string:
+  "hat_hom (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))
+     (Transducer.hat2 (delta2f (\<lambda>(q2, x1). hat1 (delta2f f t_trans) (q2, theta x1)) t_trans) (eta2f t_out) (q, u)) =
+   Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta u)"
+proof (induction u arbitrary: q)
+  case Nil
+  show ?case by auto
+next
+  let ?f' = "\<lambda>(q2, x1). hat1 (delta2f f t_trans) (q2, theta x1)"
+  let ?g' = "\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1)"
+  fix xORa axs
+  case (Cons ax v)
+  show ?case
+  proof (cases ax)
+    case (Inl x)
+    hence "hat_hom ?g' (Transducer.hat2 (delta2f ?f' t_trans) (eta2f t_out) (q, ax#v)) 
+         = hat_hom ?g' (Inl (q, x) # Transducer.hat2 (delta2f ?f' t_trans) (eta2f t_out) (?f' (q, x), v))" by (simp)
+    also have "... = ?g' (q, x) @ hat_hom ?g' (Transducer.hat2 (delta2f ?f' t_trans) (eta2f t_out) (?f' (q, x), v))" by (simp)
+    also have "... = ?g' (q, x) @ Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (?f' (q, x), hat_hom theta v)"
+      by (simp add: Cons)
+    also have "... = Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta [Inl x]) @
+                     Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (?f' (q, x), hat_hom theta v)"
+      by (simp)
+    also have "... = Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta (ax # v))"
+      by (auto simp add: Transducer.eta_append Inl)
+    finally show ?thesis .
+  next
+    case (Inr a)
+    hence "hat_hom ?g' (Transducer.hat2 (delta2f ?f' t_trans) (eta2f t_out) (q, ax#v)) 
+         = hat_hom ?g' (eta2f t_out (q, Inr a) @ Transducer.hat2 (delta2f ?f' t_trans) (eta2f t_out) (t_trans (q, a), v))" by (simp)
+    also have "... = hat_hom ?g' (eta2f t_out (q, Inr a)) @ hat_hom ?g' (Transducer.hat2 (delta2f ?f' t_trans) (eta2f t_out) (t_trans (q, a), v))" by (simp)
+    also have "... = hat_hom ?g' (eta2f t_out (q, Inr a)) @ Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (t_trans (q, a), hat_hom theta v)" by (simp add: Cons)
+    also have "... = eta2f t_out (q, Inr a) @ Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (t_trans (q, a), hat_hom theta v)"
+      by (simp add: hat_hom_right_ignore)
+    also have "... = Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta (ax # v))" by (auto simp add: Inr)
+    finally show ?thesis .
+  qed
+qed
 
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
-  sorry
+proof -
+  have "\<And>q a. H tr to (f, \<phi> \<bullet> \<psi>) (q, a) = (H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)) (q, a)"
+    by (simp add: \<Delta>_def H_def comp_def H_assoc_string)
+  thus ?thesis by auto
+qed
+
+  
 
 
 definition compose_\<delta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>

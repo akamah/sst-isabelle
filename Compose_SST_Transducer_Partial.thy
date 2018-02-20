@@ -7,7 +7,7 @@ begin
    using NEW NOTATION (such as \<Delta>, H, ...) *)
 
 
-definition remove_var :: "('x, 'b) update" where
+fun remove_var :: "('x, 'b) update" where
   "remove_var x = []"
 
 definition run_SST :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
@@ -51,7 +51,7 @@ qed
 thm delta2f_apply_hat[simplified delta2f_apply_def]
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
-  by (simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
+  by (rule ext, auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
 
 proposition H_assoc_string:
   "hat_hom (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))
@@ -71,12 +71,7 @@ qed
 
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
-proof -
-  have "\<And>q a. H tr to (f, \<phi> \<bullet> \<psi>) (q, a) = (H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)) (q, a)"
-    by (simp add: \<Delta>_def H_def comp_def H_assoc_string)
-  thus ?thesis by auto
-qed
-
+  by (rule ext, auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
 
 
 definition compose_\<delta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
@@ -148,13 +143,13 @@ next
 qed
 
 lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, remove_var) = (\<lambda>(q, x). q)"
-  by (simp add: \<Delta>_def remove_var_def)
+  by (simp add: \<Delta>_def)
 
 lemma initial_delta_remove: "\<Delta> tr (\<lambda>(q, x). q, remove_var \<bullet> \<theta>) (q, x) = \<Delta> tr (\<lambda>(q, x). q, \<theta>) (q, x)"
   by (simp add: \<Delta>_assoc initial_delta)
 
 lemma initial_eta: "H tr to (\<lambda>(q, x). q, remove_var) = remove_var"
-  by (auto simp add: H_def remove_var_def)
+  by (auto simp add: H_def)
 
 lemma valuate_distrib: "valuate (as @ bs) == valuate as @ valuate bs"
 proof (induction as)
@@ -201,10 +196,10 @@ qed
 
 
 lemma all_alphabet_remove_var: "all_alphabet (remove_var x)"
-by (simp add: all_alphabet_def remove_var_def)
+by (simp add: all_alphabet_def)
 
 lemma alphabet_remove_var: "all_alphabet (hat_hom remove_var w)"
-  apply (unfold all_alphabet_def remove_var_def)
+  apply (unfold all_alphabet_def)
   apply (rule list_all_hat_hom)
   apply (simp add: rev_induct) (* by sledgehammer. why??? *)
   done
@@ -222,10 +217,34 @@ next
 qed
 
 
+lemma valuate_delta_hat_string_test:
+  shows "hat1 (delta2f f tr) (q, hat_hom remove_var w) = hat1 tr (q, valuate (hat_hom remove_var w))"
+proof (induction w arbitrary: q)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a as)
+  then show ?case proof (cases a)
+    case (Inl x)
+    then show ?thesis 
+      apply (auto simp add: valuate_distrib delta_append)
+      apply (rule Cons[simplified])
+      done
+  next
+    case (Inr b)
+    then show ?thesis
+      apply (auto simp add: valuate_distrib delta_append)
+      apply (rule Cons[simplified])
+      done
+  qed
+qed
+
 lemma valuate_delta_hat: "\<Delta> tr (\<lambda>(q, x). q, remove_var \<bullet> u) (q, x) = hat1 tr (q, valuate ((remove_var \<bullet> u) x))"
+(*  apply (simp add: comp_def \<Delta>_def alphabet_remove_var) *)
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string alphabet_remove_var)
 
 lemma valuate_delta_hat_remove: "\<Delta> tr (\<lambda>(q, x). q, u) (q, x) = hat1 tr (q, valuate ((remove_var \<bullet> u) x))"
+(*  apply (simp add: comp_def \<Delta>_def alphabet_remove_var) *)
   by (simp only: sym[OF valuate_delta_hat] initial_delta_remove)
 
 

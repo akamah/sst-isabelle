@@ -3,8 +3,9 @@ theory Compose_SST_Transducer_Partial
 begin
 
 
-(* This file includes a proof of SST-Transducer (partial) composition (in progress) 
-   using NEW NOTATION (such as \<Delta>, H, ...) *)
+(* This file includes a proof of SST-Transducer (partial) composition 
+ * using NEW NOTATION (such as \<Delta>, H, ...) 
+ *)
 
 
 fun remove_var :: "('x, 'b) update" where
@@ -48,8 +49,6 @@ next
 qed
 
 
-thm delta2f_apply_hat[simplified delta2f_apply_def]
-
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
   by (rule ext, auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
 
@@ -80,7 +79,7 @@ definition compose_\<delta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, '
                                          \<Delta> (Transducer.delta td) (f, eta sst (q1, a))))"
   
 definition compose_\<eta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
-                             ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) update_f" where
+                             ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) updator" where
   "compose_\<eta> sst td = (\<lambda>((q1, f), a). H (Transducer.delta td) (Transducer.eta td) (f, eta sst (q1, a)))"
 
 definition compose_final :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>

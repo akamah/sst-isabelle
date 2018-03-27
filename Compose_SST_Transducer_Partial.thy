@@ -2,27 +2,24 @@ theory Compose_SST_Transducer_Partial
   imports Main List Update Transducer SST
 begin
 
-
 (* This file includes a proof of SST-Transducer (partial) composition 
  * using NEW NOTATION (such as \<Delta>, H, ...) 
  *)
 
 
-fun remove_var :: "('x, 'b) update" where
-  "remove_var x = []"
+(* Combine two transition function (q \<times> x \<Rightarrow> q and q \<times> b \<Rightarrow> q) into 
+ * a new trans func
+ *)
+fun delta2f ::
+  "('q, 'x) trans => ('q, 'b) trans => ('q, 'x + 'b) trans" where
+  "delta2f f g (q, Inl x) = f (q, x)" |
+  "delta2f f g (q, Inr a) = g (q, a)"
 
-definition run_SST :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "run_SST sst w = 
-    (case final sst (SST.hat1 (delta sst) (initial sst, w)) of
-      Some u \<Rightarrow> Some (valuate ((remove_var \<bullet> (SST.hat2 (delta sst) (eta sst) (initial sst, w) \<bullet> (\<lambda>x. u))) u)) |
-      None   \<Rightarrow> None)"
-
-definition run_SST_hom :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "run_SST_hom sst w = 
-    (case final sst (SST.hat1 (delta sst) (initial sst, w)) of
-      Some u \<Rightarrow> Some (valuate ((hat_hom remove_var (hat_hom (SST.hat2 (delta sst) (eta sst) (initial sst, w)) u)))) |
-      None   \<Rightarrow> None)"
-
+(* eta2f is a function described in Akama's graduate thesis *)
+fun eta2f :: 
+  "('q, 'b, 'c) Transducer.out => ('q, 'x + 'b, 'q \<times> 'x + 'c) Transducer.out" where
+  "eta2f e2 (q, Inl x) = [Inl (q, x)]" |
+  "eta2f e2 (q, Inr a) = map Inr (e2 (q, a))"
 
 
 definition \<Delta> :: "('q, 'b) trans
@@ -32,6 +29,7 @@ definition \<Delta> :: "('q, 'b) trans
 definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out 
               \<Rightarrow> ('q, 'x) trans \<times> ('a, 'x, 'b) update' \<Rightarrow> ('q \<times> 'a, 'q \<times> 'x, 'c) update'"
   where "H tr to = (\<lambda>(f, \<theta>). (\<lambda>(q, a). Transducer.hat2 (delta2f f tr) (eta2f to) (q, \<theta> a)))"
+
 
 proposition \<Delta>_assoc_string: 
   "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
@@ -47,7 +45,6 @@ next
     case (Inr a) thus ?thesis by (simp add: Cons)
   qed
 qed
-
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
   by (rule ext, auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
@@ -67,7 +64,6 @@ next
     case (Inr a) thus ?thesis by (simp add: Cons hat_hom_right_ignore)
   qed
 qed
-
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
   by (rule ext, auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
@@ -111,12 +107,6 @@ proof (induction w arbitrary: q f)
   show ?case by (simp add: idU_def \<Delta>_def)
 next
   case (Cons a u)
-(*  show ?case 
-    thm Cons
-    thm Cons[simplified compose_delta_def case_prod_beta] 
-    apply simp
-    apply (simp add: Cons.IH \<Delta>_assoc)
-*)
   have "compose_\<delta> sst td ((q, f), a)
       = (delta sst (q, a), \<Delta> (Transducer.delta td) (f, eta sst (q, a)))"
     by (simp add: compose_\<delta>_def)
@@ -274,8 +264,8 @@ theorem can_compose_SST_Transducer:
   fixes sst::" ('q1, 'x, 'a, 'b) SST" and
         td::"('q2, 'b, 'c) transducer"
   shows
-  "run_SST (compose_SST_Transducer sst td) w
- = (case run_SST sst w of
+  "SST.run (compose_SST_Transducer sst td) w
+ = (case SST.run sst w of
       Some v \<Rightarrow> Transducer.run td v |
       None \<Rightarrow> None)"
 proof -
@@ -290,7 +280,7 @@ proof -
   proof (cases "SST.final sst ?q'")
     case None
     then show ?thesis
-      by (simp add: compose_SST_Transducer_def run_SST_def Transducer.run_def compose_final_def compose_\<delta>_hat)
+      by (simp add: compose_SST_Transducer_def SST.run_def Transducer.run_def compose_final_def compose_\<delta>_hat)
   next
     case (Some out_1st_sst)
     have q2_finalstate: "\<Delta> (transducer.delta td) 
@@ -313,7 +303,7 @@ proof -
           = valuate (H ?tr ?to (?f0, remove_var \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) (transducer.initial td, out_1st_sst))"
           by (simp add: valuate_eta_hat)
       case True then show ?thesis 
-        apply (simp add: run_SST_def compose_SST_Transducer_def compose_final_def)
+        apply (simp add: SST.run_def compose_SST_Transducer_def compose_final_def)
         apply (auto simp add: Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat True Some q2_finalstate)
         apply (auto simp add: poyoshi)
         apply (simp add: H_assoc)
@@ -321,10 +311,10 @@ proof -
         done
       next
       case False then show ?thesis proof -
-        have LHS: "run_SST (compose_SST_Transducer sst td) w = None" 
-          by (auto simp add: run_SST_def compose_SST_Transducer_def compose_final_def compose_\<delta>_hat Some q2_finalstate False)
-        have RHS: "(case run_SST sst w of None \<Rightarrow> None | Some v \<Rightarrow> Transducer.run td v) = None"
-          by (simp add: run_SST_def Transducer.run_def Some False)
+        have LHS: "SST.run (compose_SST_Transducer sst td) w = None" 
+          by (auto simp add: SST.run_def compose_SST_Transducer_def compose_final_def compose_\<delta>_hat Some q2_finalstate False)
+        have RHS: "(case SST.run sst w of None \<Rightarrow> None | Some v \<Rightarrow> Transducer.run td v) = None"
+          by (simp add: SST.run_def Transducer.run_def Some False)
         then show ?thesis by (simp add: LHS RHS)
       qed
     qed

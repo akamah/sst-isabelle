@@ -27,33 +27,13 @@ fun valuate :: "('x + 'b) list => 'b list" where
   "valuate (Inl x#rest) = valuate rest" |
   "valuate (Inr b#rest) = b # valuate rest"
 
+fun remove_var :: "('x, 'b) update" where
+  "remove_var x = []"
+
 definition run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "run S as = (let q' = hat1 (delta S) (initial S, as) in
-               let xi = hat2 (delta S) (eta S) (initial S, as)
-               in case final S q' of
-                 Some u => Some (valuate (hat_hom xi u)) |
-                 None   => None)"
-
-
-(* Combine two transition function (q \<times> x \<Rightarrow> q and q \<times> b \<Rightarrow> q) into 
-  a new trans func
-*)
-fun delta2f ::
-  "('q, 'x) trans => ('q, 'b) trans => ('q, 'x + 'b) trans" where
-  "delta2f f g (q, Inl x) = f (q, x)" |
-  "delta2f f g (q, Inr a) = g (q, a)"
-
-(* eta2f is a function described in Akama's graduate thesis *)
-fun eta2f :: 
-  "('q, 'b, 'c) Transducer.out => ('q, 'x + 'b, 'q \<times> 'x + 'c) Transducer.out" where
-  "eta2f e2 (q, Inl x) = [Inl (q, x)]" |
-  "eta2f e2 (q, Inr a) = map Inr (e2 (q, a))"
-
-abbreviation d2f :: "('q2, 'x1) trans => ('q2, 'b, 'c) transducer => ('q2, 'x1 + 'b) trans" where
-  "d2f f T \<equiv> delta2f f (\<lambda>(q, a). Transducer.delta T (q, a))"
-
-abbreviation e2f :: "('q, 'b, 'c) transducer => ('q, 'x + 'b, 'q \<times> 'x + 'c) Transducer.out" where
-  "e2f T \<equiv> eta2f (\<lambda>(q, a). Transducer.eta T (q, a))"
+  "run sst w = (case final sst (SST.hat1 (delta sst) (initial sst, w)) of
+      Some u \<Rightarrow> Some (valuate ((remove_var \<bullet> (SST.hat2 (delta sst) (eta sst) (initial sst, w) \<bullet> (\<lambda>x. u))) u)) |
+      None   \<Rightarrow> None)"
 
 lemma delta_append: "hat1 t (q, (as @ bs)) = hat1 t (hat1 t (q, as), bs)"
   by (induction as arbitrary: q, auto)
@@ -62,13 +42,7 @@ lemma eta_append: "hat2 tf to (q, as @ bs) = comp (hat2 tf to (q, as)) (hat2 tf 
   by (induction as arbitrary: q, auto simp add: comp_assoc comp_left_neutral)
 
 lemma [simp]: "Transducer.hat1 d (q, w) = SST.hat1 d (q, w)"
-proof (induction w arbitrary: q)
-  case Nil
-  show ?case by auto
-next
-  case (Cons a u)
-  show ?case by (auto simp add: Cons)
-qed
+  by (induction w arbitrary: q, auto)
 
 definition rev :: "(nat, nat, nat, nat) SST" where
   "rev = (|

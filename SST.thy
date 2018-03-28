@@ -62,7 +62,7 @@ subsection \<open>Lemmata\<close>
 lemma delta_append: "hat1 t (q, (as @ bs)) = hat1 t (hat1 t (q, as), bs)"
   by (induction as arbitrary: q, auto)
 
-lemma eta_append: "hat2 tf to (q, as @ bs) = comp (hat2 tf to (q, as)) (hat2 tf to (hat1 tf (q, as), bs))"
+lemma eta_append: "hat2 tf to (q, as @ bs) = hat2 tf to (q, as) \<bullet> hat2 tf to (hat1 tf (q, as), bs)"
   by (induction as arbitrary: q, auto simp add: comp_assoc comp_left_neutral)
 
 lemma [simp]: "Transducer.hat1 d (q, w) = SST.hat1 d (q, w)"

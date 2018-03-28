@@ -145,15 +145,6 @@ lemma initial_delta_remove: "\<Delta> tr (\<lambda>(q, x). q, empty \<bullet> \<
 lemma initial_eta: "H tr to (\<lambda>(q, x). q, empty) = empty"
   by (auto simp add: H_def)
 
-lemma valuate_distrib: "valuate (as @ bs) == valuate as @ valuate bs"
-proof (induction as)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a as)
-  then show ?case by (cases a, simp+)
-qed
-
 lemma valuate_map: "valuate (map Inr as) = as"
   by (induction as, auto)
 

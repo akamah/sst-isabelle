@@ -1,3 +1,7 @@
+(* Title:   Compose_SST_Transducer.thy
+   Author:  Akama Hitoshi
+*)
+
 theory Compose_SST_Transducer_Partial
   imports Main List Update Transducer SST
 begin
@@ -25,7 +29,7 @@ fun eta2f ::
 definition \<Delta> :: "('q, 'b) trans
               \<Rightarrow> ('q, 'x) trans \<times> ('z, 'x, 'b) update' \<Rightarrow> ('q, 'z) trans"
   where "\<Delta> t = (\<lambda>(f, \<theta>). (\<lambda>(q, a). hat1 (delta2f f t) (q, \<theta> a)))"
-    
+
 definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out 
               \<Rightarrow> ('q, 'x) trans \<times> ('a, 'x, 'b) update' \<Rightarrow> ('q \<times> 'a, 'q \<times> 'x, 'c) update'"
   where "H tr to = (\<lambda>(f, \<theta>). (\<lambda>(q, a). Transducer.hat2 (delta2f f tr) (eta2f to) (q, \<theta> a)))"

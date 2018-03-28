@@ -22,6 +22,13 @@ fun hat2 :: "('q, 'a) trans \<Rightarrow> ('q, 'x, 'a, 'b) updator \<Rightarrow>
   "hat2 t u (q, [])     = idU" |
   "hat2 t u (q, (a#as)) = u (q, a) \<bullet> hat2 t u (t (q, a), as)"
 
+(* \<delta>\<^sup>\<star>(q, w) *)
+abbreviation delta_hat :: "('q, 'x, 'a, 'b) SST \<Rightarrow> ('q, 'a list) trans" where
+  "delta_hat sst \<equiv> hat1 (delta sst)"
+
+(* \<delta>\<^sup>\<star>(q, w) *)
+abbreviation eta_hat :: "('q, 'x, 'a, 'b) SST \<Rightarrow> ('q, 'x, 'a list, 'b) updator" where
+  "eta_hat sst \<equiv> hat2 (delta sst) (eta sst)"
 fun valuate :: "('x + 'b) list => 'b list" where
   "valuate []           = []" |
   "valuate (Inl x#rest) = valuate rest" |
@@ -31,8 +38,8 @@ fun remove_var :: "('x, 'b) update" where
   "remove_var x = []"
 
 definition run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "run sst w = (case final sst (SST.hat1 (delta sst) (initial sst, w)) of
-      Some u \<Rightarrow> Some (valuate ((remove_var \<bullet> (SST.hat2 (delta sst) (eta sst) (initial sst, w) \<bullet> (\<lambda>x. u))) u)) |
+  "run sst w = (case final sst (delta_hat sst (initial sst, w)) of
+      Some u \<Rightarrow> Some (valuate ((remove_var \<bullet> (eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) u)) |
       None   \<Rightarrow> None)"
 
 lemma delta_append: "hat1 t (q, (as @ bs)) = hat1 t (hat1 t (q, as), bs)"

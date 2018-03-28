@@ -3,7 +3,7 @@
 *)
 
 theory Compose_SST_Transducer_Partial
-  imports Main List Update Transducer SST
+  imports Main List Option Update Transducer SST
 begin
 
 section \<open>Composition of SST and Transducer\<close>
@@ -254,6 +254,13 @@ lemma valuate_eta_hat_2:
   shows "valuate u = Transducer.hat2 tr td (q2_0, valuate (u' x))"
   using assms by (simp add: valuate_eta_hat)
 *)
+
+
+lemma run_none_iff_final_none[iff]:
+  "Option.is_none (SST.run sst w) 
+  \<longleftrightarrow> Option.is_none (SST.final sst (SST.delta_hat sst (SST.initial sst, w)))"
+  by (simp add: Option.is_none_def SST.run_def option.case_eq_if)
+
 
 (* declare [[show_types]] *)
 theorem can_compose_SST_Transducer: 

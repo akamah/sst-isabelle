@@ -93,14 +93,14 @@ definition compose_SST_Transducer ::
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) SST" where
   "compose_SST_Transducer sst td = \<lparr>
     initial = (initial sst, \<lambda>(q2, x1) \<Rightarrow> q2),
-    delta = compose_\<delta> sst td,
-    eta = compose_\<eta> sst td,
-    final = compose_final sst td
+    delta   = compose_\<delta> sst td,
+    eta     = compose_\<eta> sst td,
+    final   = compose_final sst td
    \<rparr>"
 
 lemma compose_\<delta>_hat: "hat1 (compose_\<delta> sst td) ((q, f), w) =
         (hat1 (delta sst) (q, w),
-         \<Delta> (Transducer.delta td) (f, SST.hat2 (delta sst) (eta sst) (q, w)))"
+         \<Delta> (Transducer.delta td) (f, eta_hat sst (q, w)))"
 proof (induction w arbitrary: q f)
   case Nil
   show ?case by (simp add: idU_def \<Delta>_def)
@@ -115,7 +115,7 @@ qed
 
 lemma compose_\<eta>_hat:
   "hat2 (compose_\<delta> sst td) (compose_\<eta> sst td) ((q, f), w) =
-   H (Transducer.delta td) (Transducer.eta td) (f, hat2 (delta sst) (eta sst) (q, w))"
+   H (Transducer.delta td) (Transducer.eta td) (f, eta_hat sst (q, w))"
 proof (induction w arbitrary: q f)
   case Nil
   show ?case by (simp add: idU_def H_def)
@@ -272,8 +272,8 @@ proof -
   let ?to = "Transducer.eta td"
   let ?H  = "H ?tr ?to"
   let ?f0 = "\<lambda>(q, x). q"
-  let ?q' = "SST.hat1 (SST.delta sst) (SST.initial sst, w)"
-  let ?xi = "SST.hat2 (SST.delta sst) (SST.eta sst) (SST.initial sst, w)"
+  let ?q' = "SST.delta_hat sst (SST.initial sst, w)"
+  let ?xi = "SST.eta_hat sst (SST.initial sst, w)"
 
   show ?thesis
   proof (cases "SST.final sst ?q'")

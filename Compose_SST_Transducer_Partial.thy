@@ -6,14 +6,9 @@ theory Compose_SST_Transducer_Partial
   imports Main List Update Transducer SST
 begin
 
-(* This file includes a proof of SST-Transducer (partial) composition 
- * using NEW NOTATION (such as \<Delta>, H, ...) 
- *)
+section \<open>Composition of SST and Transducer\<close>
 
-
-(* Combine two transition function (q \<times> x \<Rightarrow> q and q \<times> b \<Rightarrow> q) into 
- * a new trans func
- *)
+(* Combine two transition function (q \<times> x \<Rightarrow> q and q \<times> b \<Rightarrow> q) into a new trans fun *)
 fun delta2f ::
   "('q, 'x) trans => ('q, 'b) trans => ('q, 'x + 'b) trans" where
   "delta2f f g (q, Inl x) = f (q, x)" |
@@ -135,13 +130,13 @@ next
     by (simp add: Cons.IH H_assoc)
 qed
 
-lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, remove_var) = (\<lambda>(q, x). q)"
+lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, empty) = (\<lambda>(q, x). q)"
   by (simp add: \<Delta>_def)
 
-lemma initial_delta_remove: "\<Delta> tr (\<lambda>(q, x). q, remove_var \<bullet> \<theta>) (q, x) = \<Delta> tr (\<lambda>(q, x). q, \<theta>) (q, x)"
+lemma initial_delta_remove: "\<Delta> tr (\<lambda>(q, x). q, empty \<bullet> \<theta>) (q, x) = \<Delta> tr (\<lambda>(q, x). q, \<theta>) (q, x)"
   by (simp add: \<Delta>_assoc initial_delta)
 
-lemma initial_eta: "H tr to (\<lambda>(q, x). q, remove_var) = remove_var"
+lemma initial_eta: "H tr to (\<lambda>(q, x). q, empty) = empty"
   by (auto simp add: H_def)
 
 lemma valuate_distrib: "valuate (as @ bs) == valuate as @ valuate bs"
@@ -188,10 +183,10 @@ next
 qed
 
 
-lemma all_alphabet_remove_var: "all_alphabet (remove_var x)"
+lemma all_alphabet_empty: "all_alphabet (empty x)"
 by (simp add: all_alphabet_def)
 
-lemma alphabet_remove_var: "all_alphabet (hat_hom remove_var w)"
+lemma alphabet_empty: "all_alphabet (hat_hom empty w)"
   apply (unfold all_alphabet_def)
   apply (rule list_all_hat_hom)
   apply (simp add: rev_induct) (* by sledgehammer. why??? *)
@@ -211,7 +206,7 @@ qed
 
 
 lemma valuate_delta_hat_string_test:
-  shows "hat1 (delta2f f tr) (q, hat_hom remove_var w) = hat1 tr (q, valuate (hat_hom remove_var w))"
+  shows "hat1 (delta2f f tr) (q, hat_hom empty w) = hat1 tr (q, valuate (hat_hom empty w))"
 proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
@@ -232,12 +227,12 @@ next
   qed
 qed
 
-lemma valuate_delta_hat: "\<Delta> tr (\<lambda>(q, x). q, remove_var \<bullet> u) (q, x) = hat1 tr (q, valuate ((remove_var \<bullet> u) x))"
-(*  apply (simp add: comp_def \<Delta>_def alphabet_remove_var) *)
-  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string alphabet_remove_var)
+lemma valuate_delta_hat: "\<Delta> tr (\<lambda>(q, x). q, empty \<bullet> u) (q, x) = hat1 tr (q, valuate ((empty \<bullet> u) x))"
+(*  apply (simp add: comp_def \<Delta>_def alphabet_empty) *)
+  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string alphabet_empty)
 
-lemma valuate_delta_hat_remove: "\<Delta> tr (\<lambda>(q, x). q, u) (q, x) = hat1 tr (q, valuate ((remove_var \<bullet> u) x))"
-(*  apply (simp add: comp_def \<Delta>_def alphabet_remove_var) *)
+lemma valuate_delta_hat_remove: "\<Delta> tr (\<lambda>(q, x). q, u) (q, x) = hat1 tr (q, valuate ((empty \<bullet> u) x))"
+(*  apply (simp add: comp_def \<Delta>_def alphabet_empty) *)
   by (simp only: sym[OF valuate_delta_hat] initial_delta_remove)
 
 
@@ -253,8 +248,8 @@ next
     by (cases a, auto simp add: all_alphabet_def valuate_distrib valuate_map)
 qed
 
-lemma valuate_eta_hat: "valuate (H tr td (f, remove_var \<bullet> u) (q, x)) = Transducer.hat2 tr td (q, valuate ((remove_var \<bullet> u) x))"
-  by (simp add: comp_def H_def valuate_eta_hat_string alphabet_remove_var)
+lemma valuate_eta_hat: "valuate (H tr td (f, empty \<bullet> u) (q, x)) = Transducer.hat2 tr td (q, valuate ((empty \<bullet> u) x))"
+  by (simp add: comp_def H_def valuate_eta_hat_string alphabet_empty)
 
 (*
 lemma valuate_eta_hat_2:
@@ -293,18 +288,18 @@ proof -
           (transducer.initial td, out_1st_sst) 
         = SST.hat1 (transducer.delta td)
           (transducer.initial td,
-           valuate ((remove_var \<bullet> (?xi \<bullet> (\<lambda>x. out_1st_sst))) out_1st_sst))"
+           valuate ((empty \<bullet> (?xi \<bullet> (\<lambda>x. out_1st_sst))) out_1st_sst))"
             by (simp add: sym[OF \<Delta>_assoc] valuate_delta_hat_remove)
     then show ?thesis
       proof (cases "Transducer.final td
         (SST.hat1 (transducer.delta td)
           (transducer.initial td,
            valuate
-            ((remove_var \<bullet> (?xi \<bullet> (\<lambda>x. out_1st_sst))) out_1st_sst)))")
+            ((empty \<bullet> (?xi \<bullet> (\<lambda>x. out_1st_sst))) out_1st_sst)))")
       have poyoshi: "Transducer.hat2 ?tr ?to
              (transducer.initial td,
-              valuate ((remove_var \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) out_1st_sst))
-          = valuate (H ?tr ?to (?f0, remove_var \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) (transducer.initial td, out_1st_sst))"
+              valuate ((empty \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) out_1st_sst))
+          = valuate (H ?tr ?to (?f0, empty \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) (transducer.initial td, out_1st_sst))"
           by (simp add: valuate_eta_hat)
       case True then show ?thesis 
         apply (simp add: SST.run_def compose_SST_Transducer_def compose_final_def)

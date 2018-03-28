@@ -47,13 +47,13 @@ fun valuate :: "('x + 'b) list => 'b list" where
   "valuate (Inr b#rest) = b # valuate rest"
 
 (* an initial variable assignment *)
-fun remove_var :: "('x, 'b) update" where
-  "remove_var x = []"
+fun empty :: "('x, 'b) update" where
+  "empty x = []"
 
 (* if the output is undefined, return None, or return some output *)
 definition run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run sst w = (case final sst (delta_hat sst (initial sst, w)) of
-      Some u \<Rightarrow> Some (valuate ((remove_var \<bullet> (eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) u)) |
+      Some u \<Rightarrow> Some (valuate ((empty \<bullet> (eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) u)) |
       None   \<Rightarrow> None)"
 
 

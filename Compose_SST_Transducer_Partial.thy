@@ -7,6 +7,7 @@ theory Compose_SST_Transducer_Partial
 begin
 
 section \<open>Composition of SST and Transducer\<close>
+subsection \<open>Definition of a strange transducer and its property\<close>
 
 (* Combine two transition function (q \<times> x \<Rightarrow> q and q \<times> b \<Rightarrow> q) into a new trans fun *)
 fun delta2f ::
@@ -68,6 +69,8 @@ lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bul
   by (rule ext, auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
 
 
+subsection \<open>Construction\<close>
+
 definition compose_\<delta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'a) trans" where
   "compose_\<delta> sst td = (\<lambda>((q1, f), a). (delta sst (q1, a),
@@ -87,7 +90,6 @@ definition compose_final :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) 
          else None |
        None \<Rightarrow> None)"
 
-
 definition compose_SST_Transducer ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) SST" where
@@ -97,6 +99,7 @@ definition compose_SST_Transducer ::
     eta     = compose_\<eta> sst td,
     final   = compose_final sst td
    \<rparr>"
+
 
 lemma compose_\<delta>_hat: "hat1 (compose_\<delta> sst td) ((q, f), w) =
         (hat1 (delta sst) (q, w),
@@ -129,6 +132,9 @@ next
   ultimately show ?case
     by (simp add: Cons.IH H_assoc)
 qed
+
+
+subsection \<open>Property of valuation and empty update\<close>
 
 lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, empty) = (\<lambda>(q, x). q)"
   by (simp add: \<Delta>_def)

@@ -136,74 +136,19 @@ qed
 
 subsection \<open>Property of valuation and empty update\<close>
 
-lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, empty) = (\<lambda>(q, x). q)"
-  by (simp add: \<Delta>_def)
 
-lemma initial_delta_remove: "\<Delta> tr (\<lambda>(q, x). q, empty \<bullet> \<theta>) (q, x) = \<Delta> tr (\<lambda>(q, x). q, \<theta>) (q, x)"
-  by (simp add: \<Delta>_assoc initial_delta)
+(*
+lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, empty) = (\<lambda>(q, x). q)"
+  by (simp add: \<Delta>_def empty_def)
 
 lemma initial_eta: "H tr to (\<lambda>(q, x). q, empty) = empty"
-  by (auto simp add: H_def)
+  by (auto simp add: H_def empty_def)
 
 lemma valuate_map: "valuate (map Inr as) = as"
   by (induction as, auto)
 
-lemma valuate_eta_hat_0: "valuate (Transducer.hat2 (delta2f (\<lambda>(q, x). q) tr) (eta2f td) (q, w)) = Transducer.hat2 tr td (q, valuate w)"
-proof (induction w arbitrary: q)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a w)
-  then show ?case proof (cases a)
-    case (Inl a)
-    then show ?thesis by (simp add: Cons.IH)
-  next
-    case (Inr b)
-    then show ?thesis by (simp add: Cons.IH valuate_distrib valuate_map)
-  qed
-qed
 
-definition all_alphabet :: "('x + 'b) list => bool" where
-  "all_alphabet w = list_all (\<lambda>a. case a of Inr r => True | Inl l => False) w"
-
-(* some predicate on hom *)
-lemma list_all_hat_hom:
-  assumes "list_all (\<lambda>ax. case ax of
-                    Inl x => list_all pred (f x) |
-                    Inr a => pred (Inr a)) w"
-  shows "list_all pred (hat_hom f w)"
-using assms proof (induction w)
-  case Nil then show ?case by simp
-next
-  case (Cons a u)
-  then show ?case by (cases a, auto)
-qed
-
-
-lemma all_alphabet_empty: "all_alphabet (empty x)"
-by (simp add: all_alphabet_def)
-
-lemma alphabet_empty: "all_alphabet (hat_hom empty w)"
-  apply (unfold all_alphabet_def)
-  apply (rule list_all_hat_hom)
-  apply (simp add: rev_induct) (* by sledgehammer. why??? *)
-  done
-
-lemma valuate_delta_hat_string:
-  assumes "all_alphabet w"
-  shows "hat1 (delta2f f tr) (q, w) = hat1 tr (q, valuate w)"
-using assms proof (induction w arbitrary: q)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a as)
-  then show ?case
-    by (cases a, auto simp add: all_alphabet_def valuate_distrib valuate_map)
-qed
-
-
-lemma valuate_delta_hat_string_test:
-  shows "hat1 (delta2f f tr) (q, hat_hom empty w) = hat1 tr (q, valuate (hat_hom empty w))"
+lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate (hat_hom empty w))"
 proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
@@ -211,61 +156,49 @@ next
   case (Cons a as)
   then show ?case proof (cases a)
     case (Inl x)
-    then show ?thesis 
-      apply (auto simp add: valuate_distrib delta_append)
-      apply (rule Cons[simplified])
-      done
+    then show ?thesis by (simp add: valuate_distrib Cons empty_def)
   next
     case (Inr b)
-    then show ?thesis
-      apply (auto simp add: valuate_distrib delta_append)
-      apply (rule Cons[simplified])
-      done
+    then show ?thesis by (simp add: Cons)
   qed
 qed
 
-lemma valuate_delta_hat: "\<Delta> tr (\<lambda>(q, x). q, empty \<bullet> u) (q, x) = hat1 tr (q, valuate ((empty \<bullet> u) x))"
-(*  apply (simp add: comp_def \<Delta>_def alphabet_empty) *)
-  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string alphabet_empty)
-
-lemma valuate_delta_hat_remove: "\<Delta> tr (\<lambda>(q, x). q, u) (q, x) = hat1 tr (q, valuate ((empty \<bullet> u) x))"
-(*  apply (simp add: comp_def \<Delta>_def alphabet_empty) *)
-  by (simp only: sym[OF valuate_delta_hat] initial_delta_remove)
+lemma valuate_delta_hat: "\<Delta> tr (\<lambda>(q, x). q, u) (q, x) = hat1 tr (q, valuate ((empty \<bullet> u) x))"
+  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
 
 
-lemma valuate_eta_hat_string:
-  assumes "all_alphabet w"
-  shows "valuate (Transducer.hat2 (delta2f f tr) (eta2f td) (q, w)) = Transducer.hat2 tr td (q, valuate w)"
-using assms proof (induction w arbitrary: q)
+lemma valuate_eta_hat_string: "valuate (Transducer.hat2 (delta2f f tr) (eta2f td) (q, w)) = Transducer.hat2 tr td (q, valuate (hat_hom empty w))"
+proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
 next
   case (Cons a as)
-  then show ?case
-    by (cases a, auto simp add: all_alphabet_def valuate_distrib valuate_map)
+  then show ?case proof (cases a)
+    case (Inl a)
+    then show ?thesis sorry
+  next
+    case (Inr b)
+    then show ?thesis sorry
+  qed
 qed
 
 lemma valuate_eta_hat: "valuate (H tr td (f, empty \<bullet> u) (q, x)) = Transducer.hat2 tr td (q, valuate ((empty \<bullet> u) x))"
-  by (simp add: comp_def H_def valuate_eta_hat_string alphabet_empty)
-
-(*
-lemma valuate_eta_hat_2:
-  assumes "u = H tr td (\<lambda>(q, x). q, u') (q2_0, x)"
-  shows "valuate u = Transducer.hat2 tr td (q2_0, valuate (u' x))"
-  using assms by (simp add: valuate_eta_hat)
+  sorry
 *)
 
-
-lemma run_none_iff_final_none[iff]:
+(*
+lemma run_none_iff_final_none:
   "Option.is_none (SST.run sst w) 
   \<longleftrightarrow> Option.is_none (SST.final sst (SST.delta_hat sst (SST.initial sst, w)))"
   by (simp add: Option.is_none_def SST.run_def option.case_eq_if)
 
+thm run_none_iff_final_none
+*)
 
-(* declare [[show_types]] *)
+declare [[show_types]]
 theorem can_compose_SST_Transducer: 
-  fixes sst::" ('q1, 'x, 'a, 'b) SST" and
-        td::"('q2, 'b, 'c) transducer"
+  fixes sst :: "('q1, 'x, 'a, 'b) SST" and
+        td  :: "('q2, 'b, 'c) transducer"
   shows
   "SST.run (compose_SST_Transducer sst td) w
  = (case SST.run sst w of
@@ -293,7 +226,7 @@ proof -
         = SST.hat1 (transducer.delta td)
           (transducer.initial td,
            valuate ((empty \<bullet> (?xi \<bullet> (\<lambda>x. out_1st_sst))) out_1st_sst))"
-            by (simp add: sym[OF \<Delta>_assoc] valuate_delta_hat_remove)
+          apply (simp add: valuate_delta_hat)
     then show ?thesis
       proof (cases "Transducer.final td
         (SST.hat1 (transducer.delta td)

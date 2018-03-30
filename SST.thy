@@ -47,7 +47,7 @@ fun valuate :: "('x + 'b) list => 'b list" where
   "valuate (Inr b#rest) = b # valuate rest"
 
 (* an initial variable assignment *)
-fun empty :: "('x, 'b) update" where
+definition empty :: "('x, 'b) update" where
   "empty x = []"
 
 (* if the output is undefined, return None, or return some output *)
@@ -91,6 +91,6 @@ definition rev :: "(nat, nat, nat, nat) SST" where
     final = \<lambda>q. Some [Inl 0] |)"
 
 lemma "run rev [2, 3, 4] = Some [4, 3, 2]"
-  by (simp add: run_def rev_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def)
+  by (simp add: run_def rev_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def empty_def)
 
 end

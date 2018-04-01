@@ -138,17 +138,17 @@ subsection \<open>Property of valuation and empty update\<close>
 
 
 
-lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, empty) = (\<lambda>(q, x). q)"
-  by (simp add: \<Delta>_def empty_def)
+lemma initial_delta: "\<Delta> tr (\<lambda>(q, x). q, emptyU) = (\<lambda>(q, x). q)"
+  by (simp add: \<Delta>_def emptyU_def)
 
-lemma initial_eta: "H tr to (\<lambda>(q, x). q, empty) = empty"
-  by (auto simp add: H_def empty_def)
+lemma initial_eta: "H tr to (\<lambda>(q, x). q, emptyU) = emptyU"
+  by (auto simp add: H_def emptyU_def)
 
 lemma valuate_map: "valuate (map Inr as) = as"
   by (induction as, auto)
 
 
-lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate (hat_hom empty w))"
+lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate (hat_hom emptyU w))"
 proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
@@ -156,14 +156,14 @@ next
   case (Cons a as)
   then show ?case proof (cases a)
     case (Inl x)
-    then show ?thesis by (simp add: valuate_distrib Cons empty_def)
+    then show ?thesis by (simp add: valuate_distrib Cons emptyU_def)
   next
     case (Inr b)
     then show ?thesis by (simp add: Cons)
   qed
 qed
 
-lemma valuate_delta_hat: "hat1 tr (q, valuate ((empty \<bullet> u) x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
+lemma valuate_delta_hat: "hat1 tr (q, valuate ((emptyU \<bullet> u) x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
 
 lemma valuate_delta_hat_string0: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
@@ -233,13 +233,13 @@ proof -
   let ?xi = "SST.eta_hat sst (SST.initial sst, w)"
 
   show ?thesis (is "?lhs = ?rhs")
-  proof (cases "SST.final sst ?q'")
+    proof (cases "SST.final sst ?q'")
     case None
     then show ?thesis
       by (simp add: compose_SST_Transducer_def SST.run_def Transducer.run_def compose_final_def compose_\<delta>_hat)
   next
     case (Some final1)
-    let ?out_1st_sst = "valuate ((empty \<bullet> ?xi \<bullet> (\<lambda>x. final1)) (SOME x :: 'x. True))"
+    let ?out_1st_sst = "valuate ((emptyU \<bullet> ?xi \<bullet> (\<lambda>x. final1)) (SOME x :: 'x. True))"
 
     have q2_finalstate: "\<Delta> ?tr (\<Delta> ?tr (?f0, ?xi), \<lambda>x. final1) (transducer.initial td, SOME x :: 'x. True) 
                             = SST.hat1 ?tr (transducer.initial td, ?out_1st_sst)"

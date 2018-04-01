@@ -1,5 +1,9 @@
+(* Title:   Update.thy
+   Author:  Akama Hitoshi
+*)
+
 theory Update
-imports Main 
+  imports Main 
 begin
 
 primrec fold_sum :: "['a \<Rightarrow> 'c, 'b \<Rightarrow> 'c, 'a + 'b] \<Rightarrow> 'c" where
@@ -12,6 +16,9 @@ type_synonym ('x, 'y, 'b) update' = "'x \<Rightarrow> ('y + 'b) list"
 
 definition idU :: "('a, 'b) update" where
   "idU x == [Inl x]"
+
+definition emptyU :: "('x, 'b) update" where
+  "emptyU x = []"
 
 definition update2hom :: "('x, 'y, 'b) update' \<Rightarrow> ('x + 'b) \<Rightarrow> ('y + 'b) list" where
   "update2hom f = fold_sum f (\<lambda>b. [Inr b])"
@@ -48,24 +55,19 @@ lemma [simp]: "hat_hom f (Inr a#xs) = [Inr a] @ hat_hom f xs"
 lemma [simp]: "hat_hom f (xs@ys) = hat_hom f xs @ hat_hom f ys"
   by (simp add: hat_hom_def)
 
-(* lemma hat_hom_map "hat_hom f (map  *)
-
 lemma hat_hom_right_ignore: "hat_hom f (map Inr xs) = map Inr xs"  
   by (induction xs, auto)
+
 
 definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>  ('x, 'z, 'b) update'" (infixl "\<bullet>" 55)
   where "comp f g == (hat_hom f) o g"
   
 lemma comp_lem: "hat_hom f (hat_hom g xs) = hat_hom (hat_hom f o g) xs"
 proof (induct xs)
-  case Nil
-  show ?case
-    by simp
+  case Nil show ?case by simp
 next
-  fix a xs
   case (Cons a xs)
-  thus ?case
-    by(cases a, simp_all)
+  thus ?case by (cases a, simp_all)
 qed
 
 lemma comp_assoc: "(f \<bullet> g) \<bullet> h = f \<bullet> (g \<bullet> h)"

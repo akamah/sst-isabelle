@@ -166,9 +166,27 @@ qed
 lemma valuate_delta_hat: "hat1 tr (q, valuate ((empty \<bullet> u) x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
 
+lemma valuate_delta_hat_string0: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
+proof (induction w arbitrary: q)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a as)
+  then show ?case proof (cases a)
+    case (Inl x)
+    then show ?thesis by (simp add: valuate_distrib Cons empty_def)
+  next
+    case (Inr b)
+    then show ?thesis by (simp add: Cons)
+  qed
+qed
+
+lemma valuate_delta_hat0: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
+  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string0)
+
 lemma valuate_eta_hat_string:
   "valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)) 
- = Transducer.hat2 tr td (q, valuate (hat_hom empty w))"
+ = Transducer.hat2 tr td (q, valuate w)"
 proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
@@ -177,7 +195,7 @@ next
   then show ?case proof (cases a)
     case (Inl a)
     then show ?thesis
-      by (simp add: Cons SST.empty_def)
+      by (simp add: Cons)
   next
     case (Inr b)
     then show ?thesis
@@ -185,10 +203,10 @@ next
   qed
 qed
 
-(*
-lemma valuate_eta_hat: "valuate (H tr td (\<lambda>(q2, x). q2, empty \<bullet> u) (q, x)) = Transducer.hat2 tr td (q, valuate ((empty \<bullet> u) x))"
-  apply (simp add: comp_def H_def valuate_eta_hat_string)
-*)
+
+lemma valuate_eta_hat: "Transducer.hat2 tr td (q, valuate (u x)) = valuate (H tr td (\<lambda>(q2, x). q2, u) (q, x))"
+  by (simp add: H_def valuate_eta_hat_string)
+
 
 lemma run_none_iff_final_none:
   "(SST.run sst w = None) 
@@ -210,7 +228,6 @@ theorem can_compose_SST_Transducer:
 proof -
   let ?tr = "Transducer.delta td"
   let ?to = "Transducer.eta td"
-  let ?H  = "H ?tr ?to"
   let ?f0 = "\<lambda>(q, x). q"
   let ?q' = "SST.delta_hat sst (SST.initial sst, w)"
   let ?xi = "SST.eta_hat sst (SST.initial sst, w)"
@@ -229,34 +246,25 @@ proof -
       by (simp add: sym[OF \<Delta>_assoc] valuate_delta_hat comp_assoc)
 
     show ?thesis
-      proof (cases "transducer.final td (hat1 ?tr (transducer.initial td, ?out_1st_sst))")
-(*      have poyoshi: "Transducer.hat2 ?tr ?to
-             (transducer.initial td,
-              valuate ((empty \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) out_1st_sst))
-          = valuate (H ?tr ?to (?f0, empty \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) (transducer.initial td, out_1st_sst))"
-          by (simp add: valuate_eta_hat)
-*)          
-      case False
-      show ?thesis proof -
+      proof (cases "transducer.final td (hat1 ?tr (transducer.initial td, ?out_1st_sst))")          
+      case False show ?thesis proof -
         have "?lhs = None"
-          by (simp add: SST.run_def compose_SST_Transducer_def compose_\<delta>_hat
+          apply (simp add: SST.run_def compose_SST_Transducer_def compose_\<delta>_hat
                         compose_final_def q2_finalstate Some False)
+          done
         also have "?rhs = None"
           by (simp add: SST.run_def Transducer.run_def Some False)
         finally show ?thesis by simp
       qed
     next
-      case True
-      let ?out_2nd_td = "Transducer.hat2 ?tr ?to (Transducer.initial td, ?out_1st_sst)"
-      show ?thesis
+      case True show ?thesis
         apply (simp add: SST.run_def compose_SST_Transducer_def compose_final_def)
-        apply (auto simp add: Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat True Some q2_finalstate)
-        apply (auto simp add: poyoshi)
+        apply (simp add: Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat True Some q2_finalstate)
+        apply (simp add: comp_ignore)
+        apply (simp add: valuate_eta_hat)
         apply (simp add: H_assoc)
-        apply (simp add: initial_delta initial_eta comp_def)
+        apply (simp add: initial_delta initial_eta \<Delta>_assoc)
         done
-*)
-
     qed
   qed
 qed

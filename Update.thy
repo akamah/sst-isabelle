@@ -77,5 +77,9 @@ lemma comp_left_neutral: "comp idU f = f"
 lemma comp_right_neutral: "comp f idU = f"
   by (auto simp add: comp_def idU_def)
 
+lemma comp_ignore: "(f \<bullet> (\<lambda>y. g a)) x = (f \<bullet> g) a"
+  by (simp add: comp_def)
+
+
 end
   

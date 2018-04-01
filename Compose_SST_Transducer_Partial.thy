@@ -94,7 +94,7 @@ definition compose_SST_Transducer ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) SST" where
   "compose_SST_Transducer sst td = \<lparr>
-    initial = (initial sst, \<lambda>(q2, x1) \<Rightarrow> q2),
+    initial = (initial sst, \<Delta> (Transducer.delta td) (\<lambda>(q2, x1). q2, emptyU)),
     delta   = compose_\<delta> sst td,
     eta     = compose_\<eta> sst td,
     final   = compose_final sst td
@@ -147,26 +147,7 @@ lemma initial_eta: "H tr to (\<lambda>(q, x). q, emptyU) = emptyU"
 lemma valuate_map: "valuate (map Inr as) = as"
   by (induction as, auto)
 
-
-lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate (hat_hom emptyU w))"
-proof (induction w arbitrary: q)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a as)
-  then show ?case proof (cases a)
-    case (Inl x)
-    then show ?thesis by (simp add: valuate_distrib Cons emptyU_def)
-  next
-    case (Inr b)
-    then show ?thesis by (simp add: Cons)
-  qed
-qed
-
-lemma valuate_delta_hat: "hat1 tr (q, valuate ((emptyU \<bullet> u) x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
-  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
-
-lemma valuate_delta_hat_string0: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
+lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
 proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
@@ -181,8 +162,9 @@ next
   qed
 qed
 
-lemma valuate_delta_hat0: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
-  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string0)
+lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
+  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
+
 
 lemma valuate_eta_hat_string:
   "valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)) 
@@ -241,30 +223,22 @@ proof -
     case (Some final1)
     let ?out_1st_sst = "valuate ((emptyU \<bullet> ?xi \<bullet> (\<lambda>x. final1)) (SOME x :: 'x. True))"
 
-    have q2_finalstate: "\<Delta> ?tr (\<Delta> ?tr (?f0, ?xi), \<lambda>x. final1) (transducer.initial td, SOME x :: 'x. True) 
-                            = SST.hat1 ?tr (transducer.initial td, ?out_1st_sst)"
-      by (simp add: sym[OF \<Delta>_assoc] valuate_delta_hat comp_assoc)
-
     show ?thesis
       proof (cases "transducer.final td (hat1 ?tr (transducer.initial td, ?out_1st_sst))")          
-      case False show ?thesis proof -
-        have "?lhs = None"
-          apply (simp add: SST.run_def compose_SST_Transducer_def compose_\<delta>_hat
-                        compose_final_def q2_finalstate Some False)
-          done
-        also have "?rhs = None"
-          by (simp add: SST.run_def Transducer.run_def Some False)
-        finally show ?thesis by simp
-      qed
+      case False then show ?thesis
+        apply (simp add: SST.run_def Transducer.run_def Some False[simplified valuate_delta_hat])
+        apply (simp add: compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat Some)
+        apply (simp add: \<Delta>_assoc)
+        done
     next
       case True show ?thesis
-        apply (simp add: SST.run_def compose_SST_Transducer_def compose_final_def)
-        apply (simp add: Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat True Some q2_finalstate)
-        apply (simp add: comp_ignore)
-        apply (simp add: valuate_eta_hat)
-        apply (simp add: H_assoc)
-        apply (simp add: initial_delta initial_eta \<Delta>_assoc)
-        done
+        by (simp add: SST.run_def compose_SST_Transducer_def compose_final_def
+                         Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat Some
+                         \<Delta>_assoc valuate_delta_hat
+                         True comp_ignore
+                         valuate_eta_hat
+                         H_assoc
+                         initial_eta)
     qed
   qed
 qed

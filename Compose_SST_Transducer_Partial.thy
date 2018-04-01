@@ -226,10 +226,8 @@ proof -
     show ?thesis
       proof (cases "transducer.final td (hat1 ?tr (transducer.initial td, ?out_1st_sst))")          
       case False then show ?thesis
-        apply (simp add: SST.run_def Transducer.run_def Some False[simplified valuate_delta_hat])
-        apply (simp add: compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat Some)
-        apply (simp add: \<Delta>_assoc)
-        done
+        by (simp add: SST.run_def Transducer.run_def Some False[simplified valuate_delta_hat]
+              compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat \<Delta>_assoc)
     next
       case True show ?thesis
         by (simp add: SST.run_def compose_SST_Transducer_def compose_final_def

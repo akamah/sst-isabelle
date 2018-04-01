@@ -71,7 +71,7 @@ proof (induction as)
   then show ?case by simp
 next
   case (Cons a as)
-  then show ?case by (cases, simp+)
+  then show ?case by (cases a, simp_all)
 qed
 
 lemma valuate_map: "valuate (map Inr as) = as"

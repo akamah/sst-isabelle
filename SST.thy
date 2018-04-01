@@ -53,7 +53,7 @@ definition empty :: "('x, 'b) update" where
 (* if the output is undefined, return None, or return some output *)
 definition run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run sst w = (case final sst (delta_hat sst (initial sst, w)) of
-      Some u \<Rightarrow> Some (valuate ((empty \<bullet> (eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) u)) |
+      Some u \<Rightarrow> Some (valuate ((empty \<bullet> eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u)) (SOME x :: 'x. True))) |
       None   \<Rightarrow> None)"
 
 

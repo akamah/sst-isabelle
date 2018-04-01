@@ -85,8 +85,8 @@ definition compose_final :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) 
   "compose_final sst td = (\<lambda>(q1, f). 
      case final sst q1 of
        Some u \<Rightarrow>
-         if Transducer.final td (\<Delta> (Transducer.delta td) (f, \<lambda>x. u) (Transducer.initial td, u))
-         then Some (H (Transducer.delta td) (Transducer.eta td) (f, \<lambda>x. u) (Transducer.initial td, u)) 
+         if Transducer.final td (\<Delta> (Transducer.delta td) (f, \<lambda>x. u) (Transducer.initial td, SOME x :: 'x1. True))
+         then Some (H (Transducer.delta td) (Transducer.eta td) (f, \<lambda>x. u) (Transducer.initial td, SOME x :: 'x1. True)) 
          else None |
        None \<Rightarrow> None)"
 
@@ -163,11 +163,12 @@ next
   qed
 qed
 
-lemma valuate_delta_hat: "\<Delta> tr (\<lambda>(q, x). q, u) (q, x) = hat1 tr (q, valuate ((empty \<bullet> u) x))"
+lemma valuate_delta_hat: "hat1 tr (q, valuate ((empty \<bullet> u) x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
 
-(*
-lemma valuate_eta_hat_string: "valuate (Transducer.hat2 (delta2f f tr) (eta2f td) (q, w)) = Transducer.hat2 tr td (q, valuate (hat_hom empty w))"
+lemma valuate_eta_hat_string:
+  "valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)) 
+ = Transducer.hat2 tr td (q, valuate (hat_hom empty w))"
 proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
@@ -175,17 +176,19 @@ next
   case (Cons a as)
   then show ?case proof (cases a)
     case (Inl a)
-    then show ?thesis sorry
+    then show ?thesis
+      by (simp add: Cons SST.empty_def)
   next
     case (Inr b)
-    then show ?thesis sorry
+    then show ?thesis
+      by (simp add: Cons valuate_distrib valuate_map)
   qed
 qed
 
-lemma valuate_eta_hat: "valuate (H tr td (f, empty \<bullet> u) (q, x)) = Transducer.hat2 tr td (q, valuate ((empty \<bullet> u) x))"
-  sorry
+(*
+lemma valuate_eta_hat: "valuate (H tr td (\<lambda>(q2, x). q2, empty \<bullet> u) (q, x)) = Transducer.hat2 tr td (q, valuate ((empty \<bullet> u) x))"
+  apply (simp add: comp_def H_def valuate_eta_hat_string)
 *)
-
 
 lemma run_none_iff_final_none:
   "(SST.run sst w = None) 
@@ -203,8 +206,7 @@ theorem can_compose_SST_Transducer:
   fixes sst :: "('q1, 'x, 'a, 'b) SST" and
         td  :: "('q2, 'b, 'c) transducer"
   shows
-  "SST.run (compose_SST_Transducer sst td) w
- = Option.bind (SST.run sst w) (Transducer.run td)"
+  "SST.run (compose_SST_Transducer sst td) w = Option.bind (SST.run sst w) (Transducer.run td)"
 proof -
   let ?tr = "Transducer.delta td"
   let ?to = "Transducer.eta td"
@@ -213,69 +215,48 @@ proof -
   let ?q' = "SST.delta_hat sst (SST.initial sst, w)"
   let ?xi = "SST.eta_hat sst (SST.initial sst, w)"
 
-  show ?thesis
-  proof (cases "SST.run sst w")
+  show ?thesis (is "?lhs = ?rhs")
+  proof (cases "SST.final sst ?q'")
     case None
-    then have "SST.final sst ?q' = None"
-      by (simp add: sym[OF run_none_iff_final_none])
     then show ?thesis
       by (simp add: compose_SST_Transducer_def SST.run_def Transducer.run_def compose_final_def compose_\<delta>_hat)
   next
-    case (Some out_1st_sst)
-    then obtain final1 where final1: "SST.final sst ?q' = Some final1"
-      by (metis option.distinct(1) option.exhaust_sel run_none_iff_final_none)
+    case (Some final1)
+    let ?out_1st_sst = "valuate ((empty \<bullet> ?xi \<bullet> (\<lambda>x. final1)) (SOME x :: 'x. True))"
 
-    have out_expand: "out_1st_sst = valuate ((empty \<bullet> (?xi \<bullet> (\<lambda>x. final1))) final1)" proof -
-      have "Some out_1st_sst = Some (valuate ((empty \<bullet> (?xi \<bullet> (\<lambda>x. final1))) final1))"
-        by (simp add: sym[OF Some] SST.run_def final1)
-      then show ?thesis by simp
-    qed
-
-    then have q2_finalstate: "\<Delta> ?tr (\<Delta> ?tr (?f0, ?xi), \<lambda>x. final1) (transducer.initial td, final1) 
-                            = SST.hat1 ?tr (transducer.initial td, out_1st_sst)"
-      by (simp add: sym[OF \<Delta>_assoc] valuate_delta_hat)
+    have q2_finalstate: "\<Delta> ?tr (\<Delta> ?tr (?f0, ?xi), \<lambda>x. final1) (transducer.initial td, SOME x :: 'x. True) 
+                            = SST.hat1 ?tr (transducer.initial td, ?out_1st_sst)"
+      by (simp add: sym[OF \<Delta>_assoc] valuate_delta_hat comp_assoc)
 
     show ?thesis
-      proof (cases "Transducer.run td out_1st_sst")
+      proof (cases "transducer.final td (hat1 ?tr (transducer.initial td, ?out_1st_sst))")
 (*      have poyoshi: "Transducer.hat2 ?tr ?to
              (transducer.initial td,
               valuate ((empty \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) out_1st_sst))
           = valuate (H ?tr ?to (?f0, empty \<bullet> ?xi \<bullet> (\<lambda>x. out_1st_sst)) (transducer.initial td, out_1st_sst))"
           by (simp add: valuate_eta_hat)
 *)          
-      case None
-      then have td_false: "transducer.final td (SST.hat1 ?tr (transducer.initial td, out_1st_sst)) = False"
-        by (auto simp add: Transducer.run_def)
-      
-      show ?thesis (is "?lhs = ?rhs") proof -
+      case False
+      show ?thesis proof -
         have "?lhs = None"
-          by (simp add: SST.run_def compose_SST_Transducer_def compose_\<delta>_hat option.case_eq_if 
-                        compose_final_def q2_finalstate final1 td_false)
+          by (simp add: SST.run_def compose_SST_Transducer_def compose_\<delta>_hat
+                        compose_final_def q2_finalstate Some False)
         also have "?rhs = None"
-          by (simp add: SST.run_def sym[OF out_expand] final1 None)
+          by (simp add: SST.run_def Transducer.run_def Some False)
         finally show ?thesis by simp
       qed
     next
-      case (Some out_2nd_td)
-      then have td_true: "transducer.final td (SST.hat1 ?tr (transducer.initial td, out_1st_sst)) = True"
-        apply (simp add: Transducer.run_def)
-
-        thm impI
-
+      case True
+      let ?out_2nd_td = "Transducer.hat2 ?tr ?to (Transducer.initial td, ?out_1st_sst)"
+      show ?thesis
         apply (simp add: SST.run_def compose_SST_Transducer_def compose_final_def)
-        apply (auto simp add: Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat None Some)
+        apply (auto simp add: Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat True Some q2_finalstate)
         apply (auto simp add: poyoshi)
         apply (simp add: H_assoc)
         apply (simp add: initial_delta initial_eta comp_def)
         done
-      next
-      case (Some out_2nd_td) then show ?thesis proof -
-        have LHS: "SST.run (compose_SST_Transducer sst td) w = None" 
-          by (auto simp add: SST.run_def compose_SST_Transducer_def compose_final_def compose_\<delta>_hat Some q2_finalstate False)
-        have RHS: "(case SST.run sst w of None \<Rightarrow> None | Some v \<Rightarrow> Transducer.run td v) = None"
-          by (simp add: SST.run_def Transducer.run_def Some False)
-        then show ?thesis by (simp add: LHS RHS)
-      qed
+*)
+
     qed
   qed
 qed

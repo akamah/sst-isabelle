@@ -53,7 +53,7 @@ lemma [simp]: "hat_hom f (xs@ys) = hat_hom f xs @ hat_hom f ys"
 lemma hat_hom_right_ignore: "hat_hom f (map Inr xs) = map Inr xs"  
   by (induction xs, auto)
 
-definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>  ('x, 'z, 'b) update'" (infixr "\<bullet>" 100)
+definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>  ('x, 'z, 'b) update'" (infixl "\<bullet>" 55)
   where "comp f g == (hat_hom f) o g"
   
 lemma comp_lem: "hat_hom f (hat_hom g xs) = hat_hom (hat_hom f o g) xs"
@@ -68,7 +68,7 @@ next
     by(cases a, simp_all)
 qed
 
-lemma comp_assoc: "comp f (comp g h) = comp (comp f g) h"
+lemma comp_assoc: "(f \<bullet> g) \<bullet> h = f \<bullet> (g \<bullet> h)"
   by (auto simp add: comp_def comp_lem)
 
 lemma comp_left_neutral: "comp idU f = f"

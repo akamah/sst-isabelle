@@ -36,12 +36,10 @@ proposition \<Delta>_assoc_string:
 proof (induction u arbitrary: q)
   case Nil show ?case by auto
 next
-  case (Cons ax v)
-  show ?case
-  proof (cases ax)
-    case (Inl x) thus ?thesis by (simp add: Cons delta_append)
+  case (Cons ax v) show ?case proof (cases ax)
+    case (Inl x) then show ?thesis by (simp add: Cons delta_append)
   next
-    case (Inr a) thus ?thesis by (simp add: Cons)
+    case (Inr a) then show ?thesis by (simp add: Cons)
   qed
 qed
 
@@ -55,12 +53,10 @@ proposition H_assoc_string:
 proof (induction u arbitrary: q)
   case Nil show ?case by auto
 next
-  case (Cons ax v)
-  show ?case
-  proof (cases ax)
-    case (Inl x) thus ?thesis by (simp add: Cons Transducer.eta_append)
+  case (Cons ax v) show ?case proof (cases ax)
+    case (Inl x) then show ?thesis by (simp add: Cons Transducer.eta_append)
   next
-    case (Inr a) thus ?thesis by (simp add: Cons hat_hom_right_ignore)
+    case (Inr a) then show ?thesis by (simp add: Cons hat_hom_right_ignore)
   qed
 qed
 
@@ -101,35 +97,21 @@ definition compose_SST_Transducer ::
    \<rparr>"
 
 lemma compose_\<delta>_hat: "hat1 (compose_\<delta> sst td) ((q, f), w) =
-        (hat1 (delta sst) (q, w),
+        (SST.delta_hat sst (q, w),
          \<Delta> (Transducer.delta td) (f, eta_hat sst (q, w)))"
 proof (induction w arbitrary: q f)
-  case Nil
-  show ?case by (simp add: idU_def \<Delta>_def)
+  case Nil then show ?case by (simp add: idU_def \<Delta>_def)
 next
-  case (Cons a u)
-  have "compose_\<delta> sst td ((q, f), a)
-      = (delta sst (q, a), \<Delta> (Transducer.delta td) (f, eta sst (q, a)))"
-    by (simp add: compose_\<delta>_def)
-  thus ?case
-    by (simp add: Cons.IH \<Delta>_assoc)
+  case (Cons a u) then show ?case by (simp add: compose_\<delta>_def \<Delta>_assoc)
 qed      
 
 lemma compose_\<eta>_hat:
   "hat2 (compose_\<delta> sst td) (compose_\<eta> sst td) ((q, f), w) =
    H (Transducer.delta td) (Transducer.eta td) (f, eta_hat sst (q, w))"
 proof (induction w arbitrary: q f)
-  case Nil
-  show ?case by (simp add: idU_def H_def)
+  case Nil then show ?case by (simp add: idU_def H_def)
 next
-  case (Cons a u)
-  have "compose_\<delta> sst td ((q, f), a) 
-     = (delta sst (q, a), \<Delta> (Transducer.delta td) (f, eta sst (q, a)))"
-    by (simp add: compose_\<delta>_def)
-  moreover have "compose_\<eta> sst td ((q, f), a) = H (Transducer.delta td) (Transducer.eta td) (f, eta sst (q, a))"
-    by (simp add: compose_\<eta>_def)
-  ultimately show ?case
-    by (simp add: Cons.IH H_assoc)
+  case (Cons a u) then show ?case by (simp add: compose_\<delta>_def compose_\<eta>_def H_assoc)
 qed
 
 
@@ -202,11 +184,11 @@ proof -
         by (simp add: SST.run_def Transducer.run_def Some False[simplified valuate_delta_hat]
               compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat \<Delta>_assoc)
     next
-      case True show ?thesis
+      case True then show ?thesis
         by (simp add: SST.run_def compose_SST_Transducer_def compose_final_def
                          Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat Some
                          \<Delta>_assoc valuate_delta_hat
-                         True comp_ignore
+                         comp_ignore
                          valuate_eta_hat
                          H_assoc
                          initial_eta)

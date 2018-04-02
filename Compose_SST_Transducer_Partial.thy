@@ -125,13 +125,10 @@ proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
 next
-  case (Cons a as)
-  then show ?case proof (cases a)
-    case (Inl x)
-    then show ?thesis by (simp add: valuate_distrib Cons empty_def)
+  case (Cons a as) then show ?case proof (cases a)
+    case (Inl x) then show ?thesis by (simp add: valuate_distrib Cons empty_def)
   next
-    case (Inr b)
-    then show ?thesis by (simp add: Cons)
+    case (Inr b) then show ?thesis by (simp add: Cons)
   qed
 qed
 
@@ -146,15 +143,10 @@ proof (induction w arbitrary: q)
   case Nil
   then show ?case by simp
 next
-  case (Cons a as)
-  then show ?case proof (cases a)
-    case (Inl a)
-    then show ?thesis
-      by (simp add: Cons)
+  case (Cons a as) then show ?case proof (cases a)
+    case (Inl a) then show ?thesis by (simp add: Cons)
   next
-    case (Inr b)
-    then show ?thesis
-      by (simp add: Cons valuate_distrib valuate_map_Inr)
+    case (Inr b) then show ?thesis by (simp add: Cons valuate_distrib valuate_map_Inr)
   qed
 qed
 
@@ -168,30 +160,26 @@ theorem can_compose_SST_Transducer:
   fixes td  :: "('q2, 'b, 'c) transducer"
   shows "SST.run (compose_SST_Transducer sst td) w
        = Option.bind (SST.run sst w) (Transducer.run td)"
-proof -
+proof (cases "SST.final sst (SST.delta_hat sst (SST.initial sst, w))")
+  case None then show ?thesis
+    by (simp add: compose_SST_Transducer_def SST.run_def Transducer.run_def compose_final_def compose_\<delta>_hat)
+next
+  case (Some output_final1)
+  let ?output_of_1st_sst =
+    "valuate ((emptyU \<bullet> SST.eta_hat sst (SST.initial sst, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x. True))"
   show ?thesis
-  proof (cases "SST.final sst (SST.delta_hat sst (SST.initial sst, w))")
-    case None
-    then show ?thesis
-      by (simp add: compose_SST_Transducer_def SST.run_def Transducer.run_def compose_final_def compose_\<delta>_hat)
+  proof (cases "transducer.final td (Transducer.delta_hat td (transducer.initial td, ?output_of_1st_sst))")
+    case False then show ?thesis
+      by (simp add: SST.run_def Transducer.run_def Some False[simplified valuate_delta_hat]
+            compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat \<Delta>_assoc)
   next
-    case (Some output_final1)
-    let ?output_of_1st_sst =
-      "valuate ((emptyU \<bullet> SST.eta_hat sst (SST.initial sst, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x. True))"
-    show ?thesis
-    proof (cases "transducer.final td (Transducer.delta_hat td (transducer.initial td, ?output_of_1st_sst))")
-      case False then show ?thesis
-        by (simp add: SST.run_def Transducer.run_def Some False[simplified valuate_delta_hat]
-              compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat \<Delta>_assoc)
-    next
-      case True then show ?thesis
-        by (simp add: SST.run_def compose_SST_Transducer_def compose_final_def
-                         Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat Some
-                         \<Delta>_assoc valuate_delta_hat
-                         comp_ignore
-                         valuate_eta_hat
-                         H_assoc
-                         initial_eta)
-    qed
+    case True then show ?thesis
+      by (simp add: SST.run_def compose_SST_Transducer_def compose_final_def
+                       Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat Some
+                       \<Delta>_assoc valuate_delta_hat
+                       comp_ignore
+                       valuate_eta_hat
+                       H_assoc
+                       initial_eta)
   qed
 qed

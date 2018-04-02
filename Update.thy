@@ -49,9 +49,9 @@ lemma [simp]: "hat_hom f [] = []"
 lemma [simp]: "hat_hom f (Inl a#xs) = f a @ hat_hom f xs"
   by (simp add: hat_hom_def)
     
-lemma [simp]: "hat_hom f (Inr a#xs) = [Inr a] @ hat_hom f xs"
+lemma [simp]: "hat_hom f (Inr a#xs) = Inr a # hat_hom f xs"
   by (simp add: hat_hom_def)
-    
+
 lemma [simp]: "hat_hom f (xs@ys) = hat_hom f xs @ hat_hom f ys"
   by (simp add: hat_hom_def)
 

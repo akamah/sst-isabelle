@@ -170,7 +170,7 @@ next
   show ?thesis
   proof (cases "transducer.final td (Transducer.delta_hat td (transducer.initial td, ?output_of_1st_sst))")
     case False then show ?thesis
-      by (simp add: SST.run_def Transducer.run_def Some False[simplified valuate_delta_hat]
+      by (simp add: SST.run_def Transducer.run_def Some
             compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat \<Delta>_assoc)
   next
     case True then show ?thesis

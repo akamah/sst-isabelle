@@ -24,6 +24,14 @@ fun hat2 :: "('q, 'a) trans \<Rightarrow> ('q, 'a, 'b) out \<Rightarrow> ('q, 'a
   "hat2 t outf (q, [])   = []" |
   "hat2 t outf (q, a#as) = outf (q, a) @ hat2 t outf (t (q, a), as)"
 
+(* \<delta>\<^sup>^(q, w) *)
+abbreviation delta_hat :: "('q, 'a, 'b) transducer \<Rightarrow> ('q, 'a list) trans" where
+  "delta_hat sst \<equiv> hat1 (delta sst)"
+
+(* \<eta>^(q, w) *)
+abbreviation eta_hat :: "('q, 'a, 'b) transducer \<Rightarrow> ('q, 'a list, 'b) out" where
+  "eta_hat sst \<equiv> hat2 (delta sst) (eta sst)"
+
 
 definition run :: "('q, 'a, 'b) transducer \<Rightarrow> 'a list \<Rightarrow> ('b list) option" where
   "run T as = (if final T (hat1 (delta T) (initial T, as))

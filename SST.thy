@@ -32,11 +32,11 @@ fun hat2 :: "('q, 'a) trans \<Rightarrow> ('q, 'x, 'a, 'b) updator \<Rightarrow>
   "hat2 t u (q, [])     = idU" |
   "hat2 t u (q, (a#as)) = u (q, a) \<bullet> hat2 t u (t (q, a), as)"
 
-(* \<delta>\<^sup>\<star>(q, w) *)
+(* \<delta>\<^sup>^(q, w) *)
 abbreviation delta_hat :: "('q, 'x, 'a, 'b) SST \<Rightarrow> ('q, 'a list) trans" where
   "delta_hat sst \<equiv> hat1 (delta sst)"
 
-(* \<delta>\<^sup>\<star>(q, w) *)
+(* \<eta>(q, w) *)
 abbreviation eta_hat :: "('q, 'x, 'a, 'b) SST \<Rightarrow> ('q, 'x, 'a list, 'b) updator" where
   "eta_hat sst \<equiv> hat2 (delta sst) (eta sst)"
 
@@ -70,7 +70,7 @@ next
   then show ?case by (cases a, simp_all)
 qed
 
-lemma valuate_map: "valuate (map Inr as) = as"
+lemma valuate_map_Inr: "valuate (map Inr as) = as"
   by (induction as, auto)
 
 lemma [simp]: "Transducer.hat1 d (q, w) = SST.hat1 d (q, w)"

@@ -3,7 +3,7 @@
 *)
 
 theory Update
-  imports Main 
+  imports Main
 begin
 
 (* an induction rule for variable and alphabet list *)
@@ -36,12 +36,12 @@ definition update2hom :: "('x, 'y, 'b) update' \<Rightarrow> ('x + 'b) \<Rightar
   "update2hom f = fold_sum f (\<lambda>b. [Inr b])"
 
 
-lemma [simp]: "update2hom f (Inl x) = f x"  
+lemma [simp]: "update2hom f (Inl x) = f x"
   by(auto simp add: update2hom_def)
-    
-lemma [simp]: "update2hom f (Inr x) = [Inr x]"  
-  by(auto simp add: update2hom_def idU_def) 
-   
+
+lemma [simp]: "update2hom f (Inr x) = [Inr x]"
+  by(auto simp add: update2hom_def idU_def)
+
 definition hat_hom :: "('x, 'y, 'b) update' \<Rightarrow> ('x + 'b) list \<Rightarrow> ('y + 'b) list" where
   "hat_hom f = concat o map (update2hom f)"
 
@@ -57,23 +57,23 @@ qed
 
 lemma [simp]: "hat_hom f [] = []"
   by (simp add: hat_hom_def)
-    
+
 lemma [simp]: "hat_hom f (Inl a#xs) = f a @ hat_hom f xs"
   by (simp add: hat_hom_def)
-    
+
 lemma [simp]: "hat_hom f (Inr a#xs) = Inr a # hat_hom f xs"
   by (simp add: hat_hom_def)
 
 lemma [simp]: "hat_hom f (xs@ys) = hat_hom f xs @ hat_hom f ys"
   by (simp add: hat_hom_def)
 
-lemma hat_hom_right_ignore: "hat_hom f (map Inr xs) = map Inr xs"  
+lemma hat_hom_right_ignore: "hat_hom f (map Inr xs) = map Inr xs"
   by (induction xs, auto)
 
 
 definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>  ('x, 'z, 'b) update'" (infixl "\<bullet>" 55)
   where "comp f g == (hat_hom f) o g"
-  
+
 lemma comp_lem: "hat_hom f (hat_hom g xs) = hat_hom (hat_hom f o g) xs"
 proof (induct xs)
   case Nil show ?case by simp
@@ -94,6 +94,4 @@ lemma comp_right_neutral: "comp f idU = f"
 lemma comp_ignore: "(f \<bullet> (\<lambda>y. g a)) x = (f \<bullet> g) a"
   by (simp add: comp_def)
 
-
 end
-  

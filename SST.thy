@@ -16,7 +16,7 @@ type_synonym ('q, 'a)  "trans" =
 type_synonym ('q, 'x, 'a, 'b) "updator" =
   "'q \<times> 'a \<Rightarrow> ('x, 'b) update"
 
-record ('q, 'x, 'a, 'b) SST = 
+record ('q, 'x, 'a, 'b) SST =
   initial :: "'q"
   delta   :: "('q, 'a) trans"
   eta     :: "('q, 'x, 'a, 'b) updator"
@@ -75,7 +75,7 @@ subsection \<open>Examples\<close>
 
 definition rev :: "(nat, nat, nat, nat) SST" where
   "rev = (|
-    initial = 0, 
+    initial = 0,
     delta = \<lambda>(q, a). 0,
     eta = \<lambda>(q, a) x. [Inr a, Inl 0],
     final = \<lambda>q. Some [Inl 0] |)"

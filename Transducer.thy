@@ -35,12 +35,12 @@ abbreviation eta_hat :: "('q, 'a, 'b) transducer \<Rightarrow> ('q, 'a list, 'b)
 
 definition run :: "('q, 'a, 'b) transducer \<Rightarrow> 'a list \<Rightarrow> ('b list) option" where
   "run T as = (if final T (hat1 (delta T) (initial T, as))
-               then Some (hat2 (delta T) (eta T) (initial T, as)) 
+               then Some (hat2 (delta T) (eta T) (initial T, as))
                else None)"
 
 definition run_total :: "('q, 'a, 'b) transducer \<Rightarrow> 'a list \<Rightarrow> 'b list" where
   "run_total T as = (let q' = hat1 (delta T) (initial T, as) in
-                     let bs = hat2 (delta T) (eta T) (initial T, as) 
+                     let bs = hat2 (delta T) (eta T) (initial T, as)
                      in bs)"
 
 
@@ -78,7 +78,7 @@ by (induction as arbitrary: q, auto)
 
 lemma compose_eta_hat: "hat2 (compose_delta T1 T2) (compose_eta T1 T2) ((q1, q2), w) =
        hat2 (delta T2) (eta T2) (q2, hat2 (delta T1) (eta T1) (q1, w))"
-by (induction w arbitrary: q1 q2, 
+by (induction w arbitrary: q1 q2,
     auto simp add: compose_delta_def compose_eta_def eta_append)
 
 
@@ -101,17 +101,4 @@ next
     done
 qed
 
-
 end
-
-(* (\<And>q. hat1 t q (as @ bs) = hat1 t (hat1 t q as) bs)) *)
-
-
-
-
-(* fun and function *)
-(* function ... teishisei to parallel na teigi wo tyanto shoumei suru *)
-(* fun ... list size, lexicographic order nado ni yori automatic ni shoumei sitekureru *)
-
-(* don't believe foldl or something *)
-

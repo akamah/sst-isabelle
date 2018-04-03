@@ -2,7 +2,7 @@ theory Setsum
 imports Main
 begin
 
-   
+
 lemma sum1:
   fixes f::"'a \<Rightarrow> nat"
   assumes "finite s" "sum f s = 1"
@@ -11,10 +11,10 @@ lemma sum1:
 
 lemma sumk:
   fixes f::"'a \<Rightarrow> nat"
-  assumes "finite s" "x \<in> s" "sum f s \<le> k"  
+  assumes "finite s" "x \<in> s" "sum f s \<le> k"
   shows "f x \<le> k"
-proof (rule contrapos_pp)   
-  assume H: "\<not> f x \<le> k" 
+proof (rule contrapos_pp)
+  assume H: "\<not> f x \<le> k"
   have "sum f s = sum f (insert x (s - {x}))"
     using assms by (simp add: insert_absorb)
   also have "... = f x + sum f (s - {x})"
@@ -26,6 +26,6 @@ proof (rule contrapos_pp)
       using H by auto
   qed
 qed (fact)
-      
-  
+
+
 end

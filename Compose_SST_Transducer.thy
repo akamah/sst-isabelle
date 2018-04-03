@@ -16,7 +16,7 @@ fun delta2f ::
   "delta2f f g (q, Inr a) = g (q, a)"
 
 (* eta2f is a function described in Akama's graduate thesis *)
-fun eta2f :: 
+fun eta2f ::
   "('q, 'b, 'c) Transducer.out => ('q, 'x + 'b, 'q \<times> 'x + 'c) Transducer.out" where
   "eta2f e2 (q, Inl x) = [Inl (q, x)]" |
   "eta2f e2 (q, Inr a) = map Inr (e2 (q, a))"
@@ -25,12 +25,12 @@ definition \<Delta> :: "('q, 'b) trans
               \<Rightarrow> ('q, 'x) trans \<times> ('z, 'x, 'b) update' \<Rightarrow> ('q, 'z) trans"
   where "\<Delta> t = (\<lambda>(f, \<theta>). (\<lambda>(q, a). hat1 (delta2f f t) (q, \<theta> a)))"
 
-definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out 
+definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out
               \<Rightarrow> ('q, 'x) trans \<times> ('a, 'x, 'b) update' \<Rightarrow> ('q \<times> 'a, 'q \<times> 'x, 'c) update'"
   where "H tr to = (\<lambda>(f, \<theta>). (\<lambda>(q, a). Transducer.hat2 (delta2f f tr) (eta2f to) (q, \<theta> a)))"
 
 
-proposition \<Delta>_assoc_string: 
+proposition \<Delta>_assoc_string:
   "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
    hat1 (delta2f f tr) (q, hat_hom theta u)"
   by (induction u arbitrary: q rule: xa_induct, simp_all add: delta_append)
@@ -55,19 +55,19 @@ definition compose_\<delta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, '
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'a) trans" where
   "compose_\<delta> sst td = (\<lambda>((q1, f), a). (delta sst (q1, a),
                                          \<Delta> (Transducer.delta td) (f, eta sst (q1, a))))"
-  
+
 definition compose_\<eta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) updator" where
   "compose_\<eta> sst td = (\<lambda>((q1, f), a). H (Transducer.delta td) (Transducer.eta td) (f, eta sst (q1, a)))"
 
 definition compose_final :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2) \<Rightarrow> ('q2 \<times> 'x1 + 'c) list option)" where
-  "compose_final sst td = (\<lambda>(q1, f). 
+  "compose_final sst td = (\<lambda>(q1, f).
      case final sst q1 of
        Some u \<Rightarrow>
          if Transducer.final td (\<Delta> (Transducer.delta td) (f, \<lambda>x. u) (Transducer.initial td, SOME x :: 'x1. True))
          then Some (H (Transducer.delta td) (Transducer.eta td) (f, \<lambda>x. u)
-                      (Transducer.initial td, SOME x :: 'x1. True)) 
+                      (Transducer.initial td, SOME x :: 'x1. True))
          else None |
        None \<Rightarrow> None)"
 
@@ -88,7 +88,7 @@ proof (induction w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def \<Delta>_def)
 next
   case (Cons a u) then show ?case by (simp add: compose_\<delta>_def \<Delta>_assoc)
-qed      
+qed
 
 lemma compose_\<eta>_hat:
   "hat2 (compose_\<delta> sst td) (compose_\<eta> sst td) ((q, f), w) =
@@ -112,7 +112,7 @@ lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q,
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
 
 lemma valuate_eta_hat_string:
-  "valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)) 
+  "valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w))
  = Transducer.hat2 tr td (q, valuate w)"
   by (induction w arbitrary: q rule: xa_induct, simp_all)
 
@@ -122,7 +122,7 @@ lemma valuate_eta_hat: "Transducer.hat2 tr td (q, valuate (u x)) = valuate (H tr
 
 subsection \<open>Main result\<close>
 
-theorem can_compose_SST_Transducer: 
+theorem can_compose_SST_Transducer:
   fixes sst :: "('q1, 'x, 'a, 'b) SST"
   fixes td  :: "('q2, 'b, 'c) transducer"
   shows "SST.run (compose_SST_Transducer sst td) w
@@ -150,3 +150,5 @@ next
                        initial_eta)
   qed
 qed
+
+end

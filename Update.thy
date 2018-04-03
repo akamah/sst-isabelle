@@ -6,6 +6,18 @@ theory Update
   imports Main 
 begin
 
+(* an induction rule for variable and alphabet list *)
+(* [consumes n] to skip first n assumptions at induction phase *)
+lemma xa_induct [consumes 0, case_names Nil Var Alpha]:
+  "P [] \<Longrightarrow> (\<And>x xs. P xs \<Longrightarrow> P (Inl x#xs))
+        \<Longrightarrow> (\<And>a xs. P xs \<Longrightarrow> P (Inr a#xs))
+        \<Longrightarrow> P xs"
+proof (induction xs)
+  case Nil then show ?case by simp
+next
+  case (Cons a xs) then show ?case by (cases a) simp_all
+qed
+
 primrec fold_sum :: "['a \<Rightarrow> 'c, 'b \<Rightarrow> 'c, 'a + 'b] \<Rightarrow> 'c" where
   "fold_sum f g (Inl x) = f x" |
   "fold_sum f g (Inr y) = g y"

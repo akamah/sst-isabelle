@@ -33,35 +33,20 @@ definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out
 proposition \<Delta>_assoc_string: 
   "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
    hat1 (delta2f f tr) (q, hat_hom theta u)"
-proof (induction u arbitrary: q)
-  case Nil show ?case by auto
-next
-  case (Cons ax v) show ?case proof (cases ax)
-    case (Inl x) then show ?thesis by (simp add: Cons delta_append)
-  next
-    case (Inr a) then show ?thesis by (simp add: Cons)
-  qed
-qed
+  by (induction u arbitrary: q rule: xa_induct, simp_all add: delta_append)
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
-  by (rule ext, auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
+  by (auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
 
 proposition H_assoc_string:
   "hat_hom (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))
      (Transducer.hat2 (delta2f (\<lambda>(q2, x1). hat1 (delta2f f t_trans) (q2, theta x1)) t_trans) (eta2f t_out) (q, u)) =
    Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta u)"
-proof (induction u arbitrary: q)
-  case Nil show ?case by auto
-next
-  case (Cons ax v) show ?case proof (cases ax)
-    case (Inl x) then show ?thesis by (simp add: Cons Transducer.eta_append)
-  next
-    case (Inr a) then show ?thesis by (simp add: Cons hat_hom_right_ignore)
-  qed
-qed
+  by (induction u arbitrary: q rule: xa_induct,
+       simp_all add: Transducer.eta_append hat_hom_right_ignore)
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
-  by (rule ext, auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
+  by (auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
 
 
 subsection \<open>Construction\<close>
@@ -121,37 +106,19 @@ lemma initial_eta: "H tr to (\<lambda>(q, x). q, emptyU) = emptyU"
   by (auto simp add: H_def emptyU_def)
 
 lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
-proof (induction w arbitrary: q)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a as) then show ?case proof (cases a)
-    case (Inl x) then show ?thesis by (simp add: valuate_distrib Cons empty_def)
-  next
-    case (Inr b) then show ?thesis by (simp add: Cons)
-  qed
-qed
+  by (induction w arbitrary: q rule: xa_induct, simp_all add: empty_def)
 
 lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
 
-
 lemma valuate_eta_hat_string:
   "valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)) 
  = Transducer.hat2 tr td (q, valuate w)"
-proof (induction w arbitrary: q)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a as) then show ?case proof (cases a)
-    case (Inl a) then show ?thesis by (simp add: Cons)
-  next
-    case (Inr b) then show ?thesis by (simp add: Cons valuate_distrib valuate_map_Inr)
-  qed
-qed
+  by (induction w arbitrary: q rule: xa_induct, simp_all)
 
 lemma valuate_eta_hat: "Transducer.hat2 tr td (q, valuate (u x)) = valuate (H tr td (\<lambda>(q, x). q, u) (q, x))"
   by (simp add: H_def valuate_eta_hat_string)
+
 
 subsection \<open>Main result\<close>
 

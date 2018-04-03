@@ -61,17 +61,11 @@ lemma delta_append: "hat1 t (q, (as @ bs)) = hat1 t (hat1 t (q, as), bs)"
 lemma eta_append: "hat2 tf to (q, as @ bs) = hat2 tf to (q, as) \<bullet> hat2 tf to (hat1 tf (q, as), bs)"
   by (induction as arbitrary: q, auto simp add: comp_assoc comp_left_neutral)
 
-lemma valuate_distrib: "valuate (as @ bs) == valuate as @ valuate bs"
-proof (induction as)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a as)
-  then show ?case by (cases a, simp_all)
-qed
+lemma valuate_distrib[simp]: "valuate (as @ bs) == valuate as @ valuate bs"
+  by (induction as rule: xa_induct, simp_all)
 
-lemma valuate_map_Inr: "valuate (map Inr as) = as"
-  by (induction as, auto)
+lemma valuate_map_Inr[simp]: "valuate (map Inr as) = as"
+  by (induction as, simp_all)
 
 lemma [simp]: "Transducer.hat1 d (q, w) = SST.hat1 d (q, w)"
   by (induction w arbitrary: q, auto)

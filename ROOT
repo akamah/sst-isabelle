@@ -7,4 +7,4 @@ session SST = Pure +
     A formalization and theories of Streaming String Transducers
   *}
   options [document = false]
-  theories Transducer Update SST Compose_SST_Transducer_Partial
+  theories Transducer Update SST Compose_SST_Transducer

@@ -2,7 +2,7 @@
    Author:  Akama Hitoshi
 *)
 
-theory Compose_SST_Transducer_Partial
+theory Compose_SST_Transducer
   imports Main List Option Update Transducer SST
 begin
 

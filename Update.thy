@@ -94,4 +94,8 @@ lemma comp_right_neutral: "comp f idU = f"
 lemma comp_ignore: "(f \<bullet> (\<lambda>y. g a)) x = (f \<bullet> g) a"
   by (simp add: comp_def)
 
+fun concatU :: "('x, 'b) update list \<Rightarrow> ('x, 'b) update" where
+  "concatU []     = idU" |
+  "concatU (f#fs) = f \<bullet> concatU fs"
+
 end

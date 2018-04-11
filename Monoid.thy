@@ -28,6 +28,7 @@ next
   fix x :: "'a list"
   show "x \<bullet> \<one> = x" by (simp add: mult_list_def unit_list_def)
 qed
+end
 
 definition
   "twice x = mult x x"

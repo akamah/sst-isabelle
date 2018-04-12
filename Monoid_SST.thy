@@ -17,11 +17,11 @@ record ('q, 'x, 'y, 'a, 'b) "MSST" =
 
 (* \<delta>\<^sup>^(q, w) *)
 abbreviation delta_hat :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'a list) trans" where
-  "delta_hat sst \<equiv> hat1 (delta sst)"
+  "delta_hat msst \<equiv> hat1 (delta msst)"
 
 (* \<eta>(q, w) *)
 abbreviation eta_hat :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'a list, ('y, 'b) update) updator" where
-  "eta_hat sst \<equiv> hat2 (delta sst) (eta sst)"
+  "eta_hat msst \<equiv> hat2 (delta msst) (eta msst)"
 
 
 definition run :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where

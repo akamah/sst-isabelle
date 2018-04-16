@@ -160,4 +160,12 @@ next
   qed
 qed
 
+subsection \<open>Examples\<close>
+
+lemma "Monoid_SST.run (compose_SST_SST rev rev) [1, 2, 3] = Some [1, 2, 3]"
+  apply (simp add: compose_SST_SST_def compose_\<delta>_def compose_\<eta>_def compose_final_update_def compose_final_string_def
+        Monoid_SST.run_def rev_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
+  apply (simp add: \<Delta>_def H_def idU_def emptyU_def comp_def)
+  done
+
 end

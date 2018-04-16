@@ -75,6 +75,20 @@ fun resolve_append :: "('y, 'b) update \<Rightarrow> ('y, 'b) append" where
 definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) append \<times> ('y, 'b) prepend" where
   "resolve \<theta> = (resolve_shuffle \<theta>, resolve_append \<theta>, resolve_prepend \<theta>)"
 
+subsection \<open>Synthesize\<close>
+
+fun synthesize_shuffle :: "'y shuffle \<Rightarrow> ('y, 'y index, 'b) update'" where
+  "synthesize_shuffle s y = map Inl (s y)"
+
+fun synthesize_prepend :: "('y, 'b) prepend \<Rightarrow> ('y, 'y, 'b) update'" where
+  "synthesize_prepend a y = map Inr (a y) @ [Inl y]"
+
+fun synthesize_append :: "('y, 'b) append \<Rightarrow> ('y index, 'y, 'b) update'" where
+  "synthesize_append a (x, y, k) = Inl y #  map Inr (a (x, y, k))"
+
+definition synthesize :: "'y shuffle \<times> ('y, 'b) append \<times> ('y, 'b) prepend \<Rightarrow> ('y, 'b) update" where
+  "synthesize sap = (case sap of (s, a, p) \<Rightarrow>
+     synthesize_append a \<bullet> synthesize_shuffle s \<bullet> synthesize_prepend p)"
 
 subsection \<open>Example\<close>
 
@@ -93,5 +107,6 @@ lemma "resolve_append poyo (1, 1, 0) = ''C''" by simp
 
 lemma "resolve_shuffle poyo 0 = [(0, 0, 0), (0, 0, 1)]" by simp
 
+lemma "synthesize (resolve poyo) x = poyo x" by (simp add: synthesize_def resolve_def comp_def)
 
 end

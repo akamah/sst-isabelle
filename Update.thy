@@ -75,12 +75,7 @@ definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>
   where "comp f g == (hat_hom f) o g"
 
 lemma comp_lem: "hat_hom f (hat_hom g xs) = hat_hom (hat_hom f o g) xs"
-proof (induct xs)
-  case Nil show ?case by simp
-next
-  case (Cons a xs)
-  thus ?case by (cases a, simp_all)
-qed
+  by (induct xs rule: xa_induct, simp_all)
 
 lemma comp_assoc: "(f \<bullet> g) \<bullet> h = f \<bullet> (g \<bullet> h)"
   by (auto simp add: comp_def comp_lem)

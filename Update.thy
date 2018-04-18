@@ -98,4 +98,49 @@ fun concatU :: "('x, 'b) update list \<Rightarrow> ('x, 'b) update" where
   "concatU []     = idU" |
   "concatU (f#fs) = f \<bullet> concatU fs"
 
+
+
+
+definition alpha_hom :: "('a \<Rightarrow> 'b list) \<Rightarrow> 'x + 'a \<Rightarrow> ('x + 'b) list" where
+  "alpha_hom f = fold_sum (\<lambda>x. [Inl x]) (\<lambda>a. map Inr (f a))"
+
+lemma [simp]: "alpha_hom f (Inl x) = [Inl x]"
+  by (simp add: alpha_hom_def)
+
+lemma [simp]: "alpha_hom f (Inr a) = map Inr (f a)"
+  by (simp add: alpha_hom_def)
+
+
+definition hat_alpha :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('x + 'a) list \<Rightarrow> ('x + 'b) list" where
+  "hat_alpha f = concat o map (alpha_hom f)"
+
+lemma [simp]: "hat_alpha t [] = []"
+  by (simp add: hat_alpha_def)
+
+lemma [simp]: "hat_alpha t (Inl x#xs) = Inl x # hat_alpha t xs"
+  by (simp add: hat_alpha_def)
+
+lemma [simp]: "hat_alpha t (Inr a#xs) = map Inr (t a) @ hat_alpha t xs"
+  by (simp add: hat_alpha_def)
+
+lemma [simp]: "hat_alpha t (xs@ys) = hat_alpha t xs @ hat_alpha t ys"
+  by (simp add: hat_alpha_def)
+
+lemma hat_alpha_left_ignore: "hat_alpha f (map Inl xs) = map Inl xs"
+  by (induction xs, auto)
+
+lemma hat_alpha_right_map: "hat_alpha f (map Inr as) = map Inr (concat (map f as))"
+  by (induction as, auto)
+
+
+definition map_alpha :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('x, 'y, 'a) update' \<Rightarrow> ('x, 'y, 'b) update'" (infixl "\<star>" 60)
+  where "map_alpha t f = hat_alpha t o f"
+
+lemma alpha_lem: "hat_alpha t (hat_hom f w) = hat_hom (t \<star> f) (hat_alpha t w)"
+  by (induct w rule: xa_induct, simp_all add: map_alpha_def hat_hom_right_ignore)
+
+lemma map_alpha_distrib: "t \<star> (\<psi> \<bullet> \<phi>) = t \<star> \<psi> \<bullet> t \<star> \<phi>"
+  by (auto simp add: alpha_lem map_alpha_def comp_def)
+
+
 end

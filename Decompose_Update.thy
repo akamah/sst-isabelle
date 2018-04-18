@@ -24,6 +24,9 @@ type_synonym 'y index = "'y \<times> 'y \<times> nat"
 (* Shuffle *)
 type_synonym 'y shuffle = "'y \<Rightarrow> ('y index) list"
 
+definition idS :: "'y shuffle" where
+  "idS \<equiv> (\<lambda>y. [(y, y, 0)])"
+
 (* Append *)
 type_synonym ('y, 'b) append = "'y index \<Rightarrow> 'b list"
 
@@ -86,6 +89,10 @@ fun resolve_prepend :: "('y, 'b) update \<Rightarrow> ('y, 'b) prepend" where
 
 fun resolve_append :: "('y, 'b) update \<Rightarrow> ('y, 'b) append" where
   "resolve_append \<theta> (x, y, k) = first_string (skip_until (x, y, k) (give_indices x (\<theta> x)))"
+
+(* useful function *) 
+fun resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
+  "resolve_store \<theta> = (resolve_append \<theta>, resolve_prepend \<theta>)"
 
 definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) store" where
   "resolve \<theta> = (resolve_shuffle \<theta>, (resolve_append \<theta>, resolve_prepend \<theta>))"
@@ -160,7 +167,11 @@ lemma "resolve_append poyo (1, 1, 1) = ''C''" by simp
 
 lemma "resolve_shuffle poyo 0 = [(0, 0, 0), (0, 0, 1)]" by simp
 
+
+(*
 lemma "synthesize (resolve poyo) x = poyo x"
     apply (simp add: synthesize_def resolve_def comp_def)
+*)
+
 
 end

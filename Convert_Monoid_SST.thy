@@ -5,7 +5,7 @@
 section \<open>Convert a Monoid SST to a ordinary SST\<close>
 
 theory Convert_Monoid_SST
-  imports Main Update SST Monoid_SST Decompose_update
+  imports Main Update SST Monoid_SST Decompose_Update
 begin
 
 subsection \<open>Definition of another strange Transducer\<close>

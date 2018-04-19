@@ -17,15 +17,15 @@ begin
 
 (* an detailed index of string in Append. 
  * (x, y, k) means the position of variable y,
-    and its k-th occurence along all variables used in the assignment to x.
+    and its k-th occurrence along all variables used in the assignment to x.
  *)
 type_synonym 'y index = "'y \<times> 'y \<times> nat"
 
 (* Shuffle *)
-type_synonym 'y shuffle = "'y \<Rightarrow> ('y index) list"
+type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
 
 definition idS :: "'y shuffle" where
-  "idS \<equiv> (\<lambda>y. [(y, y, 0)])"
+  "idS \<equiv> (\<lambda>y. [y])"
 
 (* Append *)
 type_synonym ('y, 'b) append = "'y index \<Rightarrow> 'b list"
@@ -82,7 +82,7 @@ fun give_indices :: "'x \<Rightarrow> ('x + 'b) list \<Rightarrow> ('x index + '
 subsection \<open>Resolve\<close>
 
 fun resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
-  "resolve_shuffle \<theta> y = extract_variables (give_indices y (\<theta> y))"
+  "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
 fun resolve_prepend :: "('y, 'b) update \<Rightarrow> ('y, 'b) prepend" where
   "resolve_prepend \<theta> y = first_string (\<theta> y)"
@@ -100,7 +100,7 @@ definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b
 subsection \<open>Synthesize\<close>
 
 fun synthesize_shuffle :: "'y shuffle \<Rightarrow> ('y, 'y index, 'b) update'" where
-  "synthesize_shuffle s y = map Inl (s y)"
+  "synthesize_shuffle s y = give_indices y (map Inl (s y))"
 
 fun synthesize_prepend :: "('y, 'b) prepend \<Rightarrow> ('y, 'y, 'b) update'" where
   "synthesize_prepend a y = map Inr (a y) @ [Inl y]"
@@ -165,13 +165,13 @@ lemma "resolve_append poyo (1, 0, 0) = ''B''" by simp
 lemma "resolve_append poyo (1, 1, 1) = ''C''" by simp
 
 
-lemma "resolve_shuffle poyo 0 = [(0, 0, 0), (0, 0, 1)]" by simp
+lemma "resolve_shuffle poyo 0 = [0, 0]" by simp
 
 
-(*
+
 lemma "synthesize (resolve poyo) x = poyo x"
-    apply (simp add: synthesize_def resolve_def comp_def)
-*)
+  by (simp add: synthesize_def resolve_def comp_def)
+
 
 
 end

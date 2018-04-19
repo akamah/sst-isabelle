@@ -42,8 +42,8 @@ lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) 
 lemma "\<Delta>' (\<alpha>, idU) = \<alpha>"
   apply (rule ext)
   apply (rule ext)
-  apply (simp add: \<Delta>'_def idU_def \<tau>_def \<iota>_def \<iota>0_def)
-  apply (induct "\<alpha> x")
+  apply (simp add: \<Delta>'_def \<tau>_def idU_def \<iota>_def \<iota>0_def map_alpha_synthesize)
+  apply (induct "\<alpha> x xa")
 
 
 subsection \<open>Construction\<close>

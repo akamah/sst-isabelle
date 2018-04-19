@@ -81,17 +81,17 @@ fun give_indices :: "'x \<Rightarrow> ('x + 'b) list \<Rightarrow> ('x index + '
 
 subsection \<open>Resolve\<close>
 
-fun resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
+definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
-fun resolve_prepend :: "('y, 'b) update \<Rightarrow> ('y, 'b) prepend" where
+definition resolve_prepend :: "('y, 'b) update \<Rightarrow> ('y, 'b) prepend" where
   "resolve_prepend \<theta> y = first_string (\<theta> y)"
 
-fun resolve_append :: "('y, 'b) update \<Rightarrow> ('y, 'b) append" where
-  "resolve_append \<theta> (x, y, k) = first_string (skip_until (x, y, k) (give_indices x (\<theta> x)))"
+definition resolve_append :: "('y, 'b) update \<Rightarrow> ('y, 'b) append" where
+  "resolve_append \<theta> = (\<lambda>(x, y, k).  first_string (skip_until (x, y, k) (give_indices x (\<theta> x))))"
 
 (* useful function *) 
-fun resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
+definition resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
   "resolve_store \<theta> = (resolve_append \<theta>, resolve_prepend \<theta>)"
 
 definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) store" where
@@ -99,14 +99,14 @@ definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b
 
 subsection \<open>Synthesize\<close>
 
-fun synthesize_shuffle :: "'y shuffle \<Rightarrow> ('y, 'y index, 'b) update'" where
+definition synthesize_shuffle :: "'y shuffle \<Rightarrow> ('y, 'y index, 'b) update'" where
   "synthesize_shuffle s y = give_indices y (map Inl (s y))"
 
-fun synthesize_prepend :: "('y, 'b) prepend \<Rightarrow> ('y, 'y, 'b) update'" where
+definition synthesize_prepend :: "('y, 'b) prepend \<Rightarrow> ('y, 'y, 'b) update'" where
   "synthesize_prepend a y = map Inr (a y) @ [Inl y]"
 
-fun synthesize_append :: "('y, 'b) append \<Rightarrow> ('y index, 'y, 'b) update'" where
-  "synthesize_append a (x, y, k) = Inl y # map Inr (a (x, y, k))"
+definition synthesize_append :: "('y, 'b) append \<Rightarrow> ('y index, 'y, 'b) update'" where
+  "synthesize_append a = (\<lambda>(x, y, k). Inl y # map Inr (a (x, y, k)))"
 
 definition synthesize :: "'y shuffle \<times> ('y, 'b) store \<Rightarrow> ('y, 'b) update" where
   "synthesize sap = (case sap of (s, a, p) \<Rightarrow>
@@ -119,35 +119,61 @@ fun lookup_store :: "('y, 'b) store \<Rightarrow> 'y location \<Rightarrow> 'b l
 
 subsection \<open>Properties of Decomposition\<close>
 
-(* an induction rule for variable and alphabet list *)
-(* [consumes n] to skip first n assumptions at induction phase *)
-lemma xw_induct [consumes 0, case_names String VarString]:
-  assumes str: "(\<And>w. P (map Inr w))"
-  and  varstr: "(\<And>x w u. P u \<Longrightarrow> P (map Inr w @ [Inl x] @ u))"
-  shows "P xs"
-proof (induct xs rule: xa_induct)
+lemma give_indices_rec_Inr: "give_indices_rec k x (map Inr as @ xs) = map Inr as @ give_indices_rec k x xs"
+  by (induct as, simp_all)
+
+lemma hat_alpha_give_indices_left: "hat_alpha t (give_indices_rec k x u) = give_indices_rec k x (hat_alpha t u)"
+proof (induct u arbitrary: k rule: xa_induct)
   case Nil
-  then show ?case
-    by (metis list.map_disc_iff str)
+  then show ?case by simp
 next
   case (Var x xs)
-  then show ?case
-    by (metis Nil_is_map_conv append_Cons append_self_conv2 varstr)
+  then show ?case by simp
 next
   case (Alpha a xs)
-  then show ?case sorry
+  then show ?case by (simp add: give_indices_rec_Inr)
 qed
 
-theorem resolve_inverse: "synthesize (resolve m) x = m x"
-proof (induct "m x")
-  case Nil
-  then show ?case by (simp add: resolve_def synthesize_def comp_def)
-next
-  case (Cons a xa)
-  then show ?case
-    apply (simp add: resolve_def synthesize_def comp_def hat_hom_right_ignore)
+lemma map_alpha_synthesize_append: "t \<star> synthesize_append a = synthesize_append (concat o map t o a)"
+  by (auto simp add: synthesize_append_def map_alpha_def hat_alpha_right_map)
 
-  sorry
+lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle s = synthesize_shuffle s"
+  by (rule ext, auto simp add: synthesize_shuffle_def map_alpha_def hat_alpha_right_map 
+      hat_alpha_give_indices_left hat_alpha_left_ignore)
+
+lemma map_alpha_synthesize_prepend: "t \<star> synthesize_prepend p = synthesize_prepend (concat o map t o p)"
+  by (auto simp add: synthesize_prepend_def map_alpha_def hat_alpha_right_map)
+
+lemma map_alpha_synthesize: "t \<star> synthesize (s, a, p) = synthesize (s, concat o map t o a, concat o map t o p)"
+  by (simp add: synthesize_def map_alpha_distrib
+      map_alpha_synthesize_shuffle map_alpha_synthesize_append map_alpha_synthesize_prepend)
+
+lemma concat_map_resolve_append: "(concat o map t) (resolve_append \<theta> y) = resolve_append (t \<star> \<theta>) y"
+  apply (simp add: resolve_append_def)
+
+lemma resolve_idU_idS: "resolve_shuffle idU = idS"
+  by (rule ext, simp add: idU_def idS_def resolve_shuffle_def)
+
+theorem resolve_inverse: "synthesize (resolve m) x = m x"
+  oops
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 subsection \<open>Example\<close>
 
@@ -156,22 +182,22 @@ fun poyo :: "(int, char) update" where
         else if z = 1 then [Inr (CHR ''A''), Inl 0, Inr (CHR ''B''), Inl 1, Inr (CHR ''C'')]
         else [])"
 
-lemma "resolve_prepend poyo 0 = ''P''" by simp
-lemma "resolve_prepend poyo 1 = ''A''" by simp
+lemma "resolve_prepend poyo 0 = ''P''" by (simp add: resolve_prepend_def)
+lemma "resolve_prepend poyo 1 = ''A''" by (simp add: resolve_prepend_def)
 
-lemma "resolve_append poyo (0, 0, 0) = ''Q''" by simp
-lemma "resolve_append poyo (0, 0, 1) = ''R''" by simp
-lemma "resolve_append poyo (1, 0, 0) = ''B''" by simp
-lemma "resolve_append poyo (1, 1, 1) = ''C''" by simp
-
-
-lemma "resolve_shuffle poyo 0 = [0, 0]" by simp
+lemma "resolve_append poyo (0, 0, 0) = ''Q''" by (simp add: resolve_append_def)
+lemma "resolve_append poyo (0, 0, 1) = ''R''" by (simp add: resolve_append_def)
+lemma "resolve_append poyo (1, 0, 0) = ''B''" by (simp add: resolve_append_def)
+lemma "resolve_append poyo (1, 1, 1) = ''C''" by (simp add: resolve_append_def)
 
 
+lemma "resolve_shuffle poyo 0 = [0, 0]" by (simp add: resolve_shuffle_def)
 
+
+(*
 lemma "synthesize (resolve poyo) x = poyo x"
   by (simp add: synthesize_def resolve_def comp_def)
 
-
+*)
 
 end

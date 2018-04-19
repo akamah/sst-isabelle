@@ -39,6 +39,9 @@ lemma \<Delta>'_assoc: "\<Delta>' (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>
 lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
   sorry
 
+lemma "\<Delta>' (\<alpha>, idU) = \<alpha>"
+  oops
+
 
 subsection \<open>Construction\<close>
 
@@ -69,6 +72,26 @@ definition convert_MSST :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
     eta         = convert_\<eta> msst,
     final       = convert_final msst
   \<rparr>"
+
+
+subsection \<open>Properties\<close>
+
+lemma convert_\<delta>_hat:
+  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w) =
+   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))"
+proof (induct w arbitrary: q \<alpha>)
+  case Nil
+  then show ?case apply (simp add: convert_\<delta>_def)
+    apply (rule ext)
+    apply (simp add: \<Delta>'_def \<tau>_def idU_def)
+    sorry
+next
+  case (Cons a w)
+  then show ?case by (simp add: \<Delta>'_assoc convert_\<delta>_def)
+qed
+  
+
+
 
 
 end

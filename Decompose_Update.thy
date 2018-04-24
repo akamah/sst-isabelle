@@ -11,15 +11,12 @@ begin
 (* an Update can be divided into two objects:
  * Shuffle (M\<^sup>1): shuffle and concatenate variables.
  * Store   (M\<^sup>2): stores strings which'll be concatenated to variables:
- *   Append:  append
- *   Prepend: prepend
  *)
 
 (* an detailed index of string in Append. 
- * (x, y, k) means the position of variable y,
-    and its k-th occurrence along all variables used in the assignment to x.
+ * (x, k) means the position of a k-th variable used in the assignment to x.
  *)
-type_synonym 'y index = "'y \<times> 'y \<times> nat"
+type_synonym 'y index = "'y \<times> nat"
 
 (* Shuffle *)
 type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
@@ -27,17 +24,8 @@ type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
 definition idS :: "'y shuffle" where
   "idS \<equiv> (\<lambda>y. [y])"
 
-(* Append *)
-type_synonym ('y, 'b) append = "'y index \<Rightarrow> 'b list"
-
-(* Prepend *)
-type_synonym ('y, 'b) prepend = "'y \<Rightarrow> 'b list"
-
 (* Store *)
-type_synonym ('y, 'b) store = "('y, 'b) append \<times> ('y, 'b) prepend"
-
-(* location of store *)
-type_synonym 'y location = "'y index + 'y"
+type_synonym ('y, 'b) store = "'y index \<Rightarrow> 'b list"
 
 
 subsection \<open>Utility functions\<close>
@@ -115,6 +103,20 @@ fun flat_rec where
 fun flat where
   "flat (b0, xas) = map Inr b0 @ flat_rec xas"
 
+fun replace_rec where
+  "replace_rec y n [] = []" |
+  "replace_rec y n ((x, _)#xs) = Inl x # Inr (y, n) # replace_rec y (Suc n) xs"
+
+fun replace where
+  "replace y (a0, xs) = Inr (y, 0) # replace_rec y 1 xs"
+
+fun ith_string where
+  "ith_string [] k = []" |
+  "ith_string ((x,as)#xas) 0 = as" |
+  "ith_string (_#xas) (Suc k) = ith_string xas k"
+
+
+
 lemma flat_rec_scan_pair: "flat_rec (scan_pair x as u) = Inl x # map Inr as @ u"
   by (induct u arbitrary: x as rule: xa_induct, simp_all)
 
@@ -128,18 +130,10 @@ lemma "flat (scan u) = u"
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
-definition resolve_prepend :: "('y, 'b) update \<Rightarrow> ('y, 'b) prepend" where
-  "resolve_prepend \<theta> y = first_string (\<theta> y)"
+fun resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
+  "resolve_store \<theta> (x, 0) = fst (scan (\<theta> x))" |
+  "resolve_store \<theta> (x, k) = ith_string (snd (scan (\<theta> x))) k"
 
-definition resolve_append :: "('y, 'b) update \<Rightarrow> ('y, 'b) append" where
-  "resolve_append \<theta> = (\<lambda>(x, y, k).  first_string (skip_until (x, y, k) (give_indices x (\<theta> x))))"
-
-(* useful function *) 
-definition resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
-  "resolve_store \<theta> = (resolve_append \<theta>, resolve_prepend \<theta>)"
-
-definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) store" where
-  "resolve \<theta> = (resolve_shuffle \<theta>, (resolve_append \<theta>, resolve_prepend \<theta>))"
 
 subsection \<open>Synthesize\<close>
 
@@ -151,6 +145,9 @@ definition synthesize_prepend :: "('y, 'b) prepend \<Rightarrow> ('y, 'y, 'b) up
 
 definition synthesize_append :: "('y, 'b) append \<Rightarrow> ('y index, 'y, 'b) update'" where
   "synthesize_append a = (\<lambda>(x, y, k). Inl y # map Inr (a (x, y, k)))"
+
+
+
 
 definition synthesize :: "'y shuffle \<times> ('y, 'b) store \<Rightarrow> ('y, 'b) update" where
   "synthesize sap = (case sap of (s, a, p) \<Rightarrow>

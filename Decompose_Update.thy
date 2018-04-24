@@ -81,6 +81,50 @@ fun give_indices :: "'x \<Rightarrow> ('x + 'b) list \<Rightarrow> ('x index + '
 
 subsection \<open>Resolve\<close>
 
+(*
+fun scan_pair2 where
+  "scan_pair2 x [] = [(x, [])]" |
+  "scan_pair2 x (Inl y#u) = (x, []) # scan_pair2 y u" |
+  "scan_pair2 x (Inr a#u) = (case scan_pair2 x u of
+     ((y, as)#pairs) \<Rightarrow> (y, a#as) # pairs)"
+
+fun scan02 where
+  "scan02 [] = ([], [])" |
+  "scan02 (Inl x#u) = ([], scan_pair2 x u)" |
+  "scan02 (Inr a#u) = (let (as, pair) = scan02 u in (a # as, pair))"
+  
+*)
+
+fun scan_pair where
+  "scan_pair x as [] = [(x, as)]" |
+  "scan_pair x as (Inl y#u) = (x, as) # scan_pair y [] u" |
+  "scan_pair x as (Inr a#u) = scan_pair x (as @ [a]) u"
+
+fun scan0 where
+  "scan0 as [] = (as, [])" |
+  "scan0 as (Inl x#u) = (as, scan_pair x [] u)" |
+  "scan0 as (Inr a#u) = scan0 (as @ [a]) u"
+  
+fun scan :: "('y + 'b) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
+  "scan u = scan0 [] u"
+
+fun flat_rec where
+  "flat_rec [] = []" |
+  "flat_rec ((x, as)#xas) = Inl x # map Inr as @ flat_rec xas"
+
+fun flat where
+  "flat (b0, xas) = map Inr b0 @ flat_rec xas"
+
+lemma flat_rec_scan_pair: "flat_rec (scan_pair x as u) = Inl x # map Inr as @ u"
+  by (induct u arbitrary: x as rule: xa_induct, simp_all)
+
+lemma flat_scan0: "flat (scan0 as u) = map Inr as @ u"
+  by (induct u arbitrary: as rule: xa_induct, simp_all add: flat_rec_scan_pair)
+
+lemma "flat (scan u) = u"
+  by (induct u rule: xa_induct, simp_all add: flat_rec_scan_pair flat_scan0)
+
+
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 

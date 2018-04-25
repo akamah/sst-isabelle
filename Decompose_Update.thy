@@ -30,7 +30,7 @@ type_synonym ('y, 'b) store = "'y index \<Rightarrow> 'b list"
 
 subsection \<open>Utility functions\<close>
 
-
+(* extract only variables from var-alphabet list *)
 fun extract_variables :: "('x + 'b) list \<Rightarrow> 'x list" where
   "extract_variables [] = []" |
   "extract_variables (Inl x#xs) = x # extract_variables xs" |
@@ -45,14 +45,16 @@ fun scan0 where
   "scan0 as [] = (as, [])" |
   "scan0 as (Inl x#u) = (as, scan_pair x [] u)" |
   "scan0 as (Inr a#u) = scan0 (as @ [a]) u"
-  
-fun scan :: "('y + 'b) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
+
+(* scan var-alphabet list, build pairs of a variable and a string *)
+definition scan :: "('y + 'b) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
   "scan u = scan0 [] u"
 
 fun flat_rec where
   "flat_rec [] = []" |
   "flat_rec ((x, as)#xas) = Inl x # map Inr as @ flat_rec xas"
 
+(* flatten pairs *)
 fun flat where
   "flat (b0, xas) = map Inr b0 @ flat_rec xas"
 
@@ -60,7 +62,8 @@ fun padding_rec :: "nat \<Rightarrow> 'x \<Rightarrow> ('x \<times> 'b list) lis
   "padding_rec n y [] = []" |
   "padding_rec n y ((x, _)#xs) = Inl x # Inr (y, n) # padding_rec (Suc n) y xs"
 
-fun padding where
+(* replace strings a special meta-variable *)
+fun padding :: "'y \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list \<Rightarrow> ('y + 'y index) list" where
   "padding y (a0, xs) = Inr (y, 0) # padding_rec 1 y xs"
 
 
@@ -76,7 +79,7 @@ lemma flat_scan0: "flat (scan0 as u) = map Inr as @ u"
   by (induct u arbitrary: as rule: xa_induct, simp_all add: flat_rec_scan_pair)
 
 lemma "flat (scan u) = u"
-  by (induct u rule: xa_induct, simp_all add: flat_rec_scan_pair flat_scan0)
+  by (induct u rule: xa_induct, simp_all add: flat_rec_scan_pair flat_scan0 scan_def)
 
 
 subsection \<open>Resolve\<close>
@@ -144,8 +147,38 @@ lemma map_alpha_synthesize: "t \<star> synthesize (s, a) = synthesize (s, concat
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
+
+
+lemma padding_rec_scan_pair_ignore_alphabets_0:
+      "padding_rec n x (scan_pair y0 as (map Inl (extract_variables u))) 
+     = padding_rec n x (scan_pair y0 bs u)"
+  by (induct u arbitrary: n y0 as bs rule: xa_induct, simp_all)
+
+lemma padding_rec_scan_pair_ignore_alphabets:
+      "padding_rec n x (scan_pair y0 as (map Inl (extract_variables u))) 
+     = padding_rec n x (scan_pair y0 [] u)"
+  by (simp only: padding_rec_scan_pair_ignore_alphabets_0)
+
+lemma padding_scan0_ignore_alphabet: "padding y (scan0 [a] xs) = padding y (scan0 [] xs)"
+  by (induct xs rule: scan0.induct, simp_all)
+
+lemma padding_scan_ignore_alphabet: "padding x (scan (map Inl (extract_variables u))) = padding x (scan u)"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by (simp add: scan_def)
+next
+  case (Var y xs)
+  then show ?case by (simp add: scan_def padding_rec_scan_pair_ignore_alphabets)
+next
+  case (Alpha a xs)
+  then show ?case by (simp add: scan_def padding_scan0_ignore_alphabet)
+qed
+
+
+
 theorem resolve_inverse: "synthesize (resolve m) x = m x"
-  apply (simp add: comp_def)
+  apply (simp add: comp_def synthesize_shuffle_def hat_hom_left_concat_map resolve_shuffle_def)
+  apply (simp add: padding_scan_ignore_alphabet)
   oops
 
 

@@ -70,6 +70,9 @@ lemma [simp]: "hat_hom f (xs@ys) = hat_hom f xs @ hat_hom f ys"
 lemma hat_hom_right_ignore: "hat_hom f (map Inr xs) = map Inr xs"
   by (induction xs, auto)
 
+lemma hat_hom_left_concat_map: "hat_hom f (map Inl xs) = concat (map f xs)"
+  by (induction xs, auto)
+
 
 definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>  ('x, 'z, 'b) update'" (infixl "\<bullet>" 55)
   where "comp f g == (hat_hom f) o g"

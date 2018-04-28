@@ -100,6 +100,21 @@ next
 qed
   
 
+lemma convert_\<eta>_hat:
+  "SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w) =
+   H' (\<alpha>, Monoid_SST.eta_hat msst (q, w))"
+proof (induct w arbitrary: q \<alpha>)
+  case Nil
+  then show ?case apply (simp add: convert_\<delta>_def)
+    apply (rule ext)
+    apply (simp add: \<Delta>'_def \<tau>_def idU_def)
+    sorry
+next
+  case (Cons a w)
+  then show ?case by (simp add: convert_\<delta>_simp convert_\<eta>_simp H'_assoc)
+qed
+  
+
 
 
 

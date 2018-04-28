@@ -11,40 +11,41 @@ begin
 subsection \<open>Definition of another strange Transducer\<close>
 
 
-definition \<iota>0 :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> 'x \<Rightarrow> ('y, 'x \<times> 'y location) update" where
-  "\<iota>0 \<alpha> x = synthesize (\<alpha> x, (\<lambda>y'. [(x, Inl y')]), (\<lambda>y. [(x, Inr y)]))"
+definition \<iota>0 :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> 'x \<Rightarrow> ('y, 'x \<times> 'y index) update" where
+  "\<iota>0 \<alpha> x = synthesize (\<alpha> x, (\<lambda>y'. [(x, y')]))"
 
-definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x, ('y, 'x \<times> 'y location) update, 'b) update'" where
+definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x, ('y, 'x \<times> 'y index) update, 'b) update'" where
   "\<iota> \<alpha> x = [Inl (\<iota>0 \<alpha> x)]"
 
 term "hat_hom (\<iota> alpha)"
 
-fun coerce :: "(('y, 'x \<times> 'y location) update + ('y, 'b) update) \<Rightarrow> ('y, 'x \<times> 'y location + 'b) update" where
+fun coerce :: "(('y, 'x \<times> 'y index) update + ('y, 'b) update) \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
   "coerce (Inl mz) = (\<lambda>z. [Inl z]) \<star> mz" |
   "coerce (Inr mb) = (\<lambda>b. [Inr b]) \<star> mb"
 
-definition \<tau> :: "(('y, 'x \<times> 'y location) update + ('y, 'b) update) list \<Rightarrow> ('y, 'x \<times> 'y location + 'b) update" where
+definition \<tau> :: "(('y, 'x \<times> 'y index) update + ('y, 'b) update) list \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
   "\<tau> u = concatU (map coerce u)"
 
 definition \<Delta>' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<Rightarrow> 'y shuffle)" where
   "\<Delta>' = (\<lambda>(\<alpha>, \<theta>). \<lambda>x. resolve_shuffle (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x))))"
 
-definition H' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> 'y location, 'b) update" where
-  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). lookup_store (resolve_store (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x)))) y')"
+definition H' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> 'y index, 'b) update" where
+  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x))) y')"
 
 
 lemma \<Delta>'_assoc: "\<Delta>' (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
   sorry
 
-lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
+lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
   sorry
 
 lemma "\<Delta>' (\<alpha>, idU) = \<alpha>"
   apply (rule ext)
   apply (rule ext)
-  apply (simp add: \<Delta>'_def \<tau>_def idU_def \<iota>_def \<iota>0_def map_alpha_synthesize)
-  apply (induct "\<alpha> x xa")
-
+  apply (simp add: \<Delta>'_def \<tau>_def idU_def \<iota>_def resolve_shuffle_distrib resolve_idU_idS)
+  apply (simp add: idS_def \<iota>0_def map_alpha_synthesize synthesize_def resolve_shuffle_distrib map_alpha_distrib)
+  apply (simp add: map_alpha_synthesize_store map_alpha_synthesize_shuffle)
+  oops
 
 subsection \<open>Construction\<close>
 
@@ -54,11 +55,11 @@ definition convert_\<delta> :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
      (\<lambda>((q1, f), a). (MSST.delta msst (q1, a), \<Delta>' (f, MSST.eta msst (q1, a))))"
 
 definition convert_\<eta> :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
-                         ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> 'y location, 'a, 'b) updator" where
+                         ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> 'y index, 'a, 'b) updator" where
   "convert_\<eta> msst = (\<lambda>((q, \<alpha>), b). H' (\<alpha>, MSST.eta msst (q, b)))"
 
 definition convert_final :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
-   ('q \<times> ('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x \<times> 'y location + 'b) list option)" where
+   ('q \<times> ('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x \<times> 'y index + 'b) list option)" where
   "convert_final msst = (\<lambda>(q, \<alpha>).
      (case MSST.final_update msst q of
         Some u \<Rightarrow> (case MSST.final_string msst q of
@@ -66,9 +67,14 @@ definition convert_final :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
           None \<Rightarrow> None) |
         None \<Rightarrow> None))"
 
+lemma convert_\<delta>_simp: "convert_\<delta> msst ((q1, f), a) = (MSST.delta msst (q1, a), \<Delta>' (f, MSST.eta msst (q1, a)))"
+  by (simp add: convert_\<delta>_def)
+
+lemma convert_\<eta>_simp: "convert_\<eta> msst ((q1, f), a) = H' (f, MSST.eta msst (q1, a))"
+  by (simp add: convert_\<eta>_def)
 
 definition convert_MSST :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
-                            ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> 'y location, 'a, 'b) SST" where
+                            ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> 'y index, 'a, 'b) SST" where
   "convert_MSST msst = \<lparr>
     SST.initial = (MSST.initial msst, \<lambda>x. idS),
     delta       = convert_\<delta> msst,

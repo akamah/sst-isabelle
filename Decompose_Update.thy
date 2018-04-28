@@ -91,8 +91,16 @@ lemma flat_scan0: "flat (scan0 as u) = map Inr as @ u"
   by (induct u arbitrary: as rule: xa_induct, simp_all add: flat_def flat_rec_scan_pair)
 
 lemma scan_inverse: "flat (scan u) = u"
-  apply (induct u rule: xa_induct, simp_all add: flat_def flat_rec_scan_pair flat_scan0 scan_def)
-  sorry
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by (simp add: flat_def scan_def)
+next
+  case (Var x xs)
+  then show ?case by (simp add: flat_def scan_def flat_rec_scan_pair)
+next
+  case (Alpha a xs)
+  then show ?case by (simp add: flat_scan0 scan_def)
+qed
 
 
 subsection \<open>String version of resolve/synthesize proof\<close>

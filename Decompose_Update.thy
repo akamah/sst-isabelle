@@ -103,73 +103,7 @@ next
 qed
 
 
-subsection \<open>String version of resolve/synthesize proof\<close>
-
-
-(*
-fun fill_rec :: "'x \<Rightarrow> nat \<Rightarrow> 'x list \<Rightarrow> 'x index list" where
-  "fill_rec x n [] = []" |
-  "fill_rec x n (y#ys) = (x, n) # fill_rec x (Suc n) ys"
-
-fun fill :: "'x \<Rightarrow> 'x list \<Rightarrow> 'x index list" where
-  "fill x ys = (x, 0) # fill_rec x 1 ys"
-
-fun lookup_rec where
-  "lookup_rec [] n = []" | 
-  "lookup_rec (as#_) 0 = as" |
-  "lookup_rec (_#ws) (Suc k) = lookup_rec ws k"
-
-fun lookup :: "('b list \<times> 'b list list) \<Rightarrow> 'x index \<Rightarrow> 'b list" where
-  "lookup (b0, _) (x, 0) = b0" |
-  "lookup (_, tab) (x, Suc k) = lookup_rec tab k"
-
-fun split_rec where
-  "split_rec as [] = [as]" |
-  "split_rec as (Inr a#u) = split_rec (as @ [a]) u" |
-  "split_rec as (Inl x#u) = as # split_rec [] u"
-
-fun split_0 where
-  "split_0 as [] = (as, [])" |
-  "split_0 as (Inr a#u) = split_0 (as @ [a]) u" |
-  "split_0 as (Inl x#u) = (as, split_rec [] u)"
-
-fun split where
-  "split u = split_0 [] u"
-
-value "split [Inr (1 :: nat), Inl (0 :: nat), Inr 1, Inr 0]"
-value "fill (0 :: nat) [0, 1, 2]"
-
-lemma "concat (map (lookup_rec (split_rec [] u) k) (fill_rec x n x (extract_variables u))) = valuate u"
-
-
-lemma "concat (map (lookup (split u)) (fill x (extract_variables u))) = valuate u"
-proof (induct u rule: xa_induct)
-case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case apply simp
-next
-  case (Alpha a xs)
-  then show ?case sorry
-qed
-*)
-
 subsection \<open>Resolve\<close>
-
-(*
-fun scan_pair2 where
-  "scan_pair2 x [] = [(x, [])]" |
-  "scan_pair2 x (Inl y#u) = (x, []) # scan_pair2 y u" |
-  "scan_pair2 x (Inr a#u) = (case scan_pair2 x u of
-     ((y, as)#pairs) \<Rightarrow> (y, a#as) # pairs)"
-
-fun scan_head2 where
-  "scan_head2 [] = ([], [])" |
-  "scan_head2 (Inl x#u) = ([], scan_pair2 x u)" |
-  "scan_head2 (Inr a#u) = (let (as, pair) = scan_head2 u in (a # as, pair))"
-  
-*)
 
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"

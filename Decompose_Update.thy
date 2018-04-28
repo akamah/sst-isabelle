@@ -37,7 +37,15 @@ fun extract_variables :: "('x + 'b) list \<Rightarrow> 'x list" where
   "extract_variables (Inl x#xs) = x # extract_variables xs" |
   "extract_variables (Inr a#xs) = extract_variables xs"
 
-fun scan_pair where
+
+lemma [simp]: "extract_variables (u @ v) = extract_variables u @ extract_variables v"
+  by (induct u arbitrary: v rule: xa_induct; simp_all)
+
+subsubsection \<open>Scan\<close>
+
+text \<open>scan var-alphabet list, and split it into the first string and pairs of a variable and a string\<close>
+
+fun scan_pair :: "'y \<Rightarrow> 'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y \<times> 'b list) list" where
   "scan_pair x as [] = [(x, as)]" |
   "scan_pair x as (Inl y#u) = (x, as) # scan_pair y [] u" |
   "scan_pair x as (Inr a#u) = scan_pair x (as @ [a]) u"
@@ -118,7 +126,7 @@ definition resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
      (x, 0) \<Rightarrow> fst (scan (\<theta> x)) |
      (x, Suc k) \<Rightarrow> nth_string (snd (scan (\<theta> x))) k)"
 
-fun resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) store" where
+definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) store" where
   "resolve \<theta> = (resolve_shuffle \<theta>, resolve_store \<theta>)"
 
 
@@ -133,8 +141,8 @@ definition synthesize_store :: "('y, 'b) store \<Rightarrow> ('y + 'y index, 'y,
      (Inl y) \<Rightarrow> [Inl y] | 
      (Inr i) \<Rightarrow> map Inr (a i))"
 
-fun synthesize :: "'y shuffle \<times> ('y, 'b) store \<Rightarrow> ('y, 'b) update" where
-  "synthesize (s, a) = synthesize_store a \<bullet> synthesize_shuffle s"
+definition synthesize :: "'y shuffle \<times> ('y, 'b) store \<Rightarrow> ('y, 'b) update" where
+  "synthesize sa = (case sa of (s, a) \<Rightarrow> synthesize_store a \<bullet> synthesize_shuffle s)"
 
 
 subsection \<open>Properties of Decomposition\<close>
@@ -155,12 +163,18 @@ lemma map_alpha_synthesize_store: "t \<star> synthesize_store p = synthesize_sto
   by (rule ext_sum, simp_all add: map_alpha_def Update.hat_alpha_right_map synthesize_store_def)
 
 lemma map_alpha_synthesize: "t \<star> synthesize (s, a) = synthesize (s, concat o map t o a)"
-  by (auto simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store)
+  by (auto simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store synthesize_def)
 
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
+lemma resolve_shuffle_distrib_str: 
+  "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle \<phi>) (extract_variables u))"
+  by (induct u rule: xa_induct, simp_all add: resolve_shuffle_def)
 
+lemma resolve_shuffle_distrib: "resolve_shuffle (\<phi> \<bullet> \<psi>) = concat o map (resolve_shuffle \<phi>) o resolve_shuffle \<psi>"
+  by (rule ext, simp add: comp_def resolve_shuffle_def resolve_shuffle_distrib_str)
+  
 
 lemma padding_rec_scan_pair_ignore_alphabets_0:
       "padding_rec n x (scan_pair y0 as (map Inl (extract_variables u))) 
@@ -187,11 +201,6 @@ next
   then show ?case by (simp add: scan_def padding_scan_head_ignore_alphabet)
 qed
 
-lemma "synthesize_store (resolve_store m) (Inr (x, k)) = flat_store (scan (m x)) (Inr (x, k))"
-  by (simp add: resolve_store_def synthesize_store_def flat_store_def Nitpick.case_nat_unfold)
-
-lemma "synthesize_store (resolve_store m) (Inl y) = flat_store (scan (m x)) (Inl y)"
-  by (simp add: resolve_store_def synthesize_store_def flat_store_def)
 
 lemma synthesize_resolve_eq_flat:
   assumes "yi = Inl y \<or> yi = Inr (x, k)"
@@ -225,14 +234,12 @@ next
   then show ?case using synthesize_resolve_eq_flat by force
 qed
 
-
   
 lemma concat_map_padding: 
   "concat (map (synthesize_store (resolve_store m)) (padding x xas)) =
    concat (map (flat_store (scan (m x))) (padding x xas))"
-  apply (rule concat_map_synthesize_resolve_flat)
-  apply (rule padding_x)
-  done
+  by (rule concat_map_synthesize_resolve_flat, rule padding_x)
+
 
 lemma flat_rec_append[simp]: "flat_rec (xs @ ys) = flat_rec xs @ flat_rec ys"
 proof (induct xs arbitrary: ys)
@@ -245,7 +252,6 @@ next
     then show ?thesis by (simp add: Cons)
   qed
 qed
-
 
 lemma flat_append[simp]: "flat (b0, xs @ ys) = flat (b0, xs) @ flat_rec ys"
 proof (induct xs arbitrary: ys)
@@ -293,27 +299,12 @@ qed
 lemma flat_store_flat: "concat (map (flat_store scanned) (padding x scanned)) = flat scanned"
   by (cases scanned, simp add: flat_store_flat0)
 
-theorem resolve_inverse: "synthesize (resolve m) x = m x"
-  apply (simp add: comp_def synthesize_shuffle_def hat_hom_left_concat_map resolve_shuffle_def)
-  apply (simp add: padding_scan_ignore_alphabet)
-  apply (simp add: concat_map_padding)
-  apply (simp add: flat_store_flat scan_inverse)
-  oops
+theorem resolve_inverse: "synthesize (resolve m) = m"
+  by (auto simp add: comp_def synthesize_shuffle_def hat_hom_left_concat_map resolve_shuffle_def
+                     padding_scan_ignore_alphabet concat_map_padding flat_store_flat scan_inverse
+                     synthesize_def resolve_def)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+theorem resolve_store_map_alpha: "
 
 
 subsection \<open>Example\<close>
@@ -329,18 +320,20 @@ value "poyo 1"
 value "resolve_store poyo (0, 2)"
 value "resolve_store poyo (0, 3)"
 
-lemma "resolve_shuffle poyo 0 = [0, 0]" by simp
-lemma "resolve_shuffle poyo 1 = [0, 1]" by simp
+lemma "resolve_shuffle poyo 0 = [0, 0]" by (simp add: resolve_shuffle_def)
+lemma "resolve_shuffle poyo 1 = [0, 1]" by (simp add: resolve_shuffle_def)
 
-lemma "resolve_store poyo (0, 0) = ''P''" by simp
-lemma "resolve_store poyo (0, 1) = ''Q''" by simp
-lemma "resolve_store poyo (0, 2) = ''R''" oops
-lemma "resolve_store poyo (1, 0) = ''A''" by simp
-lemma "resolve_store poyo (1, 1) = ''B''" by simp
+lemma "resolve_store poyo (0, 0) = ''P''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store poyo (0, 1) = ''Q''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store poyo (0, 2) = ''R''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
 
 
 lemma "synthesize (resolve poyo) x = poyo x"
-  by (simp add: comp_def)
-
+  by  (auto simp add: synthesize_def resolve_def
+                   synthesize_store_def synthesize_shuffle_def
+                   resolve_store_def resolve_shuffle_def
+                   comp_def scan_def padding_def)
 
 end

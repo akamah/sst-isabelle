@@ -41,14 +41,14 @@ fun scan_pair where
   "scan_pair x as (Inl y#u) = (x, as) # scan_pair y [] u" |
   "scan_pair x as (Inr a#u) = scan_pair x (as @ [a]) u"
 
-fun scan0 where
-  "scan0 as [] = (as, [])" |
-  "scan0 as (Inl x#u) = (as, scan_pair x [] u)" |
-  "scan0 as (Inr a#u) = scan0 (as @ [a]) u"
+fun scan_head where
+  "scan_head as [] = (as, [])" |
+  "scan_head as (Inl x#u) = (as, scan_pair x [] u)" |
+  "scan_head as (Inr a#u) = scan_head (as @ [a]) u"
 
 (* scan var-alphabet list, build pairs of a variable and a string *)
 definition scan :: "('y + 'b) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
-  "scan u = scan0 [] u"
+  "scan u = scan_head [] u"
 
 fun flat_rec where
   "flat_rec [] = []" |
@@ -87,7 +87,7 @@ definition flat_store where
 lemma flat_rec_scan_pair: "flat_rec (scan_pair x as u) = Inl x # map Inr as @ u"
   by (induct u arbitrary: x as rule: xa_induct, simp_all)
 
-lemma flat_scan0: "flat (scan0 as u) = map Inr as @ u"
+lemma flat_scan_head: "flat (scan_head as u) = map Inr as @ u"
   by (induct u arbitrary: as rule: xa_induct, simp_all add: flat_def flat_rec_scan_pair)
 
 lemma scan_inverse: "flat (scan u) = u"
@@ -99,7 +99,7 @@ next
   then show ?case by (simp add: flat_def scan_def flat_rec_scan_pair)
 next
   case (Alpha a xs)
-  then show ?case by (simp add: flat_scan0 scan_def)
+  then show ?case by (simp add: flat_scan_head scan_def)
 qed
 
 
@@ -164,10 +164,10 @@ fun scan_pair2 where
   "scan_pair2 x (Inr a#u) = (case scan_pair2 x u of
      ((y, as)#pairs) \<Rightarrow> (y, a#as) # pairs)"
 
-fun scan02 where
-  "scan02 [] = ([], [])" |
-  "scan02 (Inl x#u) = ([], scan_pair2 x u)" |
-  "scan02 (Inr a#u) = (let (as, pair) = scan02 u in (a # as, pair))"
+fun scan_head2 where
+  "scan_head2 [] = ([], [])" |
+  "scan_head2 (Inl x#u) = ([], scan_pair2 x u)" |
+  "scan_head2 (Inr a#u) = (let (as, pair) = scan_head2 u in (a # as, pair))"
   
 *)
 
@@ -234,8 +234,8 @@ lemma padding_rec_scan_pair_ignore_alphabets:
      = padding_rec n x (scan_pair y0 [] u)"
   by (simp only: padding_rec_scan_pair_ignore_alphabets_0)
 
-lemma padding_scan0_ignore_alphabet: "padding y (scan0 [a] xs) = padding y (scan0 [] xs)"
-  by (induct xs rule: scan0.induct, simp_all add: padding_def)
+lemma padding_scan_head_ignore_alphabet: "padding y (scan_head [a] xs) = padding y (scan_head [] xs)"
+  by (induct xs rule: scan_head.induct, simp_all add: padding_def)
 
 lemma padding_scan_ignore_alphabet: "padding x (scan (map Inl (extract_variables u))) = padding x (scan u)"
 proof (induct u rule: xa_induct)
@@ -246,7 +246,7 @@ next
   then show ?case by (simp add: scan_def padding_rec_scan_pair_ignore_alphabets padding_def)
 next
   case (Alpha a xs)
-  then show ?case by (simp add: scan_def padding_scan0_ignore_alphabet)
+  then show ?case by (simp add: scan_def padding_scan_head_ignore_alphabet)
 qed
 
 lemma "synthesize_store (resolve_store m) (Inr (x, k)) = flat_store (scan (m x)) (Inr (x, k))"

@@ -304,7 +304,32 @@ theorem resolve_inverse: "synthesize (resolve m) = m"
                      padding_scan_ignore_alphabet concat_map_padding flat_store_flat scan_inverse
                      synthesize_def resolve_def)
 
-theorem resolve_store_map_alpha: "
+
+theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize (s, a)) = s"
+  oops
+
+
+
+
+(*
+proposition resolve_store_map_alpha_fst: "concat (map t (fst (scan u))) = fst (scan (hat_alpha t u))"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by (simp add: scan_def)
+next
+  case (Var x xs)
+  then show ?case by (simp add: scan_def)
+next
+  case (Alpha a xs)
+  then show ?case  apply (simp add: scan_def) sorry
+qed
+
+
+theorem resolve_store_map_alpha:
+  "concat o map \<xi> o resolve_store \<theta> = resolve_store (\<xi> \<star> \<theta>)"
+  apply (rule ext, simp add: resolve_store_def)
+  
+*)
 
 
 subsection \<open>Example\<close>

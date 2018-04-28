@@ -140,5 +140,12 @@ lemma alpha_lem: "hat_alpha t (hat_hom f w) = hat_hom (t \<star> f) (hat_alpha t
 lemma map_alpha_distrib: "t \<star> (\<psi> \<bullet> \<phi>) = t \<star> \<psi> \<bullet> t \<star> \<phi>"
   by (auto simp add: alpha_lem map_alpha_def comp_def)
 
+lemma map_alpha_idU[simp]: "t \<star> idU = idU"
+  by (auto simp add: idU_def map_alpha_def )
+
+lemma map_alpha_concatU: "t \<star> concatU us = concatU (map (op \<star> t) us)"
+  by (induct us, simp_all add: map_alpha_distrib)
+    
+  
 
 end

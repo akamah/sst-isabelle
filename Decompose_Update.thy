@@ -85,19 +85,26 @@ definition padding :: "'y \<Rightarrow> 'b list \<times> ('y \<times> 'b list) l
 
 subsubsection \<open>Others\<close>
 
-fun nth_string where
-  "nth_string [] k = []" |
-  "nth_string ((x,as)#xas) 0 = as" |
-  "nth_string (_#xas) (Suc k) = nth_string xas k"
+fun nth_string' where
+  "nth_string' s [] k = s" |
+  "nth_string' s ((x,as)#xas) 0 = as" |
+  "nth_string' s  (_#xas) (Suc k) = nth_string' s xas k"
 
-lemma nth_string_append_length: "nth_string (xs @ ys) (length xs) = nth_string ys 0"
+
+lemma nth_string'_append_length: "nth_string' s (xs @ ys) (length xs) = nth_string' s ys 0"
   by (induct xs arbitrary: ys, simp_all)
 
 definition flat_store where
   "flat_store xs yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
     (Inr (x, 0)) \<Rightarrow> map Inr (fst xs) |
-    (Inr (x, Suc k)) \<Rightarrow> map Inr (nth_string (snd xs) k))"
+    (Inr (x, Suc k)) \<Rightarrow> map Inr (nth_string' [SOME x. True] (snd xs) k))"
+
+definition flat_store' where
+  "flat_store' xs s yi = (case yi of
+    (Inl y) \<Rightarrow> [Inl y] |
+    (Inr (x, 0)) \<Rightarrow> map Inr (fst xs) |
+    (Inr (x, Suc k)) \<Rightarrow> map Inr (nth_string' s (snd xs) k))"
 
 lemma flat_rec_scan_pair: "flat_rec (scan_pair x as u) = Inl x # map Inr as @ u"
   by (induct u arbitrary: x as rule: xa_induct, simp_all)
@@ -124,7 +131,7 @@ definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
 definition resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
   "resolve_store \<theta> y = (case y of
      (x, 0) \<Rightarrow> fst (scan (\<theta> x)) |
-     (x, Suc k) \<Rightarrow> nth_string (snd (scan (\<theta> x))) k)"
+     (x, Suc k) \<Rightarrow> nth_string' [SOME x. True] (snd (scan (\<theta> x))) k)"
 
 definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) store" where
   "resolve \<theta> = (resolve_shuffle \<theta>, resolve_store \<theta>)"
@@ -211,7 +218,8 @@ proof (cases yi)
 next
   case (Inr b)
   then have "yi = Inr (x, k)" using assms by simp
-  then show ?thesis by (simp add: resolve_store_def synthesize_store_def flat_store_def Nitpick.case_nat_unfold)
+  then show ?thesis
+    by (simp add: resolve_store_def synthesize_store_def flat_store_def Nitpick.case_nat_unfold)
 qed
 
 lemma padding_rec_x: "list_all (\<lambda>yi. (\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k))) (padding_rec n x xas)"
@@ -279,7 +287,7 @@ next
   show ?case proof (cases xas)
     case (Pair x as)
     then show ?thesis
-      by (simp add: snoc, simp add: flat_store_def nth_string_append_length)
+      by (simp add: snoc, simp add: flat_store_def nth_string'_append_length)
   qed
 qed
 
@@ -291,7 +299,7 @@ next
   case (snoc xas xs) then show ?case proof (cases xas)
     case (Pair y as)
     then show ?thesis apply (simp add: snoc flat_store_padding_append)
-      apply (simp add: flat_store_def nth_string_append_length)
+      apply (simp add: flat_store_def nth_string'_append_length)
       done
   qed
 qed

@@ -3,7 +3,7 @@
 *)
 
 theory Update
-  imports Main
+  imports Main List
 begin
 
 (* an induction rule for variable and alphabet list *)
@@ -16,6 +16,83 @@ proof (induction xs)
   case Nil then show ?case by simp
 next
   case (Cons a xs) then show ?case by (cases a) simp_all
+qed
+
+
+subsection \<open>new induction rule\<close>
+
+fun is_Some where
+  "is_Some None = False" |
+  "is_Some (Some a) = True"
+
+fun is_Inl where
+  "is_Inl (Inl a) = True" |
+  "is_Inl (Inr b) = False"
+
+lemma find_last:
+  assumes "\<not> P a"
+  shows "find P (xs @ [a]) = find P xs"
+  using assms by (induct xs, simp_all)
+
+lemma find_var_None_then_all_alpha:
+  assumes "find is_Inl xs = None"
+  shows "\<exists>u. xs = map Inr u"
+using assms proof (induct xs rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case by simp
+next
+  case (Alpha a xs)
+  then have "find is_Inl xs = None" by simp
+  then obtain u where "xs = map Inr u" using Alpha.hyps by blast
+  then show ?case by (metis list.simps(9))
+qed
+
+lemma find_split:
+  assumes "is_Some (List.find P lis)"
+  shows "\<exists>l x r. ((l @ x # r = lis) \<and> find P r = None \<and> P x)"
+using assms proof (induction lis rule: rev_induct)
+  case Nil
+  then show ?case by simp 
+next
+  case (snoc a as)
+  then show ?case proof (cases "P a")
+    case True 
+    then have "as @ a # [] = as @ [a] \<and> find P [] = None \<and> P a" by simp
+    then show ?thesis by blast
+  next
+    case False
+    then have "is_Some (find P as)"
+      using False find_last snoc.prems by fastforce
+    then obtain l x r where "l @ x # r = as \<and> find P r = None \<and> P x" using snoc.IH by blast
+    then have "l @ x # (r @ [a]) = as @ [a] \<and> find P (r @ [a]) = None \<and> P x" by (simp add: False find_last)
+    then show ?thesis by blast
+  qed
+qed
+
+lemma xw_induct [case_names Word VarWord]:
+  assumes word: "(\<And>w. P (map Inr w))"
+  assumes var_word: "(\<And>x w u. P u \<Longrightarrow> P (u @ Inl x # map Inr w))"
+  shows "P u"
+proof (induct u rule: length_induct)
+  case IH: (1 xs)
+  then show ?case proof (cases "List.find is_Inl xs")
+    case None
+    then obtain v where "xs = map Inr v" using find_var_None_then_all_alpha by auto
+    then show ?thesis by (simp add: word[of "v"])
+  next
+    case (Some a)
+    then obtain l x r where hoge: "(xs = l @ x # r) \<and> List.find is_Inl r = None \<and> is_Inl x"
+      by (metis find_split is_Some.simps(2))
+    obtain v where v: "r = map Inr v" using find_var_None_then_all_alpha hoge by auto
+    obtain x' where x': "x = Inl x'" using hoge is_Inl.elims(2) by blast
+    have "P (l @ Inl x' # map Inr v)" proof (rule var_word)
+      show "P l" by (rule IH[rule_format], simp add: hoge)
+    qed
+    then show ?thesis by (simp add: v x' hoge)
+  qed
 qed
 
 primrec fold_sum :: "['a \<Rightarrow> 'c, 'b \<Rightarrow> 'c, 'a + 'b] \<Rightarrow> 'c" where

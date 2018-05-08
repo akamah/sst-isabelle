@@ -108,6 +108,30 @@ definition flat where
   "flat = (\<lambda>(b0, xas). map Inr b0 @ flat_rec xas)"
 
 
+lemma flat_rec_append[simp]: "flat_rec (xs @ ys) = flat_rec xs @ flat_rec ys"
+proof (induct xs arbitrary: ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons xas xs)
+  then show ?case proof (cases xas)
+    case (Pair x as)
+    then show ?thesis by (simp add: Cons)
+  qed
+qed
+
+lemma flat_word_simp: "flat (w, []) = map Inr w"
+  by (induct w, simp_all add: flat_def)
+
+lemma flat_last_simp: "flat (w, xas @ [(x, as)]) = flat (w, xas) @ Inl x # map Inr as"
+proof (induct xas)
+  case Nil
+  then show ?case by (simp add: flat_def)
+next
+  case (Cons a xas)
+  then show ?case by (simp add: flat_def List.append_Cons[symmetric] del: List.append_Cons)
+qed
+
 subsubsection \<open>Padding\<close>
 
 text \<open>replace strings with a special meta-variable\<close>
@@ -141,20 +165,9 @@ fun flat_store' where
   "flat_store' xs yi = flat_store (\<lambda>(x, k). []) xs yi"
 
 
-lemma flat_rec_scan_pair: "flat_rec (scan_pair x as u) = Inl x # map Inr as @ u"
-  by (induct u arbitrary: x as rule: xa_induct, simp_all)
-
-lemma flat_scan_head: "flat (scan_head as u) = map Inr as @ u"
-  by (induct u arbitrary: as rule: xa_induct, simp_all add: flat_def flat_rec_scan_pair)
-
 lemma scan_inverse: "flat (scan u) = u"
-proof (induct u rule: xa_induct)
-  case Nil then show ?case by (simp add: flat_def scan_def)
-next
-  case (Var x xs) then show ?case by (simp add: flat_def scan_def flat_rec_scan_pair)
-next
-  case (Alpha a xs) then show ?case by (simp add: flat_scan_head scan_def)
-qed
+  by (induct u rule: xw_induct,
+      simp_all add: scan_word_simp flat_word_simp scan_last_simp flat_last_simp)
 
 
 subsection \<open>Resolve\<close>
@@ -283,18 +296,6 @@ lemma concat_map_padding:
    concat (map (flat_store d (scan (m x))) (padding x xas))"
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
 
-
-lemma flat_rec_append[simp]: "flat_rec (xs @ ys) = flat_rec xs @ flat_rec ys"
-proof (induct xs arbitrary: ys)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons xas xs)
-  then show ?case proof (cases xas)
-    case (Pair x as)
-    then show ?thesis by (simp add: Cons)
-  qed
-qed
 
 lemma flat_append[simp]: "flat (b0, xs @ ys) = flat (b0, xs) @ flat_rec ys"
 proof (induct xs arbitrary: ys)

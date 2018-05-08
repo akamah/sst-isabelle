@@ -30,7 +30,26 @@ definition \<Delta>' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) up
   "\<Delta>' = (\<lambda>(\<alpha>, \<theta>). \<lambda>x. resolve_shuffle (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x))))"
 
 definition H' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> 'y index, 'b) update" where
-  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x))) y')"
+  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (\<lambda>(y1, k1). [Inl (x, y1, k1)]) (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x))) y')"
+
+lemma \<tau>_distrib[simp]: "\<tau> (u @ v) = \<tau> u \<bullet> \<tau> v"
+  unfolding \<tau>_def
+  apply simp
+  
+
+lemma \<Delta>'_assoc_string:
+  "resolve_shuffle (\<tau> (hat_hom (\<iota> \<alpha>) (hat_hom \<theta> u))) x
+ = resolve_shuffle (\<tau> (hat_hom (\<iota> (\<lambda>x. resolve_shuffle (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x))))) u)) x"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by (simp add: \<tau>_def resolve_shuffle_def idU_def)
+next
+  case (Var x xs)
+  then show ?case apply simp
+next
+  case (Alpha a xs)
+  then show ?case sorry
+qed
 
 
 lemma \<Delta>'_assoc: "\<Delta>' (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
@@ -39,15 +58,13 @@ lemma \<Delta>'_assoc: "\<Delta>' (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>
 lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
   sorry
 
-lemma "\<Delta>' (\<alpha>, idU) = \<alpha>"
-  apply (rule ext)
-  apply (rule ext)
-  apply (simp add: \<Delta>'_def \<tau>_def idU_def \<iota>_def resolve_shuffle_distrib resolve_idU_idS)
-  apply (simp add: idS_def \<iota>0_def map_alpha_synthesize synthesize_def resolve_shuffle_distrib map_alpha_distrib)
-  apply (simp add: map_alpha_synthesize_store map_alpha_synthesize_shuffle)
-  oops
+
 
 subsection \<open>Construction\<close>
+
+definition \<alpha>0 :: "'x \<Rightarrow> 'y shuffle" where
+  "\<alpha>0 x = idS"
+
 
 definition convert_\<delta> :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
                          ('q \<times> ('x \<Rightarrow> 'y shuffle), 'a) trans" where
@@ -76,7 +93,7 @@ lemma convert_\<eta>_simp: "convert_\<eta> msst ((q1, f), a) = H' (f, MSST.eta m
 definition convert_MSST :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
                             ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> 'y index, 'a, 'b) SST" where
   "convert_MSST msst = \<lparr>
-    SST.initial = (MSST.initial msst, \<lambda>x. idS),
+    SST.initial = (MSST.initial msst, \<alpha>0),
     delta       = convert_\<delta> msst,
     eta         = convert_\<eta> msst,
     final       = convert_final msst
@@ -86,36 +103,44 @@ definition convert_MSST :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
 subsection \<open>Properties\<close>
 
 lemma convert_\<delta>_hat:
-  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w) =
-   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))"
-proof (induct w arbitrary: q \<alpha>)
+  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>0), w) =
+   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>0, Monoid_SST.eta_hat msst (q, w)))"
+proof (induct w arbitrary: q rule: rev_induct)
   case Nil
-  then show ?case apply (simp add: convert_\<delta>_def)
-    apply (rule ext)
-    apply (simp add: \<Delta>'_def \<tau>_def idU_def)
-    sorry
+  then show ?case 
+    apply (simp add: convert_\<delta>_def)
+    apply (rule ext, rule ext)
+    apply (simp add: \<Delta>'_def \<tau>_def idU_def \<iota>_def comp_right_neutral \<iota>0_def map_alpha_synthesize \<alpha>0_def idS_def)
+    apply (simp add: resolve_shuffle_def synthesize_def synthesize_shuffle_def comp_def)
+    apply (simp add: scan_def padding_def synthesize_store_def)
+    done
 next
-  case (Cons a w)
-  then show ?case by (simp add: \<Delta>'_assoc convert_\<delta>_def)
+  case (snoc a w)
+  then show ?case by (simp add: delta_append eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
 qed
-  
+
 
 lemma convert_\<eta>_hat:
-  "SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w) =
-   H' (\<alpha>, Monoid_SST.eta_hat msst (q, w))"
-proof (induct w arbitrary: q \<alpha>)
+  "SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q0, \<alpha>0), w) =
+   H' (\<alpha>0, Monoid_SST.eta_hat msst (q0, w))"
+proof (induct w rule: rev_induct)
   case Nil
-  then show ?case apply (simp add: convert_\<delta>_def)
+  then show ?case
     apply (rule ext)
-    apply (simp add: \<Delta>'_def \<tau>_def idU_def)
+
+    apply (simp add: convert_\<delta>_def)
+    apply (simp add: \<Delta>'_def \<tau>_def idU_def \<alpha>0_def idS_def H'_def)
+    apply (simp add: \<iota>_def \<iota>0_def comp_right_neutral map_alpha_synthesize)
+    unfolding resolve_store_def scan_def synthesize_def 
+              synthesize_shuffle_def padding_def synthesize_store_def comp_def
+    apply simp
     sorry
 next
-  case (Cons a w)
-  then show ?case by (simp add: convert_\<delta>_simp convert_\<eta>_simp H'_assoc)
+  case (snoc a w)
+  then show ?case
+    by (simp add: delta_append eta_append comp_right_neutral H'_assoc convert_\<eta>_def convert_\<delta>_hat)
 qed
   
-
-
 
 
 end

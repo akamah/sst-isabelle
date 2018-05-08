@@ -41,6 +41,14 @@ fun extract_variables :: "('x + 'b) list \<Rightarrow> 'x list" where
 lemma [simp]: "extract_variables (u @ v) = extract_variables u @ extract_variables v"
   by (induct u arbitrary: v rule: xa_induct; simp_all)
 
+lemma extract_variables_left_id[simp]: "extract_variables (map Inl u) = u"
+  by (induct u, simp_all)
+
+lemma extract_variables_right_ignore[simp]: "extract_variables (map Inr u) = []"
+  by (induct u, simp_all)
+
+
+
 subsubsection \<open>Scan\<close>
 
 text \<open>scan var-alphabet list, and split it into the first string and pairs of a variable and a string\<close>
@@ -95,16 +103,14 @@ lemma nth_string'_append_length: "nth_string' s (xs @ ys) (length xs) = nth_stri
   by (induct xs arbitrary: ys, simp_all)
 
 definition flat_store where
-  "flat_store xs yi = (case yi of
+  "flat_store d xs yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
     (Inr (x, 0)) \<Rightarrow> map Inr (fst xs) |
-    (Inr (x, Suc k)) \<Rightarrow> map Inr (nth_string' [SOME x. True] (snd xs) k))"
+    (Inr (x, Suc k)) \<Rightarrow> map Inr (nth_string' (d (x, Suc k)) (snd xs) k))"
 
-definition flat_store' where
-  "flat_store' xs s yi = (case yi of
-    (Inl y) \<Rightarrow> [Inl y] |
-    (Inr (x, 0)) \<Rightarrow> map Inr (fst xs) |
-    (Inr (x, Suc k)) \<Rightarrow> map Inr (nth_string' s (snd xs) k))"
+fun flat_store' where
+  "flat_store' xs yi = flat_store (\<lambda>(x, k). []) xs yi"
+
 
 lemma flat_rec_scan_pair: "flat_rec (scan_pair x as u) = Inl x # map Inr as @ u"
   by (induct u arbitrary: x as rule: xa_induct, simp_all)
@@ -128,13 +134,13 @@ text \<open>\<pi> in the thesis\<close>
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
-definition resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
-  "resolve_store \<theta> y = (case y of
+definition resolve_store :: "('y index \<Rightarrow> 'b list) \<Rightarrow> ('y, 'b) update \<Rightarrow> ('y, 'b) store" where
+  "resolve_store d \<theta> yi = (case yi of
      (x, 0) \<Rightarrow> fst (scan (\<theta> x)) |
-     (x, Suc k) \<Rightarrow> nth_string' [SOME x. True] (snd (scan (\<theta> x))) k)"
+     (x, Suc k) \<Rightarrow> nth_string' (d (x, Suc k)) (snd (scan (\<theta> x))) k)"
 
-definition resolve :: "('y, 'b) update \<Rightarrow> 'y shuffle \<times> ('y, 'b) store" where
-  "resolve \<theta> = (resolve_shuffle \<theta>, resolve_store \<theta>)"
+fun resolve_store' :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
+  "resolve_store' \<theta> y = resolve_store (\<lambda>(x, k). []) \<theta> y"
 
 
 subsection \<open>Synthesize\<close>
@@ -211,7 +217,7 @@ qed
 
 lemma synthesize_resolve_eq_flat:
   assumes "yi = Inl y \<or> yi = Inr (x, k)"
-  shows "synthesize_store (resolve_store m) yi = flat_store (scan (m x)) yi"
+  shows "synthesize_store (resolve_store d m) yi = flat_store d (scan (m x)) yi"
 proof (cases yi)
   case (Inl a)
   then show ?thesis by (simp add: resolve_store_def synthesize_store_def flat_store_def)
@@ -230,7 +236,7 @@ lemma padding_x: "list_all (\<lambda>yi. (\<exists>y. yi = Inl y) \<or> (\<exist
 
 lemma concat_map_synthesize_resolve_flat:
   assumes "list_all (\<lambda>yi. (\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k))) xs"
-  shows "concat (map (synthesize_store (resolve_store m)) xs) = concat (map (flat_store (scan (m x))) xs)"
+  shows "concat (map (synthesize_store (resolve_store d m)) xs) = concat (map (flat_store d (scan (m x))) xs)"
 using assms proof (induct xs rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -244,8 +250,8 @@ qed
 
   
 lemma concat_map_padding: 
-  "concat (map (synthesize_store (resolve_store m)) (padding x xas)) =
-   concat (map (flat_store (scan (m x))) (padding x xas))"
+  "concat (map (synthesize_store (resolve_store d m)) (padding x xas)) =
+   concat (map (flat_store d (scan (m x))) (padding x xas))"
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
 
 
@@ -275,9 +281,9 @@ qed
 
 
 lemma flat_store_padding_append: 
-      "concat (map (flat_store (b0, xs @ ys)) (padding y (b0, xs @ ys)))
-     = concat (map (flat_store (b0, xs)) (padding y (b0, xs))) 
-       @ concat (map (flat_store (b0, xs @ ys)) 
+      "concat (map (flat_store d (b0, xs @ ys)) (padding y (b0, xs @ ys)))
+     = concat (map (flat_store d (b0, xs)) (padding y (b0, xs))) 
+       @ concat (map (flat_store d (b0, xs @ ys)) 
                    (padding_rec (Suc (length xs)) y ys))"
 proof (induct xs arbitrary: ys rule: rev_induct)
   case Nil
@@ -291,7 +297,7 @@ next
   qed
 qed
 
-lemma flat_store_flat0: "concat (map (flat_store (b0, xs)) (padding x (b0, xs))) = flat (b0, xs)"
+lemma flat_store_flat0: "concat (map (flat_store d (b0, xs)) (padding x (b0, xs))) = flat (b0, xs)"
 proof (induct xs rule: rev_induct)
   case Nil
   then show ?case by (simp add: flat_store_def padding_def flat_def)
@@ -304,18 +310,33 @@ next
   qed
 qed
 
-lemma flat_store_flat: "concat (map (flat_store scanned) (padding x scanned)) = flat scanned"
+lemma flat_store_flat: "concat (map (flat_store d scanned) (padding x scanned)) = flat scanned"
   by (cases scanned, simp add: flat_store_flat0)
 
-theorem resolve_inverse: "synthesize (resolve m) = m"
+theorem resolve_inverse: "synthesize (resolve_shuffle m, resolve_store d m) = m"
   by (auto simp add: comp_def synthesize_shuffle_def hat_hom_left_concat_map resolve_shuffle_def
                      padding_scan_ignore_alphabet concat_map_padding flat_store_flat scan_inverse
-                     synthesize_def resolve_def)
+                     synthesize_def)
+
+(*
+lemma "extract_variables (concat (map (synthesize_store a) u)) = extract_variables u"
+  by (induct u rule: xa_induct, simp_all add: synthesize_store_def)
+
+lemma "extract_variables (padding x (scan (map Inl u))) = u"
+proof (induct u)
+  case Nil
+  then show ?case by (simp add: scan_def padding_def synthesize_store_def)
+next
+  case (Cons x xs)
+  then show ?case
+qed
 
 
 theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize (s, a)) = s"
-  oops
-
+  apply (rule ext)
+  apply (simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map)
+*)
+  
 
 
 
@@ -350,23 +371,101 @@ definition poyo :: "(int, char) update" where
 declare poyo_def [simp]
 
 value "poyo 1"
-value "resolve_store poyo (0, 2)"
-value "resolve_store poyo (0, 3)"
+value "resolve_store (\<lambda>_. ''NOT FOUND'') poyo (0, 2)"
 
 lemma "resolve_shuffle poyo 0 = [0, 0]" by (simp add: resolve_shuffle_def)
 lemma "resolve_shuffle poyo 1 = [0, 1]" by (simp add: resolve_shuffle_def)
 
-lemma "resolve_store poyo (0, 0) = ''P''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store poyo (0, 1) = ''Q''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store poyo (0, 2) = ''R''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store' poyo (0, 0) = ''P''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store' poyo (0, 1) = ''Q''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store' poyo (0, 2) = ''R''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store' poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store' poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
 
 
-lemma "synthesize (resolve poyo) x = poyo x"
-  by  (auto simp add: synthesize_def resolve_def
-                   synthesize_store_def synthesize_shuffle_def
-                   resolve_store_def resolve_shuffle_def
-                   comp_def scan_def padding_def)
+
+subsection \<open>new induction rule\<close>
+
+fun is_Some where
+  "is_Some None = False" |
+  "is_Some (Some a) = True"
+
+fun is_Inl where
+  "is_Inl (Inl a) = True" |
+  "is_Inl (Inr b) = False"
+
+lemma find_last:
+  assumes "\<not> P a"
+  shows "find P (xs @ [a]) = find P xs"
+  using assms by (induct xs, simp_all)
+
+lemma find_var_None_then_all_alpha:
+  assumes "find is_Inl xs = None"
+  shows "\<exists>u. xs = map Inr u"
+using assms proof (induct xs rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case by simp
+next
+  case (Alpha a xs)
+  then have "find is_Inl xs = None" by simp
+  then obtain u where "xs = map Inr u" using Alpha.hyps by blast
+  then show ?case by (metis list.simps(9))
+qed
+
+lemma find_split:
+  assumes "is_Some (List.find P lis)"
+  shows "\<exists>l x r. ((l @ [x] @ r = lis) \<and> find P r = None \<and> P x)"
+using assms proof (induction lis rule: rev_induct)
+  case Nil
+  then show ?case by simp 
+next
+  case (snoc a as)
+  then show ?case proof (cases "P a")
+    case True 
+    then have "as @ [a] @ [] = as @ [a] \<and> find P [] = None \<and> P a" by simp
+    then show ?thesis by blast
+  next
+    case False
+    then have "is_Some (find P as)"
+      using False find_last snoc.prems by fastforce
+    then obtain l x r where "l @ [x] @ r = as \<and> find P r = None \<and> P x" using snoc.IH by blast
+    then have "l @ [x] @ (r @ [a]) = as @ [a] \<and> find P (r @ [a]) = None \<and> P x" by (simp add: False find_last)
+    then show ?thesis by blast
+  qed
+qed
+
+lemma xw_induct [case_names Word VarWord]:
+  assumes word: "(\<And>w. P (map Inr w))"
+  assumes var_word: "(\<And>x w u. P u \<Longrightarrow> P (u @ [Inl x] @ map Inr w))"
+  shows "P u"
+proof (induct u rule: rev_induct)
+  case Nil
+  then show ?case by (simp add: word[of "[]", simplified])
+next
+  case (snoc xa u)
+  then show ?case proof (cases xa)
+    case (Inl x)
+    then show ?thesis 
+      by (simp add: snoc var_word[of "u" "x" "[]", simplified])
+  next
+    case (Inr b)
+    then show ?thesis proof (cases "List.find is_Inl u")
+      case None
+      then obtain v where "u = map Inr v" using find_var_None_then_all_alpha by blast
+      then have "P (map Inr (v @ [b]))" using word by blast
+      then show ?thesis by (simp add: Inr \<open>u = map Inr v\<close>)
+    next
+      case (Some a)
+      then obtain l x r where "(l @ [x] @ r = u) \<and> List.find is_Inl r = None \<and> is_Inl x"
+        by (metis find_split is_Some.simps(2))
+      then have "P (l @ [x] @ r @ [a])"
+    qed
+      
+  qed
+qed
+
 
 end

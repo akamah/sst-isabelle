@@ -66,6 +66,35 @@ fun scan_head :: "'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> 'b list \<t
 definition scan :: "('y + 'b) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
   "scan u = scan_head [] u"
 
+lemma scan_word_simp:
+  "scan (map Inr w) = (w, [])"
+proof -
+  { fix as
+    have "scan_head as (map Inr w) = (as @ w, [])"
+      by (induct w arbitrary: as, simp_all)
+  }
+  note that = this
+  then show ?thesis by (simp add: that scan_def)
+qed
+
+lemma scan_last_simp:
+  "scan (u @ Inl x # map Inr w) = (fst (scan u), snd (scan u) @ [(x :: 'x, w)])"
+proof -
+  { fix y :: 'x and bs
+    have "scan_pair y bs (map Inr w) = [(y, bs @ w)]" by (induct w arbitrary: bs, simp_all)
+  } note pair_alphabet = this
+  { fix x y :: 'x and as u
+    have "scan_pair x as (u @ Inl y # map Inr w) = scan_pair x as u @ [(y, w)]"
+      by (induct u arbitrary: x y as rule: xa_induct, simp_all add: pair_alphabet)
+  } note pair = this
+  { fix as
+    have "scan_head as (u @ [Inl x] @ map Inr w) = (fst (scan_head as u), snd (scan_head as u) @ [(x, w)])"
+      by (induct u arbitrary: as rule: xa_induct, simp_all add: pair_alphabet pair)
+  }
+  thus ?thesis by (simp add: scan_def)
+qed
+
+
 
 subsubsection \<open>Flat\<close>
 
@@ -383,89 +412,6 @@ lemma "resolve_store' poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_
 lemma "resolve_store' poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
 
 
-
-subsection \<open>new induction rule\<close>
-
-fun is_Some where
-  "is_Some None = False" |
-  "is_Some (Some a) = True"
-
-fun is_Inl where
-  "is_Inl (Inl a) = True" |
-  "is_Inl (Inr b) = False"
-
-lemma find_last:
-  assumes "\<not> P a"
-  shows "find P (xs @ [a]) = find P xs"
-  using assms by (induct xs, simp_all)
-
-lemma find_var_None_then_all_alpha:
-  assumes "find is_Inl xs = None"
-  shows "\<exists>u. xs = map Inr u"
-using assms proof (induct xs rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case by simp
-next
-  case (Alpha a xs)
-  then have "find is_Inl xs = None" by simp
-  then obtain u where "xs = map Inr u" using Alpha.hyps by blast
-  then show ?case by (metis list.simps(9))
-qed
-
-lemma find_split:
-  assumes "is_Some (List.find P lis)"
-  shows "\<exists>l x r. ((l @ [x] @ r = lis) \<and> find P r = None \<and> P x)"
-using assms proof (induction lis rule: rev_induct)
-  case Nil
-  then show ?case by simp 
-next
-  case (snoc a as)
-  then show ?case proof (cases "P a")
-    case True 
-    then have "as @ [a] @ [] = as @ [a] \<and> find P [] = None \<and> P a" by simp
-    then show ?thesis by blast
-  next
-    case False
-    then have "is_Some (find P as)"
-      using False find_last snoc.prems by fastforce
-    then obtain l x r where "l @ [x] @ r = as \<and> find P r = None \<and> P x" using snoc.IH by blast
-    then have "l @ [x] @ (r @ [a]) = as @ [a] \<and> find P (r @ [a]) = None \<and> P x" by (simp add: False find_last)
-    then show ?thesis by blast
-  qed
-qed
-
-lemma xw_induct [case_names Word VarWord]:
-  assumes word: "(\<And>w. P (map Inr w))"
-  assumes var_word: "(\<And>x w u. P u \<Longrightarrow> P (u @ [Inl x] @ map Inr w))"
-  shows "P u"
-proof (induct u rule: rev_induct)
-  case Nil
-  then show ?case by (simp add: word[of "[]", simplified])
-next
-  case (snoc xa u)
-  then show ?case proof (cases xa)
-    case (Inl x)
-    then show ?thesis 
-      by (simp add: snoc var_word[of "u" "x" "[]", simplified])
-  next
-    case (Inr b)
-    then show ?thesis proof (cases "List.find is_Inl u")
-      case None
-      then obtain v where "u = map Inr v" using find_var_None_then_all_alpha by blast
-      then have "P (map Inr (v @ [b]))" using word by blast
-      then show ?thesis by (simp add: Inr \<open>u = map Inr v\<close>)
-    next
-      case (Some a)
-      then obtain l x r where "(l @ [x] @ r = u) \<and> List.find is_Inl r = None \<and> is_Inl x"
-        by (metis find_split is_Some.simps(2))
-      then have "P (l @ [x] @ r @ [a])"
-    qed
-      
-  qed
-qed
 
 
 end

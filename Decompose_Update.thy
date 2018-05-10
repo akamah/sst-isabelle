@@ -94,6 +94,40 @@ proof -
   thus ?thesis by (simp add: scan_def)
 qed
 
+corollary scan_last_var_simp:
+  "scan (u @ [Inl x]) = (fst (scan u), snd (scan u) @ [(x, [])])"
+  by (simp add: scan_last_simp[of "u" "x" "[]", simplified])
+
+
+lemma pair_induct [case_names Head Pair]:
+  assumes head: "P []"
+  assumes pair: "\<And>x as xas. P xas \<Longrightarrow> P ((x, as)#xas)"
+  shows "P xas"
+proof (induct xas)
+  case Nil
+  then show ?case by (simp add: head)
+next
+  case (Cons ax xas)
+  then show ?case proof (cases ax)
+    case (Pair x as)
+    then show ?thesis by (simp add: pair Cons)
+  qed
+qed
+
+lemma pair_rev_induct [case_names Head Pair]:
+  assumes head: "P []"
+  assumes pair: "\<And>xas x as. P xas \<Longrightarrow> P (xas @ [(x, as)])"
+  shows "P xas"
+proof (induct xas rule: rev_induct)
+  case Nil
+  then show ?case by (simp add: head)
+next
+  case (snoc ax xas)
+  then show ?case proof (cases ax)
+    case (Pair x as)
+    then show ?thesis by (simp add: pair snoc)
+  qed
+qed
 
 
 subsubsection \<open>Flat\<close>
@@ -109,28 +143,14 @@ definition flat where
 
 
 lemma flat_rec_append[simp]: "flat_rec (xs @ ys) = flat_rec xs @ flat_rec ys"
-proof (induct xs arbitrary: ys)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons xas xs)
-  then show ?case proof (cases xas)
-    case (Pair x as)
-    then show ?thesis by (simp add: Cons)
-  qed
-qed
+  by (induct xs arbitrary: ys rule: pair_rev_induct, simp_all)
 
 lemma flat_word_simp: "flat (w, []) = map Inr w"
   by (induct w, simp_all add: flat_def)
 
 lemma flat_last_simp: "flat (w, xas @ [(x, as)]) = flat (w, xas) @ Inl x # map Inr as"
-proof (induct xas)
-  case Nil
-  then show ?case by (simp add: flat_def)
-next
-  case (Cons a xas)
-  then show ?case by (simp add: flat_def List.append_Cons[symmetric] del: List.append_Cons)
-qed
+  by (induct xas rule: pair_rev_induct, simp_all add: flat_def)
+
 
 subsubsection \<open>Padding\<close>
 
@@ -143,6 +163,20 @@ fun padding_rec :: "nat \<Rightarrow> 'x \<Rightarrow> ('x \<times> 'b list) lis
 definition padding :: "'y \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list \<Rightarrow> ('y + 'y index) list" where
   "padding y = (\<lambda>(a0, xs). Inr (y, 0) # padding_rec 1 y xs)"
 
+
+lemma padding_word_simp: "padding y (w, []) = [Inr (y, 0)]"
+  by (simp add: padding_def)
+
+
+lemma padding_last_simp: "padding y (w, xas @ [(x, as)]) = padding y (w, xas) @ [Inl x, Inr (y, Suc (length xas))]"
+proof -
+  { fix n x as
+    have "padding_rec n y (xas @ [(x, as)]) = padding_rec n y xas @ [Inl x, Inr (y, n + length xas)]"
+      by (induct xas arbitrary: n rule: pair_induct, simp_all)
+  }
+  then show ?thesis
+    by (simp add: padding_def)
+qed
 
 subsubsection \<open>Others\<close>
 
@@ -327,47 +361,48 @@ next
   qed
 qed
 
-lemma flat_store_flat0: "concat (map (flat_store d (b0, xs)) (padding x (b0, xs))) = flat (b0, xs)"
-proof (induct xs rule: rev_induct)
-  case Nil
-  then show ?case by (simp add: flat_store_def padding_def flat_def)
-next
-  case (snoc xas xs) then show ?case proof (cases xas)
-    case (Pair y as)
-    then show ?thesis apply (simp add: snoc flat_store_padding_append)
-      apply (simp add: flat_store_def nth_string'_append_length)
-      done
-  qed
+lemma flat_store_flat: "concat (map (flat_store d scanned) (padding x scanned)) = flat scanned"
+proof -
+  { fix b0 xs
+    have "concat (map (flat_store d (b0, xs)) (padding x (b0, xs))) = flat (b0, xs)"
+    proof (induct xs rule: pair_rev_induct)
+      case Head
+      then show ?case by (simp add: flat_store_def padding_def flat_def)
+    next
+      case (Pair xs y as) then show ?case
+        apply (simp add: flat_store_padding_append)
+        apply (simp add: flat_store_def nth_string'_append_length)
+        done
+    qed
+  }
+  then show ?thesis by (cases scanned, simp)
 qed
 
-lemma flat_store_flat: "concat (map (flat_store d scanned) (padding x scanned)) = flat scanned"
-  by (cases scanned, simp add: flat_store_flat0)
 
 theorem resolve_inverse: "synthesize (resolve_shuffle m, resolve_store d m) = m"
   by (auto simp add: comp_def synthesize_shuffle_def hat_hom_left_concat_map resolve_shuffle_def
                      padding_scan_ignore_alphabet concat_map_padding flat_store_flat scan_inverse
                      synthesize_def)
 
-(*
-lemma "extract_variables (concat (map (synthesize_store a) u)) = extract_variables u"
+
+lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store a) u)) = extract_variables u"
   by (induct u rule: xa_induct, simp_all add: synthesize_store_def)
 
-lemma "extract_variables (padding x (scan (map Inl u))) = u"
-proof (induct u)
+lemma extract_variables_padding_scan: "extract_variables (padding x (scan (map Inl u))) = u"
+proof (induct u rule: rev_induct)
   case Nil
   then show ?case by (simp add: scan_def padding_def synthesize_store_def)
 next
-  case (Cons x xs)
-  then show ?case
+  case (snoc x xs)
+  then show ?case by (simp add: scan_last_var_simp padding_last_simp)
 qed
 
 
 theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize (s, a)) = s"
   apply (rule ext)
   apply (simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map)
-*)
-  
-
+  apply (simp add: extract_variables_synthesize_store extract_variables_padding_scan)
+  done
 
 
 (*

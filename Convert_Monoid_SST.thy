@@ -118,7 +118,6 @@ definition convert_final :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
         Some u \<Rightarrow> (case MSST.final_string msst q of
           Some v \<Rightarrow> Some (valuate (((\<tau> ((\<iota> \<alpha> \<bullet> (\<lambda>_. u)) (SOME _ :: 'x. True))) \<bullet>
                                      (inject_alpha \<star> (\<lambda>_. v))) (SOME _ :: 'x. True))) |
-(* ((inject_alpha \<star> (\<lambda>_. v)) (SOME _. True))*)
           None \<Rightarrow> None) |
         None \<Rightarrow> None))"
 
@@ -210,6 +209,13 @@ proof -
   then show ?thesis by (simp add: map_alpha_def)
 qed
 
+lemma
+  fixes \<theta> :: "('y, 'z + 'b) update"
+  fixes t :: "('z, 'b) update"
+  shows "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
+  by (rule ext, simp add: comp_def hat_hom_valuate)
+
+
 lemma valuate_hat_hom_emptyU: "valuate (hat_hom emptyU w) = valuate w"
   by (induct w rule: xa_induct, simp_all add: emptyU_def)
 
@@ -263,6 +269,11 @@ lemma hoge: "valuate ((emptyU \<bullet> H' (\<alpha>0, \<theta>) \<bullet> (\<la
   apply (simp add: comp_def comp_lem[symmetric])
   apply (simp add: poyo)
   done
+
+lemma hoge2: 
+  "valuate ((emptyU \<bullet> H' (\<alpha>0, \<theta>) \<bullet> (\<lambda>_. valuate ((\<tau> ((\<iota> (\<Delta>' (\<alpha>0, \<theta>)) \<bullet> f) (SOME _. True)) \<bullet> inject_alpha \<star> g) (SOME _. True)))) (SOME _. True)) =
+   valuate ((emptyU \<bullet> concatU (valuate ((emptyU \<bullet> \<theta> \<bullet> f) (SOME _. True))) \<bullet> g) (SOME _. True))"
+
 
 theorem MSST_can_convert:
   "SST.run (convert_MSST msst) w = Monoid_SST.run msst w"

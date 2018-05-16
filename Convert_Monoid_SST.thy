@@ -10,10 +10,26 @@ begin
 
 subsection \<open>Definition of another strange Transducer\<close>
 
+definition update2homU ::
+  "('x \<Rightarrow> ('y, 'z + 'b) update) \<Rightarrow> 
+   ('x + ('y, 'b) update) \<Rightarrow>
+   ('y, 'z + 'b) update"where
+  "update2homU \<phi> = fold_sum \<phi> (op \<star> inr_list)"
+
+definition hat_homU ::
+  "('x \<Rightarrow> ('y, 'z + 'b) update) \<Rightarrow> 
+   ('x + ('y, 'b) update) list \<Rightarrow>
+   ('y, 'z + 'b) update" where
+  "hat_homU \<phi> = concatU o map (update2homU \<phi>)"
 
 definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x, ('y, 'x \<times> 'y index) update, 'b) update'" where
   "\<iota> \<alpha> x = [Inl (synthesize (\<alpha> x, (\<lambda>y'. [(x, y')])))]"
 
+fun embed :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y) list" where
+  "embed x y = [(x, y)]"
+
+definition \<iota>2 :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> 'x \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
+  "\<iota>2 \<alpha> x = inl_list \<star> synthesize (\<alpha> x, embed x)"
 
 
 fun inject_var :: "'x \<Rightarrow> ('x + 'b) list" where

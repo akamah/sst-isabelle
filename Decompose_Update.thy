@@ -236,14 +236,6 @@ definition synthesize :: "'y shuffle \<times> ('y, 'b) store \<Rightarrow> ('y, 
 
 subsection \<open>Properties of Decomposition\<close>
 
-lemma ext_sum:
-  assumes "\<And>l. f (Inl l) = g (Inl l)"
-  assumes "\<And>r. f (Inr r) = g (Inr r)"
-  shows "f = g"
-proof
-  fix x
-  show "f x = g x" using assms by (cases x, simp_all)
-qed
 
 lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle s = synthesize_shuffle s"
   by (auto simp add: map_alpha_def hat_alpha_left_ignore synthesize_shuffle_def)

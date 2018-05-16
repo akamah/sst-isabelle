@@ -17,25 +17,17 @@ definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x, ('y, 'x 
 
 
 fun inject_var :: "'x \<Rightarrow> ('x + 'b) list" where
-  "inject_var x = [Inl x]"
+  "inject_var x = inl_list x"
 
 fun inject_alpha :: "'b \<Rightarrow> ('x + 'b) list" where
-  "inject_alpha b = [Inr b]"
+  "inject_alpha b = inr_list b"
 
 fun coerce :: "(('y, 'x \<times> 'y index) update + ('y, 'b) update) \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
   "coerce x = fold_sum (op \<star> inject_var) (op \<star> inject_alpha) x"
 
-lemma "map_sum (f1 o g1) (f2 o g2) = map_sum f1 f2 \<circ> map_sum g1 g2"
-  by (rule ext_sum, simp_all)
-
-lemma "fold_sum (f1 o g1) (f2 o g2) = fold_sum f1 f2 o map_sum g1 g2"
-  by (rule ext_sum, simp_all)
-
-lemma "map_sum f g = fold_sum (Inl o f) (Inr o g)"
-  by (rule ext_sum, simp_all)
-
 definition \<tau> :: "(('y, 'x \<times> 'y index) update + ('y, 'b) update) list \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
   "\<tau> u = concatU (map coerce u)"
+
 
 
 definition \<Delta>' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<Rightarrow> 'y shuffle)" where
@@ -44,12 +36,12 @@ definition \<Delta>' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) up
 definition H' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> 'y index, 'b) update" where
   "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (\<lambda>(y1, k1). [Inl (x, y1, k1)]) (\<tau> (hat_hom (\<iota> \<alpha>) (\<theta> x))) y')"
 
-lemma \<tau>_nil: "\<tau> [] = idU" by (simp add: \<tau>_def)
+lemma \<tau>_nil[simp]: "\<tau> [] = idU" by (simp add: \<tau>_def)
 
-lemma \<tau>_simp_alpha: "\<tau> (Inr m # u) = inject_alpha \<star> m \<bullet> \<tau> u"
+lemma \<tau>_simp_alpha[simp]: "\<tau> (Inr m # u) = inject_alpha \<star> m \<bullet> \<tau> u"
   by (simp add: \<tau>_def)
 
-lemma \<tau>_simp_var: "\<tau> (Inl mz # u) = inject_var \<star> mz \<bullet> \<tau> u"
+lemma \<tau>_simp_var[simp]: "\<tau> (Inl mz # u) = inject_var \<star> mz \<bullet> \<tau> u"
   by (simp add: \<tau>_def)
 
 lemma \<tau>_distrib[simp]: "\<tau> (u @ v) = \<tau> u \<bullet> \<tau> v"
@@ -59,13 +51,13 @@ lemma \<tau>_distrib[simp]: "\<tau> (u @ v) = \<tau> u \<bullet> \<tau> v"
 lemma map_alpha_\<tau>: "t \<star> (\<tau> u) = concatU (map (op \<star> t \<circ> coerce) u)"
 proof (induct u rule: xa_induct)
   case Nil
-  then show ?case by (rule ext, simp add: map_alpha_def idU_def \<tau>_nil)
+  then show ?case by (rule ext, simp add: map_alpha_def idU_def)
 next
   case (Var x u)
-  then show ?case by (simp add: \<tau>_simp_var map_alpha_distrib)
+  then show ?case by (simp add: map_alpha_distrib)
 next
   case (Alpha a u)
-  then show ?case by (simp add: \<tau>_simp_alpha map_alpha_distrib)
+  then show ?case by (simp add: map_alpha_distrib)
 qed
 
 lemma \<Delta>'_assoc_string:
@@ -82,11 +74,11 @@ next
   case (Var x xs)
   then show ?case
     apply (simp add: resolve_shuffle_distrib)
-    apply (simp add: \<iota>_def map_alpha_synthesize synthesize_inverse_shuffle \<tau>_simp_var \<tau>_nil comp_right_neutral)
+    apply (simp add: \<iota>_def map_alpha_synthesize synthesize_inverse_shuffle comp_right_neutral)
     done
 next
   case (Alpha a xs)
-  then show ?case by (simp add: \<tau>_simp_alpha resolve_shuffle_distrib)
+  then show ?case by (simp add: resolve_shuffle_distrib)
 qed
 
 
@@ -278,6 +270,14 @@ lemma hoge: "valuate ((emptyU \<bullet> H' (\<alpha>0, \<theta>) \<bullet> (\<la
 lemma "concat o map (update2hom t) o inject_alpha = inject_alpha"
   by auto
 
+lemma update2hom_inject_var: "update2hom t \<star> (inject_var \<star> f) = t \<star> f"
+proof -
+  have "concat \<circ> map (update2hom t) \<circ> inject_var = t"
+    by auto
+  then show ?thesis by (auto simp add: map_alpha_assoc)
+qed
+
+
 lemma update2hom_inject_alpha: "update2hom t \<star> (inject_alpha \<star> f) = inject_alpha \<star> f"
 proof -
   have "concat o map (update2hom t) o inject_alpha = inject_alpha"
@@ -285,6 +285,21 @@ proof -
   then show ?thesis by (simp add: map_alpha_assoc)
 qed
 
+lemma update2hom_tau: "update2hom t \<star> \<tau> u
+     = concatU (map (fold_sum (op \<star> t) (op \<star> inject_alpha)) u)"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case by (simp add: map_alpha_distrib update2hom_inject_var) 
+next
+  case (Alpha a xs)
+  then show ?case by (simp add: map_alpha_distrib[of "update2hom t"] update2hom_inject_alpha del: inject_alpha.simps)
+qed
+
+
+term "fold_sum (map_alpha \<theta>) (map_alpha inject_alpha) u"
 
 lemma hoge2: 
   "valuate o (H' (\<alpha>0, \<theta>) \<bullet> (valuate o (\<tau> ((\<iota> (\<Delta>' (\<alpha>0, \<theta>)) \<bullet> f) x) \<bullet> inject_alpha \<star> g))) =
@@ -293,6 +308,7 @@ lemma hoge2:
   apply (simp add: hat_hom_valuate_fun)
   apply (simp only: map_alpha_distrib)
   apply (simp only: update2hom_inject_alpha)
+  apply (simp only: update2hom_tau)
   sorry
 
 theorem MSST_can_convert:

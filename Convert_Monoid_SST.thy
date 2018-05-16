@@ -5,7 +5,7 @@
 section \<open>Convert a Monoid SST to a ordinary SST\<close>
 
 theory Convert_Monoid_SST
-  imports Main Update SST Monoid_SST Decompose_Update
+  imports Main Update SST Monoid_SST Decompose_Update Sum_Type
 begin
 
 subsection \<open>Definition of another strange Transducer\<close>
@@ -14,7 +14,7 @@ subsection \<open>Definition of another strange Transducer\<close>
 definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x, ('y, 'x \<times> 'y index) update, 'b) update'" where
   "\<iota> \<alpha> x = [Inl (synthesize (\<alpha> x, (\<lambda>y'. [(x, y')])))]"
 
-term "fold_sum"
+
 
 fun inject_var :: "'x \<Rightarrow> ('x + 'b) list" where
   "inject_var x = [Inl x]"
@@ -23,8 +23,16 @@ fun inject_alpha :: "'b \<Rightarrow> ('x + 'b) list" where
   "inject_alpha b = [Inr b]"
 
 fun coerce :: "(('y, 'x \<times> 'y index) update + ('y, 'b) update) \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
-  "coerce (Inl mz) = inject_var \<star> mz" |
-  "coerce (Inr mb) = inject_alpha \<star> mb"
+  "coerce x = fold_sum (op \<star> inject_var) (op \<star> inject_alpha) x"
+
+lemma "map_sum (f1 o g1) (f2 o g2) = map_sum f1 f2 \<circ> map_sum g1 g2"
+  by (rule ext_sum, simp_all)
+
+lemma "fold_sum (f1 o g1) (f2 o g2) = fold_sum f1 f2 o map_sum g1 g2"
+  by (rule ext_sum, simp_all)
+
+lemma "map_sum f g = fold_sum (Inl o f) (Inr o g)"
+  by (rule ext_sum, simp_all)
 
 definition \<tau> :: "(('y, 'x \<times> 'y index) update + ('y, 'b) update) list \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
   "\<tau> u = concatU (map coerce u)"
@@ -197,21 +205,18 @@ qed
 
 
 lemma hat_hom_valuate:
-  fixes x :: "'y"
-  fixes \<theta> :: "('y, 'z + 'b) update"
-  fixes t :: "('z, 'b) update"
+  fixes t :: "('y, 'z, 'b) update'"
+  fixes \<theta> :: "('w, 'x, 'y + 'b) update'"
   shows "hat_hom t (valuate (\<theta> x)) = valuate ((update2hom t \<star> \<theta>) x)"
 proof -
-  { fix u :: "('y + 'z + 'b) list"
+  { fix u :: "('x + 'y + 'b) list"
     have "hat_hom t (valuate u) = valuate (hat_alpha (update2hom t) u)"
       by (induct u rule: xa_induct, simp_all add: hat_hom_def)
   }
   then show ?thesis by (simp add: map_alpha_def)
 qed
 
-lemma
-  fixes \<theta> :: "('y, 'z + 'b) update"
-  fixes t :: "('z, 'b) update"
+lemma hat_hom_valuate_fun:
   shows "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
   by (rule ext, simp add: comp_def hat_hom_valuate)
 
@@ -270,10 +275,25 @@ lemma hoge: "valuate ((emptyU \<bullet> H' (\<alpha>0, \<theta>) \<bullet> (\<la
   apply (simp add: poyo)
   done
 
-lemma hoge2: 
-  "valuate ((emptyU \<bullet> H' (\<alpha>0, \<theta>) \<bullet> (\<lambda>_. valuate ((\<tau> ((\<iota> (\<Delta>' (\<alpha>0, \<theta>)) \<bullet> f) (SOME _. True)) \<bullet> inject_alpha \<star> g) (SOME _. True)))) (SOME _. True)) =
-   valuate ((emptyU \<bullet> concatU (valuate ((emptyU \<bullet> \<theta> \<bullet> f) (SOME _. True))) \<bullet> g) (SOME _. True))"
+lemma "concat o map (update2hom t) o inject_alpha = inject_alpha"
+  by auto
 
+lemma update2hom_inject_alpha: "update2hom t \<star> (inject_alpha \<star> f) = inject_alpha \<star> f"
+proof -
+  have "concat o map (update2hom t) o inject_alpha = inject_alpha"
+    by auto
+  then show ?thesis by (simp add: map_alpha_assoc)
+qed
+
+
+lemma hoge2: 
+  "valuate o (H' (\<alpha>0, \<theta>) \<bullet> (valuate o (\<tau> ((\<iota> (\<Delta>' (\<alpha>0, \<theta>)) \<bullet> f) x) \<bullet> inject_alpha \<star> g))) =
+   valuate o (concatU (valuate ((emptyU \<bullet> \<theta> \<bullet> f) x)) \<bullet> g)"
+  
+  apply (simp add: hat_hom_valuate_fun)
+  apply (simp only: map_alpha_distrib)
+  apply (simp only: update2hom_inject_alpha)
+  sorry
 
 theorem MSST_can_convert:
   "SST.run (convert_MSST msst) w = Monoid_SST.run msst w"
@@ -290,8 +310,7 @@ next
   next
     case Some2: (Some u)
     then show ?thesis
-      apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat convert_\<eta>_hat Some1)
-      apply (simp add: hoge)
+      apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat convert_\<eta>_hat Some1 del: comp_apply)
       done
   qed
 qed

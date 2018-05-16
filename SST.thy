@@ -49,7 +49,7 @@ fun valuate :: "('x + 'b) list => 'b list" where
 (* if the output is undefined, return None, or return some output *)
 definition run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run sst w = (case final sst (delta_hat sst (initial sst, w)) of
-      Some u \<Rightarrow> Some (valuate ((emptyU \<bullet> eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u)) (SOME x :: 'x. True))) |
+      Some u \<Rightarrow> Some ((valuate o (emptyU \<bullet> eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) (SOME x :: 'x. True)) |
       None   \<Rightarrow> None)"
 
 

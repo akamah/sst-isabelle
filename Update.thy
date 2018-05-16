@@ -3,7 +3,7 @@
 *)
 
 theory Update
-  imports Main List
+  imports Main List Sum_Util
 begin
 
 (* an induction rule for variable and alphabet list *)
@@ -95,10 +95,6 @@ proof (induct u rule: length_induct)
   qed
 qed
 
-primrec fold_sum :: "['a \<Rightarrow> 'c, 'b \<Rightarrow> 'c, 'a + 'b] \<Rightarrow> 'c" where
-  "fold_sum f g (Inl x) = f x" |
-  "fold_sum f g (Inr y) = g y"
-
 
 type_synonym ('a, 'b) update = "'a \<Rightarrow> ('a + 'b) list"
 type_synonym ('x, 'y, 'b) update' = "'x \<Rightarrow> ('y + 'b) list"
@@ -110,7 +106,7 @@ definition emptyU :: "('x, 'b) update" where
   "emptyU x = []"
 
 definition update2hom :: "('x, 'y, 'b) update' \<Rightarrow> ('x + 'b) \<Rightarrow> ('y + 'b) list" where
-  "update2hom f = fold_sum f (\<lambda>b. [Inr b])"
+  "update2hom f = fold_sum f inr_list"
 
 
 lemma [simp]: "update2hom f (Inl x) = f x"
@@ -208,7 +204,7 @@ lemma hat_alpha_right_map: "hat_alpha f (map Inr as) = map Inr (concat (map f as
   by (induction as, auto)
 
 
-definition map_alpha :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('x, 'y, 'a) update' \<Rightarrow> ('x, 'y, 'b) update'" (infixl "\<star>" 60)
+definition map_alpha :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('x, 'y, 'a) update' \<Rightarrow> ('x, 'y, 'b) update'" (infix "\<star>" 60)
   where "map_alpha t f = hat_alpha t o f"
 
 lemma alpha_lem: "hat_alpha t (hat_hom f w) = hat_hom (t \<star> f) (hat_alpha t w)"
@@ -222,7 +218,11 @@ lemma map_alpha_idU[simp]: "t \<star> idU = idU"
 
 lemma map_alpha_concatU: "t \<star> concatU us = concatU (map (op \<star> t) us)"
   by (induct us, simp_all add: map_alpha_distrib)
-    
-  
+
+lemma map_alpha_lem: "hat_alpha s (hat_alpha t u) = hat_alpha (concat \<circ> map s \<circ> t) u"
+  by (induct u rule: xa_induct, simp_all add: hat_alpha_right_map)
+
+lemma map_alpha_assoc: "s \<star> (t \<star> f) = (concat o map s o t) \<star> f"
+  by (auto simp add: map_alpha_def map_alpha_lem)
 
 end

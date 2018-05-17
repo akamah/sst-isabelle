@@ -27,8 +27,8 @@ abbreviation eta_hat :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'a lis
 definition run :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run msst w = (case final_update msst (hat1 (delta msst) (initial msst, w)) of
       Some u \<Rightarrow> (case final_string msst (hat1 (delta msst) (initial msst, w)) of
-         Some v \<Rightarrow> (let m = concatU ((valuate o (emptyU \<bullet> eta_hat msst (initial msst, w) \<bullet> (\<lambda>x. u))) (SOME x :: 'x. True))
-                    in Some ((valuate o (emptyU \<bullet> m \<bullet> (\<lambda>y. v))) (SOME y :: 'y. True))) |
+         Some v \<Rightarrow> (let m = concatU ((valuate o (eta_hat msst (initial msst, w) \<bullet> (\<lambda>x. u))) (SOME x :: 'x. True))
+                    in Some ((valuate o (m \<bullet> (\<lambda>y. v))) (SOME y :: 'y. True))) |
          None \<Rightarrow> None) |
       None \<Rightarrow> None)"
 

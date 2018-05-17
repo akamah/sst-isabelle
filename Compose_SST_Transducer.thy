@@ -75,7 +75,7 @@ definition compose_SST_Transducer ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) SST" where
   "compose_SST_Transducer sst td = \<lparr>
-    initial = (initial sst, \<Delta> (Transducer.delta td) (\<lambda>(q2, x1). q2, emptyU)),
+    initial = (initial sst, \<lambda>(q2, x1). q2),
     delta   = compose_\<delta> sst td,
     eta     = compose_\<eta> sst td,
     final   = compose_final sst td
@@ -100,10 +100,8 @@ next
 qed
 
 
-subsection \<open>Property of valuation and empty update\<close>
+subsection \<open>Property of valuation\<close>
 
-lemma initial_eta: "H tr to (\<lambda>(q, x). q, emptyU) = emptyU"
-  by (auto simp add: H_def emptyU_def)
 
 lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
   by (induction w arbitrary: q rule: xa_induct, simp_all add: empty_def)
@@ -133,7 +131,7 @@ proof (cases "SST.final sst (SST.delta_hat sst (SST.initial sst, w))")
 next
   case (Some output_final1)
   let ?output_of_1st_sst =
-    "valuate ((emptyU \<bullet> SST.eta_hat sst (SST.initial sst, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x. True))"
+    "valuate ((SST.eta_hat sst (SST.initial sst, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x. True))"
   show ?thesis
   proof (cases "transducer.final td (Transducer.delta_hat td (transducer.initial td, ?output_of_1st_sst))")
     case False then show ?thesis
@@ -146,8 +144,7 @@ next
                        \<Delta>_assoc valuate_delta_hat
                        comp_ignore
                        valuate_eta_hat
-                       H_assoc
-                       initial_eta)
+                       H_assoc)
   qed
 qed
 

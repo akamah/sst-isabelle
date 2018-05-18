@@ -249,6 +249,15 @@ lemma map_alpha_synthesize: "t \<star> synthesize (s, a) = synthesize (s, concat
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
+lemma resolve_idU_empty: "resolve_store (\<lambda>x. []) idU (y, k) = (\<lambda>y'. []) (y, k)"
+proof (cases k)
+  case 0
+  then show ?thesis by (simp add: resolve_store_def idU_def scan_def)
+next
+  case (Suc n)
+  then show ?thesis by (cases n, simp_all add: resolve_store_def idU_def scan_def)
+qed
+
 lemma resolve_shuffle_distrib_str: 
   "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle \<phi>) (extract_variables u))"
   by (induct u rule: xa_induct, simp_all add: resolve_shuffle_def)

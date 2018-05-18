@@ -173,7 +173,7 @@ lemma concatU_append: "concatU (u @ v) = concatU u \<bullet> concatU v"
   by (induct u arbitrary: v, simp_all add: comp_left_neutral comp_assoc)
 
 definition alpha_hom :: "('a \<Rightarrow> 'b list) \<Rightarrow> 'x + 'a \<Rightarrow> ('x + 'b) list" where
-  "alpha_hom f = fold_sum (\<lambda>x. [Inl x]) (\<lambda>a. map Inr (f a))"
+  "alpha_hom f = fold_sum inl_list (\<lambda>a. map Inr (f a))"
 
 lemma [simp]: "alpha_hom f (Inl x) = [Inl x]"
   by (simp add: alpha_hom_def)

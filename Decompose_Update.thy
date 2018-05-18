@@ -186,8 +186,24 @@ fun nth_string' where
   "nth_string' s  (_#xas) (Suc k) = nth_string' s xas k"
 
 
-lemma nth_string'_append_length: "nth_string' s (xs @ ys) (length xs) = nth_string' s ys 0"
-  by (induct xs arbitrary: ys, simp_all)
+lemma nth_string'_append:
+ "nth_string' s (xs @ ys) k
+ = (if k < length xs then nth_string' s xs k 
+                     else nth_string' s ys (k - length xs))"
+proof (induct xs arbitrary: k rule: pair_induct)
+  case Head
+  then show ?case by simp
+next
+  case (Pair x as xas)
+  then show ?case proof (cases k)
+    case 0
+    then show ?thesis by simp
+  next
+    case (Suc nat)
+    then show ?thesis by (simp add: Pair)
+  qed
+qed
+
 
 definition flat_store where
   "flat_store d xs yi = (case yi of
@@ -358,7 +374,7 @@ next
   show ?case proof (cases xas)
     case (Pair x as)
     then show ?thesis
-      by (simp add: snoc, simp add: flat_store_def nth_string'_append_length)
+      by (simp add: snoc, simp add: flat_store_def nth_string'_append)
   qed
 qed
 
@@ -372,7 +388,7 @@ proof -
     next
       case (Pair xs y as) then show ?case
         apply (simp add: flat_store_padding_append)
-        apply (simp add: flat_store_def nth_string'_append_length)
+        apply (simp add: flat_store_def nth_string'_append)
         done
     qed
   }
@@ -404,27 +420,6 @@ theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize (s, a)) = s"
   apply (simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map)
   apply (simp add: extract_variables_synthesize_store extract_variables_padding_scan)
   done
-
-
-(*
-proposition resolve_store_map_alpha_fst: "concat (map t (fst (scan u))) = fst (scan (hat_alpha t u))"
-proof (induct u rule: xa_induct)
-  case Nil
-  then show ?case by (simp add: scan_def)
-next
-  case (Var x xs)
-  then show ?case by (simp add: scan_def)
-next
-  case (Alpha a xs)
-  then show ?case  apply (simp add: scan_def) sorry
-qed
-
-
-theorem resolve_store_map_alpha:
-  "concat o map \<xi> o resolve_store \<theta> = resolve_store (\<xi> \<star> \<theta>)"
-  apply (rule ext, simp add: resolve_store_def)
-  
-*)
 
 
 subsection \<open>Example\<close>

@@ -325,7 +325,6 @@ lemma iota_alpha0_remove:
  = valuate (hat_hom (concatU (valuate m)) u)"
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
-declare [[show_types]]
 lemma hoge3:
   fixes u :: "('y + 'b) list"
   fixes m :: "('x + ('y, 'b) update) list"
@@ -340,6 +339,79 @@ lemma hoge3:
 
   apply (simp add: iota_alpha0_remove)
   done
+
+lemma map_alpha_resolve_store_0:
+  "hat_hom t (fst (scan u)) = fst (scan (hat_alpha (update2hom t) u))"
+proof (induct u rule: xw_induct)
+  case (Word w)
+  then show ?case by (simp add: scan_word_simp hat_alpha_right_map hat_hom_def)
+next
+  case (VarWord x w u)
+  then show ?case by (simp add: scan_last_simp hat_alpha_right_map)
+qed
+
+lemma length_scan_hat_alpha: "length (snd (scan (hat_alpha t u))) = length (snd (scan u))"
+  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map scan_word_simp scan_last_simp)
+
+
+lemma map_alpha_resolve_store_suc:
+  "hat_hom t (nth_string' (d (y, Suc k)) (snd (scan u)) k)
+ = nth_string' (hat_hom t (d (y, Suc k))) (snd (scan (hat_alpha (update2hom t) u))) k"
+proof (induct u arbitrary: k rule: xw_induct)
+  case (Word w)
+  then show ?case by (simp add: scan_word_simp hat_alpha_right_map)
+next
+  case (VarWord x w u)
+  then show ?case proof (induct k)
+    case 0
+    then show ?case by (simp add: scan_last_simp hat_alpha_right_map nth_string'_append length_scan_hat_alpha hat_hom_def)
+  next
+    case (Suc k)
+    then show ?case apply (simp add: scan_last_simp hat_alpha_right_map) sorry
+  qed
+(*  then show ?case proof (cases "k < length (snd (scan u))")
+    case True
+    then show ?thesis
+      by (simp add: scan_last_simp hat_alpha_right_map nth_string'_append length_scan_hat_alpha VarWord)
+  next
+    case False
+    then show ?thesis proof (cases "k - length (snd (scan u))")
+      case 0
+      then show ?thesis
+        apply (simp add: scan_last_simp hat_alpha_right_map nth_string'_append length_scan_hat_alpha )
+    next
+      case (Suc nat)
+      then show ?thesis sorry
+    qed
+      thm VarWord
+  qed
+*)
+qed
+
+
+lemma map_alpha_resolve_store:
+  "(t \<bullet> resolve_store d \<theta>) (y, k) = resolve_store (t \<bullet> d) (update2hom t \<star> \<theta>) (y, k)"
+proof (cases k)
+  case 0
+  then show ?thesis by (simp add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_0)
+next
+  case (Suc nat)
+  then show ?thesis by (simp add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_suc)
+qed
+
+lemma H'_assoc_string:
+  "resolve_store (default_string x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
+ = (H' (\<alpha>, \<phi>) \<bullet> resolve_store (default_string x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k)"
+proof -
+  have "hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)
+      = update2hom (H' (\<alpha>, \<phi>)) \<star> hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u"
+    apply (simp add: hat_homU_map_alpha)
+    apply (simp add: map_alpha_H'_iota_\<Delta>)
+    apply (simp add: hat_homU_lem)
+    done
+  then show ?thesis
+    apply (simp add: map_alpha_resolve_store)
+   
 
 
 lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"

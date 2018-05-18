@@ -79,10 +79,6 @@ qed
 lemma \<Delta>'_assoc: "\<Delta>' (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
   by (intro ext, simp add: \<Delta>'_def comp_def \<Delta>'_assoc_string)
 
-lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
-  sorry
-
-
 
 subsection \<open>Construction\<close>
 
@@ -126,61 +122,6 @@ definition convert_MSST :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
 
 subsection \<open>Properties\<close>
 
-lemma convert_\<delta>_hat:
-  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>0), w) =
-   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>0, Monoid_SST.eta_hat msst (q, w)))"
-proof (induct w arbitrary: q rule: rev_induct)
-  case Nil
-  then show ?case 
-    apply (simp add: convert_\<delta>_def)
-    apply (intro ext)
-    apply (simp add: \<Delta>'_def idU_def \<iota>_def comp_right_neutral map_alpha_synthesize \<alpha>0_def idS_def)
-    apply (simp add: resolve_shuffle_def synthesize_def synthesize_shuffle_def comp_def)
-    apply (simp add: scan_def padding_def synthesize_store_def)
-    done
-next
-  case (snoc a w)
-  then show ?case by (simp add: delta_append eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
-qed
-
-lemma nth_string_vars: "nth_string' [Inl (x, y, Suc k)] [(y, [Inl (x, y, Suc 0)])] k = [Inl (x, y, Suc k)]"
-  by (induct k, simp_all)
-
-lemma convert_\<eta>_hat_Nil:
-  "idU (x, y, k) = H' (\<alpha>0, idU) (x, y, k)"
-proof (cases k)
-  case 0
-  then show ?thesis
-    apply (simp add: convert_\<delta>_def)
-    apply (simp add: idU_def \<alpha>0_def idS_def H'_def)
-    apply (simp add: \<iota>_def comp_right_neutral map_alpha_synthesize)
-    unfolding resolve_store_def scan_def synthesize_def 
-      synthesize_shuffle_def padding_def synthesize_store_def comp_def
-    apply (simp add: \<alpha>0_def idS_def)
-    done
-next
-  case (Suc k')
-  then show ?thesis
-    apply (simp add: convert_\<delta>_def)
-    apply (simp add: \<Delta>'_def idU_def \<alpha>0_def idS_def H'_def)
-    apply (simp add: \<iota>_def comp_right_neutral map_alpha_synthesize)
-    unfolding resolve_store_def scan_def synthesize_def 
-      synthesize_shuffle_def padding_def synthesize_store_def comp_def
-    apply (simp add: \<alpha>0_def idS_def nth_string_vars)
-    done
-qed
-
-lemma convert_\<eta>_hat:
-  "SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q0, \<alpha>0), w) =
-   H' (\<alpha>0, Monoid_SST.eta_hat msst (q0, w))"
-proof (induct w rule: rev_induct)
-  case Nil
-  then show ?case by (auto simp add: convert_\<eta>_hat_Nil) 
-next
-  case (snoc a w)
-  then show ?case
-    by (simp add: delta_append eta_append comp_right_neutral H'_assoc convert_\<eta>_def convert_\<delta>_hat)
-qed
 
 
 lemma hat_hom_valuate:
@@ -375,7 +316,7 @@ next
     apply (simp add: concatU_append hat_homU_append valuate_update_map_alpha)
     apply (simp add: map_alpha_distrib ignore_left_inr_list)
     apply (simp add: ignore_left_hat_hom_iota_alpha0)
-  done
+    done
 qed
 
 
@@ -395,8 +336,71 @@ lemma hoge3:
   apply (simp add: update2hom_hat_alpha)
   apply (simp add: map_alpha_H'_iota_\<Delta>)
   apply (simp add: hat_homU_lem)
+  
+
   apply (simp add: iota_alpha0_remove)
   done
+
+
+lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
+  sorry
+
+
+lemma convert_\<delta>_hat:
+  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>0), w) =
+   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>0, Monoid_SST.eta_hat msst (q, w)))"
+proof (induct w arbitrary: q rule: rev_induct)
+  case Nil
+  then show ?case 
+    apply (simp add: convert_\<delta>_def)
+    apply (intro ext)
+    apply (simp add: \<Delta>'_def idU_def \<iota>_def comp_right_neutral map_alpha_synthesize \<alpha>0_def idS_def)
+    apply (simp add: resolve_shuffle_def synthesize_def synthesize_shuffle_def comp_def)
+    apply (simp add: scan_def padding_def synthesize_store_def)
+    done
+next
+  case (snoc a w)
+  then show ?case by (simp add: delta_append eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
+qed
+
+lemma nth_string_vars: "nth_string' [Inl (x, y, Suc k)] [(y, [Inl (x, y, Suc 0)])] k = [Inl (x, y, Suc k)]"
+  by (induct k, simp_all)
+
+lemma convert_\<eta>_hat_Nil:
+  "idU (x, y, k) = H' (\<alpha>0, idU) (x, y, k)"
+proof (cases k)
+  case 0
+  then show ?thesis
+    apply (simp add: convert_\<delta>_def)
+    apply (simp add: idU_def \<alpha>0_def idS_def H'_def)
+    apply (simp add: \<iota>_def comp_right_neutral map_alpha_synthesize)
+    unfolding resolve_store_def scan_def synthesize_def 
+      synthesize_shuffle_def padding_def synthesize_store_def comp_def
+    apply (simp add: \<alpha>0_def idS_def)
+    done
+next
+  case (Suc k')
+  then show ?thesis
+    apply (simp add: convert_\<delta>_def)
+    apply (simp add: \<Delta>'_def idU_def \<alpha>0_def idS_def H'_def)
+    apply (simp add: \<iota>_def comp_right_neutral map_alpha_synthesize)
+    unfolding resolve_store_def scan_def synthesize_def 
+      synthesize_shuffle_def padding_def synthesize_store_def comp_def
+    apply (simp add: \<alpha>0_def idS_def nth_string_vars)
+    done
+qed
+
+lemma convert_\<eta>_hat:
+  "SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q0, \<alpha>0), w) =
+   H' (\<alpha>0, Monoid_SST.eta_hat msst (q0, w))"
+proof (induct w rule: rev_induct)
+  case Nil
+  then show ?case by (auto simp add: convert_\<eta>_hat_Nil) 
+next
+  case (snoc a w)
+  then show ?case
+    by (simp add: delta_append eta_append comp_right_neutral H'_assoc convert_\<eta>_def convert_\<delta>_hat)
+qed
 
 theorem MSST_can_convert:
   "SST.run (convert_MSST msst) w = Monoid_SST.run msst w"

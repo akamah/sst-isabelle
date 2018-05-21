@@ -150,6 +150,9 @@ lemma hat_hom_left_concat_map: "hat_hom f (map Inl xs) = concat (map f xs)"
 definition comp :: "[ ('y, 'z, 'b) update',  ('x, 'y, 'b) update'] \<Rightarrow>  ('x, 'z, 'b) update'" (infixl "\<bullet>" 55)
   where "comp f g == (hat_hom f) o g"
 
+lemma comp_apply: "(f \<bullet> g) x = hat_hom f (g x)"
+  by (simp add: comp_def)
+
 lemma comp_lem: "hat_hom f (hat_hom g xs) = hat_hom (hat_hom f o g) xs"
   by (induct xs rule: xa_induct, simp_all)
 

@@ -399,6 +399,11 @@ next
   then show ?thesis by (simp add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_suc)
 qed
 
+
+lemma "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
+     = resolve_store (H' (\<alpha>, \<phi>) \<bullet> embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)"
+  oops
+
 lemma H'_assoc_string:
   "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
  = (H' (\<alpha>, \<phi>) \<bullet> resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k)"
@@ -411,11 +416,13 @@ proof -
     done
   then show ?thesis
     apply (simp add: map_alpha_resolve_store)
-   
+
+    sorry
+qed
 
 
-lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
-  sorry
+lemma H'_assoc: "H' (\<alpha>0, \<phi> \<bullet> \<psi>) = H' (\<alpha>0, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>0, \<phi>), \<psi>)"
+  by (auto simp add: comp_apply H'_simp2 H'_assoc_string)
 
 
 lemma convert_\<delta>_hat:
@@ -471,7 +478,9 @@ proof (induct w rule: rev_induct)
 next
   case (snoc a w)
   then show ?case
-    by (simp add: delta_append eta_append comp_right_neutral H'_assoc convert_\<eta>_def convert_\<delta>_hat)
+    apply (simp add: delta_append eta_append comp_right_neutral convert_\<eta>_def convert_\<delta>_hat)
+    apply (simp add: H'_assoc)
+    done
 qed
 
 theorem MSST_can_convert:

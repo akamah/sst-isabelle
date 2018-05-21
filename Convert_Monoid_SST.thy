@@ -46,12 +46,12 @@ definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> 'x \<Rightarr
 definition \<Delta>' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<Rightarrow> 'y shuffle)" where
   "\<Delta>' = (\<lambda>(\<alpha>, \<theta>). \<lambda>x. resolve_shuffle (hat_homU (\<iota> \<alpha>) (\<theta> x)))"
 
-fun default_string where
-  "default_string x = embed x"
 
 definition H' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> 'y index, 'b) update" where
-  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (default_string x) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y')"
+  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y')"
 
+lemma H'_simp2: "H' (\<alpha>, \<theta>) (x, y') = resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y'"
+  by (simp add: H'_def)
 
 lemma \<Delta>'_assoc_string:
   fixes \<alpha> :: "'x \<Rightarrow> 'y shuffle"
@@ -193,7 +193,7 @@ qed
 
 
 
-lemma H'_embed: "H' (\<alpha>, \<theta>) \<bullet> embed x = resolve_store (default_string x) (hat_homU (\<iota> \<alpha>) (\<theta> x))"
+lemma H'_embed: "H' (\<alpha>, \<theta>) \<bullet> embed x = resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (\<theta> x))"
   by (auto simp add: comp_def H'_def)
 
 
@@ -400,8 +400,8 @@ next
 qed
 
 lemma H'_assoc_string:
-  "resolve_store (default_string x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
- = (H' (\<alpha>, \<phi>) \<bullet> resolve_store (default_string x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k)"
+  "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
+ = (H' (\<alpha>, \<phi>) \<bullet> resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k)"
 proof -
   have "hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)
       = update2hom (H' (\<alpha>, \<phi>)) \<star> hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u"

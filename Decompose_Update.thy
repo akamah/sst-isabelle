@@ -98,6 +98,9 @@ corollary scan_last_var_simp:
   "scan (u @ [Inl x]) = (fst (scan u), snd (scan u) @ [(x, [])])"
   by (simp add: scan_last_simp[of "u" "x" "[]", simplified])
 
+lemma scan_nil_simp:
+  "scan [] = ([], [])"
+  by (simp add: scan_def)
 
 lemma pair_induct [case_names Head Pair]:
   assumes head: "P []"
@@ -245,6 +248,10 @@ definition synthesize_store :: "('y, 'b) store \<Rightarrow> ('y + 'y index, 'y,
   "synthesize_store a yi = (case yi of
      (Inl y) \<Rightarrow> [Inl y] | 
      (Inr i) \<Rightarrow> map Inr (a i))"
+
+lemma concat_map_synthesize_store_map_Inr:
+  "concat (map (synthesize_store a) (map Inr w)) = map Inr (concat (map a w))"
+  by (induct w, simp_all add: synthesize_store_def)
 
 definition synthesize :: "'y shuffle \<times> ('y, 'b) store \<Rightarrow> ('y, 'b) update" where
   "synthesize sa = (case sa of (s, a) \<Rightarrow> synthesize_store a \<bullet> synthesize_shuffle s)"

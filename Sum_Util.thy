@@ -36,4 +36,14 @@ lemma fold_sum_comp: "fold_sum (f1 o g1) (f2 o g2) = fold_sum f1 f2 o map_sum g1
 lemma map_sum_eq_fold_sum: "map_sum f g = fold_sum (Inl o f) (Inr o g)"
   by (rule ext_sum, simp_all)
 
+fun const :: "'a \<Rightarrow> 'b \<Rightarrow> 'a" where
+  "const a b = a"
+
+fun is_inl :: "('a + 'b) \<Rightarrow> bool" where
+  "is_inl a = fold_sum (const True) (const False) a"
+
+fun is_inr :: "('a + 'b) \<Rightarrow> bool" where
+  "is_inr a = fold_sum (const False) (const True) a"
+
+
 end

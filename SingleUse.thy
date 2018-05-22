@@ -43,24 +43,11 @@ next
     finally have "sum (\<lambda>ba. count_list (f ba) a * (if b = ba then count_list xs ba + 1 else count_list xs ba)) UNIV
              = sum ?g UNIV + sum ?h UNIV"
       by simp
-    thus "count_list (f b) a + count_list (concat (map f xs)) a =
-sum (\<lambda>ba. count_list (f ba) a * (if b = ba then count_list xs ba + 1 else count_list xs ba))
- UNIV"
+    thus "count_list (f b) a + count_list (concat (map f xs)) a
+        = sum (\<lambda>ba. count_list (f ba) a * (if b = ba then count_list xs ba + 1 else count_list xs ba)) UNIV"
     proof (simp)
-      show "count_list (f b) a + count_list (concat (map f xs)) a =
-            (\<Sum>ba\<in>UNIV. if b = ba then count_list (f ba) a else 0) +
-            (\<Sum>ba\<in>UNIV. count_list (f ba) a * count_list xs ba)"
-      proof (rule cong[of "op + _" "op + _"], rule cong[of "op +" "op +"],simp)
-        have "(\<Sum>ba\<in>(insert b (UNIV - {b})). if b = ba then count_list (f ba) a else 0) =
-              (%ba. if b = ba then count_list (f ba) a else 0) b +
-              (\<Sum>ba\<in>(UNIV - {b}). if b = ba then count_list (f ba) a else 0)"
-          by(rule sum.insert, auto)
-        thus "count_list (f b) a = (\<Sum>ba\<in>UNIV. if b = ba then count_list (f ba) a else 0)"
-          by (simp del: sum.insert add: insert_UNIV)
-      next
-        show "count_list (concat (map f xs)) a = (\<Sum>ba\<in>UNIV. count_list (f ba) a * count_list xs ba)"
-          by (rule Cons)
-      qed
+      show "count_list (concat (map f xs)) a = (\<Sum>ba\<in>UNIV. count_list (f ba) a * count_list xs ba)"
+        by (rule Cons)
     qed
   qed
 qed

@@ -171,10 +171,10 @@ definition flat where
 lemma flat_rec_append[simp]: "flat_rec (xs @ ys) = flat_rec xs @ flat_rec ys"
   by (induct xs arbitrary: ys rule: pair_rev_induct, simp_all)
 
-lemma flat_word_simp: "flat (w, []) = map Inr w"
+lemma flat_word_simp[simp]: "flat (w, []) = map Inr w"
   by (induct w, simp_all add: flat_def)
 
-lemma flat_last_simp: "flat (w, xas @ [(x, as)]) = flat (w, xas) @ Inl x # map Inr as"
+lemma flat_last_simp[simp]: "flat (w, xas @ [(x, as)]) = flat (w, xas) @ Inl x # map Inr as"
   by (induct xas rule: pair_rev_induct, simp_all add: flat_def)
 
 
@@ -190,11 +190,10 @@ definition padding :: "'y \<Rightarrow> 'b list \<times> ('y \<times> 'b list) l
   "padding y = (\<lambda>(a0, xs). Inr (y, 0) # padding_rec 1 y xs)"
 
 
-lemma padding_word_simp: "padding y (w, []) = [Inr (y, 0)]"
+lemma padding_word_simp[simp]: "padding y (w, []) = [Inr (y, 0)]"
   by (simp add: padding_def)
 
-
-lemma padding_last_simp: "padding y (w, xas @ [(x, as)]) = padding y (w, xas) @ [Inl x, Inr (y, Suc (length xas))]"
+lemma padding_last_simp[simp]: "padding y (w, xas @ [(x, as)]) = padding y (w, xas) @ [Inl x, Inr (y, Suc (length xas))]"
 proof -
   { fix n x as
     have "padding_rec n y (xas @ [(x, as)]) = padding_rec n y xas @ [Inl x, Inr (y, n + length xas)]"

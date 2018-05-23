@@ -113,7 +113,7 @@ fun scan_head :: "'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y, 'b) sc
 definition scan :: "('y + 'b) list \<Rightarrow> ('y, 'b) scanned" where
   "scan u = scan_head [] u"
 
-lemma scan_word_simp:
+lemma scan_word_simp[simp]:
   "scan (map Inr w) = (w, [])"
 proof -
   { fix as
@@ -124,7 +124,7 @@ proof -
   then show ?thesis by (simp add: that scan_def)
 qed
 
-lemma scan_last_simp:
+lemma scan_last_simp[simp]:
   "scan (u @ Inl x # map Inr w) = (fst (scan u), snd (scan u) @ [(x :: 'x, w)])"
 proof -
   { fix y :: 'x and bs
@@ -141,13 +141,18 @@ proof -
   thus ?thesis by (simp add: scan_def)
 qed
 
-corollary scan_last_var_simp:
+corollary scan_nil_simp[simp]:
+  "scan [] = ([], [])"
+  by (simp add: scan_word_simp[of "[]", simplified])
+
+corollary scan_last_var_simp[simp]:
   "scan (u @ [Inl x]) = (fst (scan u), snd (scan u) @ [(x, [])])"
   by (simp add: scan_last_simp[of "u" "x" "[]", simplified])
 
-corollary scan_nil_simp:
-  "scan [] = ([], [])"
-  by (simp add: scan_word_simp[of "[]", simplified])
+corollary scan_last_single_simp[simp]:
+  "scan (Inl x # map Inr w) = ([], [(x, w)])"
+  by (simp add: scan_last_simp[of "[]", simplified])
+
 
 
 

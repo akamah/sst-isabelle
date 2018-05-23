@@ -88,6 +88,9 @@ text \<open>first string and pairs of a variable and a string\<close>
 type_synonym ('y, 'b) scanned_tail = "('y \<times> 'b list) list"
 type_synonym ('y, 'b) scanned = "'b list \<times> ('y, 'b) scanned_tail"
 
+fun length_scanned :: "('y, 'b) scanned \<Rightarrow> nat" where
+  "length_scanned (w, xas) = Suc (length xas)"
+
 fun append_scanned :: "('y, 'b) scanned \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'b) scanned" (infixl "@@@" 80) where
   "append_scanned (w, xas) yas = (w, xas @ yas)"
 

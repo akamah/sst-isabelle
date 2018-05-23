@@ -91,15 +91,55 @@ type_synonym ('y, 'b) scanned = "'b list \<times> ('y, 'b) scanned_tail"
 fun length_scanned :: "('y, 'b) scanned \<Rightarrow> nat" where
   "length_scanned (w, xas) = Suc (length xas)"
 
-fun append_scanned :: "('y, 'b) scanned \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'b) scanned" (infixl "@@@" 80) where
-  "append_scanned (w, xas) yas = (w, xas @ yas)"
+definition append_scanned :: "('y, 'b) scanned \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'b) scanned" (infixl "@@@" 80) where
+  "append_scanned = (\<lambda>(w, xas) yas. (w, xas @ yas))"
 
 lemma append_scanned_assoc: "(xas @@@ yas) @@@ zas = xas @@@ (yas @ zas)"
-  by (cases xas, simp)
+  by (cases xas, simp add: append_scanned_def)
+
+lemma append_scanned_simp: "(w, xas) @@@ yas = (w, xas @ yas)"
+  unfolding append_scanned_def by simp
 
 lemma append_scanned_Nil[simp]: "xas @@@ [] = xas" 
-  by (cases xas, simp)
+  by (cases xas, simp add: append_scanned_def)
 
+lemma length_append_scanned_1: "length_scanned (xas @@@ [p]) = Suc (length_scanned xas)"
+proof (cases xas)
+  case (Pair w xs)
+  then show ?thesis by (induct xs, simp_all add: append_scanned_simp)
+qed
+
+lemma length_append_scanned[simp]:
+  "length_scanned (xas @@@ ys) = length_scanned xas + length ys"
+proof (induct ys arbitrary: xas rule: rev_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (snoc x xs)
+  then show ?case by (simp add: append_scanned_assoc[symmetric] length_append_scanned_1) 
+qed
+
+
+lemma scanned_induct_aux:
+  assumes head: "\<And>w. P (w, [])"
+  assumes pair: "\<And>x as sc. P sc \<Longrightarrow> P (sc @@@ [(x, as)])"
+  shows "P (w, xs)"
+proof (induct xs rule: pair_rev_induct)
+  case Nil
+  then show ?case using head by simp
+next
+  case (PairSnoc x as xas)
+  then show ?case proof -
+    have "P ((w, xas) @@@ [(x, as)])" by (simp add: PairSnoc pair)
+    then show ?thesis by (simp add: append_scanned_simp)
+  qed
+qed
+
+lemma scanned_induct[case_names Nil PairSnoc]:
+  assumes head: "\<And>w. P (w, [])"
+  assumes pair: "\<And>x as sc. P sc \<Longrightarrow> P (sc @@@ [(x, as)])"
+  shows "P sc"
+  using assms by (cases sc, simp add: scanned_induct_aux)
 
 subsubsection \<open>Scan\<close>
 
@@ -141,7 +181,7 @@ proof -
   } note pair = this
   { fix as
     have "scan_head as (u @ Inl x # map Inr w) = scan_head as u @@@ [(x, w)]"
-      by (induct u arbitrary: as rule: xa_induct, simp_all add: pair_alphabet pair)
+      by (induct u arbitrary: as rule: xa_induct, simp_all add: pair_alphabet pair append_scanned_simp)
   }
   thus ?thesis by (simp add: scan_def)
 qed
@@ -156,7 +196,7 @@ corollary scan_last_var_simp[simp]:
 
 corollary scan_last_single_simp[simp]:
   "scan (Inl x # map Inr w) = ([], [(x, w)])"
-  by (simp add: scan_last_simp[of "[]", simplified])
+  by (simp add: scan_last_simp[of "[]", simplified] append_scanned_simp)
 
 
 subsubsection \<open>Flat\<close>
@@ -177,33 +217,57 @@ lemma flat_rec_append[simp]: "flat_rec (xs @ ys) = flat_rec xs @ flat_rec ys"
 lemma flat_word_simp[simp]: "flat (w, []) = map Inr w"
   by (induct w, simp_all add: flat_def)
 
-lemma flat_last_simp[simp]: "flat (w, xas @ [(x, as)]) = flat (w, xas) @ Inl x # map Inr as"
-  by (induct xas rule: pair_rev_induct, simp_all add: flat_def)
+lemma flat_append[simp]: "flat (xas @@@ xs) = flat xas @ flat_rec xs"
+proof (induct xas arbitrary: xs rule: scanned_induct)
+  case (Nil w)
+  then show ?case by (simp add: append_scanned_simp flat_def)
+next
+  case (PairSnoc y bs sc)
+  then show ?case by (simp add: append_scanned_simp append_scanned_assoc)
+qed
+  
+
+(* lemma flat_append_scanned[simp]: "flat (xas @@@ ys) = flat" *)
 
 
 subsubsection \<open>Padding\<close>
 
 text \<open>replace strings with a special meta-variable\<close>
 
-fun padding_rec :: "nat \<Rightarrow> 'x \<Rightarrow> ('x \<times> 'b list) list \<Rightarrow> ('x + 'x index) list" where
+fun padding_rec :: "nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y + 'y index) list" where
   "padding_rec n y [] = []" |
   "padding_rec n y ((x, _)#xs) = Inl x # Inr (y, n) # padding_rec (Suc n) y xs"
 
-definition padding :: "'y \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list \<Rightarrow> ('y + 'y index) list" where
+definition padding :: "'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y + 'y index) list" where
   "padding y = (\<lambda>(a0, xs). Inr (y, 0) # padding_rec 1 y xs)"
 
+lemma padding_rec_append[simp]:
+  "padding_rec n y (xs @ ys) = padding_rec n y xs @ padding_rec (length xs + n) y ys"
+  by (induct xs arbitrary: n ys rule: pair_induct, simp_all)
 
-lemma padding_word_simp[simp]: "padding y (w, []) = [Inr (y, 0)]"
+lemma padding_word_simp[simp]: 
+  "padding y (w, []) = [Inr (y, 0)]"
   by (simp add: padding_def)
 
-lemma padding_last_simp[simp]: "padding y (w, xas @ [(x, as)]) = padding y (w, xas) @ [Inl x, Inr (y, Suc (length xas))]"
+lemma padding_last_simp[simp]: 
+  "padding y (xas @@@ [(x, as :: 'b list)])
+ = padding y xas @ [Inl x, Inr (y, length_scanned xas)]"
 proof -
-  { fix n x as
-    have "padding_rec n y (xas @ [(x, as)]) = padding_rec n y xas @ [Inl x, Inr (y, n + length xas)]"
-      by (induct xas arbitrary: n rule: pair_induct, simp_all)
-  }
-  then show ?thesis
-    by (simp add: padding_def)
+  { fix n x yas and as :: "'b list"
+    have "padding_rec n y (yas @ [(x, as)]) = padding_rec n y yas @ [Inl x, Inr (y, n + length yas)]"
+      by (induct yas arbitrary: n rule: pair_induct, simp_all)
+  } note that = this
+  then show ?thesis by (cases xas, simp add: padding_def that append_scanned_simp)
+qed
+
+lemma padding_append_scanned:
+  "padding y (xas @@@ ys) = padding y xas @ padding_rec (length_scanned xas) y ys"
+proof (induct ys arbitrary: xas rule: pair_rev_induct)
+  case Nil 
+  then show ?case by (simp add: append_scanned_simp)
+next
+  case (PairSnoc x as sc)
+  then show ?case by (simp add: append_scanned_assoc[symmetric])
 qed
 
 subsubsection \<open>Others\<close>
@@ -248,8 +312,13 @@ fun flat_store' where
 
 
 lemma scan_inverse: "flat (scan u) = u"
-  by (induct u rule: xw_induct,
-      simp_all add: scan_word_simp flat_word_simp scan_last_simp flat_last_simp)
+proof (induct u rule: xw_induct)
+  case (Word w)
+  then show ?case apply simp done
+next
+  case (VarWord x w u)
+  then show ?case apply simp
+qed
 
 
 subsection \<open>Resolve\<close>
@@ -446,7 +515,7 @@ proof (induct u rule: rev_induct)
   then show ?case by (simp add: scan_def padding_def synthesize_store_def)
 next
   case (snoc x xs)
-  then show ?case by (simp add: scan_last_var_simp padding_last_simp)
+  then show ?case by (simp add: )
 qed
 
 

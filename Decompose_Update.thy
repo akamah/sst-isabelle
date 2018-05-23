@@ -451,11 +451,10 @@ value "resolve_store (\<lambda>_. ''NOT FOUND'') poyo (0, 2)"
 lemma "resolve_shuffle poyo 0 = [0, 0]" by (simp add: resolve_shuffle_def)
 lemma "resolve_shuffle poyo 1 = [0, 1]" by (simp add: resolve_shuffle_def)
 
-lemma "resolve_store' poyo (0, 0) = ''P''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store' poyo (0, 1) = ''Q''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store' poyo (0, 2) = ''R''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store' poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store' poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store f poyo (0, 0) = ''P''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store f poyo (0, 1) = ''Q''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store f poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store f poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
 
 
 

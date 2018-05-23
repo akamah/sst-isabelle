@@ -208,6 +208,15 @@ next
 qed
 
 
+fun nth_string'' where
+  "nth_string'' s (w, xas) 0 = w" |
+  "nth_string'' s (w, xas) (Suc n) = nth_string' s xas n"
+
+fun append_scanned (infixl "@@@" 80) where
+  "append_scanned (w, xas) yas = (w, xas @ yas)"
+
+
+
 definition flat_store where
   "flat_store d xs yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |

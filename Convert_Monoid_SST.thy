@@ -425,6 +425,38 @@ qed
 lemma H'_assoc: "H' (\<alpha>0, \<phi> \<bullet> \<psi>) = H' (\<alpha>0, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>0, \<phi>), \<psi>)"
   sorry
 
+
+lemma "let \<phi> = (\<lambda>x :: nat. []) in
+  let \<psi> = (\<lambda>x :: nat. [Inr (\<lambda>x. [])]) in
+  \<Delta>'(\<alpha>0, \<phi>) = \<alpha>0"
+  apply (simp add: Let_def)
+  apply (intro ext)
+  apply (simp add: comp_def \<Delta>'_def idU_def resolve_shuffle_def \<alpha>0_def idS_def)
+  done
+
+lemma [simp]: "scan [Inl y] = ([], [(y, [])])"
+  by (simp add: scan_def)
+
+lemma "let \<phi> = (\<lambda>x :: nat. []) in
+  let \<psi> = (\<lambda>x :: nat. [Inr (\<lambda>x. [])]) in
+  H'(\<alpha>0, \<phi>) (x, y, k) = hoge (x, y, k)"
+proof (cases k)
+  case 0
+  then show ?thesis 
+    apply (simp add: Let_def)
+    apply (simp add: comp_def H'_def idU_def resolve_shuffle_def \<alpha>0_def idS_def resolve_store_def)
+    sorry
+next
+  case (Suc nat)
+  then show ?thesis 
+    apply (simp add: Let_def)
+    apply (simp add: comp_def H'_def idU_def resolve_shuffle_def \<alpha>0_def idS_def resolve_store_def)
+qed
+
+
+
+
+
 lemma convert_\<delta>_hat:
   "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>0), w) =
    (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>0, Monoid_SST.eta_hat msst (q, w)))"
@@ -530,6 +562,15 @@ next
   case (VarWord x w u)
   then show ?case by (simp add: hat_alpha_right_map scan_last_simp)
 qed
+
+lemma
+  "nth_string' (concat (map f w)) (snd (map_scanned f scanned)) k
+ = (if k < length (snd scanned) then
+       concat (map f (nth_string' [] (snd scanned) k)) else
+       concat (map f w))"
+proof 
+  
+
 
 lemma nth_string'_valuate: 
   "valuate (nth_string' w (snd (scan u)) n)

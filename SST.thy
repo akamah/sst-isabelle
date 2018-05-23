@@ -80,6 +80,17 @@ definition rev :: "(nat, nat, nat, nat) SST" where
     eta = \<lambda>(q, a) x. [Inr a, Inl 0],
     final = \<lambda>q. Some [Inl 0] |)"
 
+definition reset :: "(nat, nat, nat, nat) SST" where
+  "reset = \<lparr>
+    initial = 0,
+    delta = \<lambda>(q, a). 0,
+    eta = \<lambda>(q, a) x. (if a = 0 then [] else [Inl 0, Inr a]),
+    final = \<lambda>q. Some [Inl 0] \<rparr>"
+
+lemma "run reset [1, 2, 0, 1, 2] = Some [1, 2]"
+  by (simp add: run_def reset_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
+
+
 lemma "run rev [2, 3, 4] = Some [4, 3, 2]"
   by (simp add: run_def rev_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
 

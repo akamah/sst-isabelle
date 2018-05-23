@@ -421,9 +421,9 @@ proof -
 qed
 
 
+(* COUNTER EXAMPLE *)
 lemma H'_assoc: "H' (\<alpha>0, \<phi> \<bullet> \<psi>) = H' (\<alpha>0, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>0, \<phi>), \<psi>)"
-  by (auto simp add: comp_apply H'_simp2 H'_assoc_string)
-
+  sorry
 
 lemma convert_\<delta>_hat:
   "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>0), w) =
@@ -501,54 +501,45 @@ next
   then show ?case by (simp add: hat_alpha_right_map scan_last_simp)
 qed
 
-function split :: "nat \<times> nat \<Rightarrow> bool" where
-  "k < n \<Longrightarrow> split (k, n) = True" |
-  "k = n \<Longrightarrow> split (k, n) = True" |
-  "k > n \<Longrightarrow> split (k, n) = True"
-  by (atomize_elim, auto simp add: nat_eq_iff)
 
-thm split.cases
+fun map_scanned' :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('y \<times> 'a list) list \<Rightarrow> ('y \<times> 'b list) list" where
+  "map_scanned' f [] = []" |
+  "map_scanned' f ((y, as) # yas) = (y, concat (map f as)) # map_scanned' f yas"
 
-lemma nth_string'_valuate: "valuate (nth_string' (d (y, Suc n)) (snd (scan u)) n) =
-    nth_string' (valuate (d (y, Suc n))) (snd (scan (hat_alpha ignore_left u))) n"
+definition map_scanned :: "('a \<Rightarrow> 'b list) \<Rightarrow> 'a list \<times> ('y \<times> 'a list) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
+  "map_scanned f = (\<lambda>(w, xas). (concat (map f w), map_scanned' f xas))"
+
+lemma map_scanned_Nil_simp[simp]: "map_scanned f (w, []) = (concat (map f w), [])"
+  by (simp add: map_scanned_def)
+
+lemma map_scanned_pair_simp[simp]:
+  "map_scanned f (w, xas @ [(x, as)]) 
+ = (fst (map_scanned f (w, xas)), snd (map_scanned f (w, xas)) @ [(x, concat (map f as))])"
+proof -
+  have "map_scanned' f (xas @ [(x, as)]) = map_scanned' f xas @ [(x, concat (map f as))]"
+    by (induct xas rule: pair_induct, simp_all)
+  then show ?thesis by (simp add: map_scanned_def)
+qed
+
+
+lemma "scan (hat_alpha f u) = map_scanned f (scan u)"
 proof (induct u rule: xw_induct)
   case (Word w)
   then show ?case by (simp add: hat_alpha_right_map scan_word_simp)
 next
   case (VarWord x w u)
-  then show ?case proof (cases "length (snd (scan u)) = n")
-    case True
-    then show ?thesis
-      apply (auto simp add: scan_last_simp hat_alpha_right_map nth_string'_append)
-      sorry
-  next
-    case False
-    then show ?thesis
-      apply (auto simp add: scan_last_simp hat_alpha_right_map nth_string'_append)
-
-  qed
-    apply (auto simp add: scan_last_simp hat_alpha_right_map nth_string'_append)
-  next
-    case (2 k n)
-    then show ?thesis sorry
-  next
-    case (3 k n)
-    then show ?thesis sorry
-  qed
+  then show ?case by (simp add: hat_alpha_right_map scan_last_simp)
 qed
 
-
-lemma 
-  fixes \<theta> :: "('y, 'y index + 'b) update"
-  shows "valuate (resolve_store d \<theta> (y, k)) = resolve_store (valuate o d) (ignore_left \<star> \<theta>) (y, k)"
-proof (cases k)
-  case 0
-  then show ?thesis
-    by (simp add: resolve_store_def scan_valuate map_alpha_def)
+lemma nth_string'_valuate: 
+  "valuate (nth_string' w (snd (scan u)) n)
+ = nth_string' (valuate w) (snd (map_scanned ignore_left (scan u))) n"
+proof (induct u rule: xw_induct)
+  case (Word w)
+  then show ?case by (simp add: hat_alpha_right_map scan_word_simp)
 next
-  case (Suc n)
-  then show ?thesis 
-    apply (simp add: resolve_store_def map_alpha_def) sorry
+  case (VarWord x w u)
+  then show ?case apply (simp add: hat_alpha_right_map scan_last_simp )
 qed
 
 

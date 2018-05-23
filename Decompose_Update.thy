@@ -94,6 +94,8 @@ fun append_scanned :: "('y, 'b) scanned \<Rightarrow> ('y, 'b) scanned_tail \<Ri
 lemma append_scanned_assoc: "(xas @@@ yas) @@@ zas = xas @@@ (yas @ zas)"
   by (cases xas, simp)
 
+lemma append_scanned_Nil[simp]: "xas @@@ [] = xas" 
+  by (cases xas, simp)
 
 
 subsubsection \<open>Scan\<close>
@@ -125,7 +127,7 @@ proof -
 qed
 
 lemma scan_last_simp[simp]:
-  "scan (u @ Inl x # map Inr w) = (fst (scan u), snd (scan u) @ [(x :: 'x, w)])"
+  "scan (u @ Inl x # map Inr w) = scan u @@@ [(x :: 'x, w)]"
 proof -
   { fix y :: 'x and bs
     have "scan_pair y bs (map Inr w) = [(y, bs @ w)]" by (induct w arbitrary: bs, simp_all)
@@ -135,7 +137,7 @@ proof -
       by (induct u arbitrary: x y as rule: xa_induct, simp_all add: pair_alphabet)
   } note pair = this
   { fix as
-    have "scan_head as (u @ [Inl x] @ map Inr w) = (fst (scan_head as u), snd (scan_head as u) @ [(x, w)])"
+    have "scan_head as (u @ Inl x # map Inr w) = scan_head as u @@@ [(x, w)]"
       by (induct u arbitrary: as rule: xa_induct, simp_all add: pair_alphabet pair)
   }
   thus ?thesis by (simp add: scan_def)
@@ -146,14 +148,12 @@ corollary scan_nil_simp[simp]:
   by (simp add: scan_word_simp[of "[]", simplified])
 
 corollary scan_last_var_simp[simp]:
-  "scan (u @ [Inl x]) = (fst (scan u), snd (scan u) @ [(x, [])])"
+  "scan (u @ [Inl x]) = scan u @@@ [(x, [])]"
   by (simp add: scan_last_simp[of "u" "x" "[]", simplified])
 
 corollary scan_last_single_simp[simp]:
   "scan (Inl x # map Inr w) = ([], [(x, w)])"
   by (simp add: scan_last_simp[of "[]", simplified])
-
-
 
 
 subsubsection \<open>Flat\<close>

@@ -100,9 +100,9 @@ corollary scan_last_var_simp:
 
 lemma scan_nil_simp:
   "scan [] = ([], [])"
-  by (simp add: scan_def)
+  by (simp add: scan_word_simp[of "[]", simplified])
 
-lemma pair_induct [case_names Head Pair]:
+lemma pair_induct [case_names Nil PairCons]:
   assumes head: "P []"
   assumes pair: "\<And>x as xas. P xas \<Longrightarrow> P ((x, as)#xas)"
   shows "P xas"
@@ -194,16 +194,16 @@ lemma nth_string'_append:
  = (if k < length xs then nth_string' s xs k 
                      else nth_string' s ys (k - length xs))"
 proof (induct xs arbitrary: k rule: pair_induct)
-  case Head
+  case Nil
   then show ?case by simp
 next
-  case (Pair x as xas)
+  case (PairCons x as xas)
   then show ?case proof (cases k)
     case 0
     then show ?thesis by simp
   next
     case (Suc nat)
-    then show ?thesis by (simp add: Pair)
+    then show ?thesis by (simp add: PairCons)
   qed
 qed
 

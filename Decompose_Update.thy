@@ -81,22 +81,36 @@ next
 qed
 
 
+subsubsection \<open>Scanned string\<close>
+
+text \<open>first string and pairs of a variable and a string\<close>
+
+type_synonym ('y, 'b) scanned_tail = "('y \<times> 'b list) list"
+type_synonym ('y, 'b) scanned = "'b list \<times> ('y, 'b) scanned_tail"
+
+fun append_scanned :: "('y, 'b) scanned \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'b) scanned" (infixl "@@@" 80) where
+  "append_scanned (w, xas) yas = (w, xas @ yas)"
+
+lemma append_scanned_assoc: "(xas @@@ yas) @@@ zas = xas @@@ (yas @ zas)"
+  by (cases xas, simp)
+
+
 
 subsubsection \<open>Scan\<close>
 
-text \<open>scan var-alphabet list, and split it into the first string and pairs of a variable and a string\<close>
+text \<open>scan var-alphabet list, and split it into a scanned string\<close>
 
-fun scan_pair :: "'y \<Rightarrow> 'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y \<times> 'b list) list" where
+fun scan_pair :: "'y \<Rightarrow> 'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y, 'b) scanned_tail" where
   "scan_pair x as [] = [(x, as)]" |
   "scan_pair x as (Inl y#u) = (x, as) # scan_pair y [] u" |
   "scan_pair x as (Inr a#u) = scan_pair x (as @ [a]) u"
 
-fun scan_head :: "'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
+fun scan_head :: "'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y, 'b) scanned" where
   "scan_head as [] = (as, [])" |
   "scan_head as (Inl x#u) = (as, scan_pair x [] u)" |
   "scan_head as (Inr a#u) = scan_head (as @ [a]) u"
 
-definition scan :: "('y + 'b) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
+definition scan :: "('y + 'b) list \<Rightarrow> ('y, 'b) scanned" where
   "scan u = scan_head [] u"
 
 lemma scan_word_simp:
@@ -131,7 +145,7 @@ corollary scan_last_var_simp:
   "scan (u @ [Inl x]) = (fst (scan u), snd (scan u) @ [(x, [])])"
   by (simp add: scan_last_simp[of "u" "x" "[]", simplified])
 
-lemma scan_nil_simp:
+corollary scan_nil_simp:
   "scan [] = ([], [])"
   by (simp add: scan_word_simp[of "[]", simplified])
 
@@ -215,10 +229,6 @@ qed
 fun nth_string'' where
   "nth_string'' s (w, xas) 0 = w" |
   "nth_string'' s (w, xas) (Suc n) = nth_string' s xas n"
-
-fun append_scanned (infixl "@@@" 80) where
-  "append_scanned (w, xas) yas = (w, xas @ yas)"
-
 
 
 definition flat_store where

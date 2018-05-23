@@ -48,6 +48,39 @@ lemma extract_variables_right_ignore[simp]: "extract_variables (map Inr u) = []"
   by (induct u, simp_all)
 
 
+subsubsection \<open>Induction on list of pairs\<close>
+
+lemma pair_induct [case_names Nil PairCons]:
+  assumes head: "P []"
+  assumes pair: "\<And>x as xas. P xas \<Longrightarrow> P ((x, as)#xas)"
+  shows "P xas"
+proof (induct xas)
+  case Nil
+  then show ?case by (simp add: head)
+next
+  case (Cons ax xas)
+  then show ?case proof (cases ax)
+    case (Pair x as)
+    then show ?thesis by (simp add: pair Cons)
+  qed
+qed
+
+lemma pair_rev_induct [case_names Nil PairSnoc]:
+  assumes head: "P []"
+  assumes pair: "\<And>x as xas. P xas \<Longrightarrow> P (xas @ [(x, as)])"
+  shows "P xas"
+proof (induct xas rule: rev_induct)
+  case Nil
+  then show ?case by (simp add: head)
+next
+  case (snoc ax xas)
+  then show ?case proof (cases ax)
+    case (Pair x as)
+    then show ?thesis by (simp add: pair snoc)
+  qed
+qed
+
+
 
 subsubsection \<open>Scan\<close>
 
@@ -102,35 +135,6 @@ lemma scan_nil_simp:
   "scan [] = ([], [])"
   by (simp add: scan_word_simp[of "[]", simplified])
 
-lemma pair_induct [case_names Nil PairCons]:
-  assumes head: "P []"
-  assumes pair: "\<And>x as xas. P xas \<Longrightarrow> P ((x, as)#xas)"
-  shows "P xas"
-proof (induct xas)
-  case Nil
-  then show ?case by (simp add: head)
-next
-  case (Cons ax xas)
-  then show ?case proof (cases ax)
-    case (Pair x as)
-    then show ?thesis by (simp add: pair Cons)
-  qed
-qed
-
-lemma pair_rev_induct [case_names Head Pair]:
-  assumes head: "P []"
-  assumes pair: "\<And>xas x as. P xas \<Longrightarrow> P (xas @ [(x, as)])"
-  shows "P xas"
-proof (induct xas rule: rev_induct)
-  case Nil
-  then show ?case by (simp add: head)
-next
-  case (snoc ax xas)
-  then show ?case proof (cases ax)
-    case (Pair x as)
-    then show ?thesis by (simp add: pair snoc)
-  qed
-qed
 
 
 subsubsection \<open>Flat\<close>
@@ -397,10 +401,10 @@ proof -
   { fix b0 xs
     have "concat (map (flat_store d (b0, xs)) (padding x (b0, xs))) = flat (b0, xs)"
     proof (induct xs rule: pair_rev_induct)
-      case Head
+      case Nil
       then show ?case by (simp add: flat_store_def padding_def flat_def)
     next
-      case (Pair xs y as) then show ?case
+      case (PairSnoc y as xas) then show ?case
         apply (simp add: flat_store_padding_append)
         apply (simp add: flat_store_def nth_string'_append)
         done

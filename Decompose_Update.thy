@@ -239,13 +239,12 @@ definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
 definition resolve_store :: "('y index \<Rightarrow> 'b list) \<Rightarrow> ('y, 'b) update \<Rightarrow> ('y, 'b) store" where
-  "resolve_store d \<theta> yi = (case yi of
-     (x, 0) \<Rightarrow> fst (scan (\<theta> x)) |
-     (x, Suc k) \<Rightarrow> nth_string' (d (x, Suc k)) (snd (scan (\<theta> x))) k)"
+  "resolve_store d \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string'' (d (x, k)) (scan (\<theta> x)) k)"
 
+(*
 fun resolve_store' :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
   "resolve_store' \<theta> y = resolve_store (\<lambda>(x, k). []) \<theta> y"
-
+*)
 
 subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>

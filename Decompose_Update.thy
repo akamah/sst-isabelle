@@ -218,10 +218,9 @@ fun append_scanned (infixl "@@@" 80) where
 
 
 definition flat_store where
-  "flat_store d xs yi = (case yi of
+  "flat_store d xas yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
-    (Inr (x, 0)) \<Rightarrow> map Inr (fst xs) |
-    (Inr (x, Suc k)) \<Rightarrow> map Inr (nth_string' (d (x, Suc k)) (snd xs) k))"
+    (Inr (x, k)) \<Rightarrow> map Inr (nth_string'' (d (x, k)) xas k))"
 
 fun flat_store' where
   "flat_store' xs yi = flat_store (\<lambda>(x, k). []) xs yi"
@@ -333,7 +332,7 @@ next
   case (Inr b)
   then have "yi = Inr (x, k)" using assms by simp
   then show ?thesis
-    by (simp add: resolve_store_def synthesize_store_def flat_store_def Nitpick.case_nat_unfold)
+    by (simp add: resolve_store_def synthesize_store_def flat_store_def)
 qed
 
 lemma padding_rec_x: "list_all (\<lambda>yi. (\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k))) (padding_rec n x xas)"

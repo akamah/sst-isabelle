@@ -39,11 +39,66 @@ lemma map_sum_eq_fold_sum: "map_sum f g = fold_sum (Inl o f) (Inr o g)"
 fun const :: "'a \<Rightarrow> 'b \<Rightarrow> 'a" where
   "const a b = a"
 
-fun is_inl :: "('a + 'b) \<Rightarrow> bool" where
-  "is_inl a = fold_sum (const True) (const False) a"
+primrec is_inl :: "('a + 'b) \<Rightarrow> bool" where
+  "is_inl (Inl l) = True" |
+  "is_inl (Inr r) = False"
 
-fun is_inr :: "('a + 'b) \<Rightarrow> bool" where
-  "is_inr a = fold_sum (const False) (const True) a"
+lemma is_inl_iff[iff]: "is_inl a \<longleftrightarrow> (\<exists>x. a = Inl x)"
+proof
+  assume *: "is_inl a"
+  show "is_inl a \<Longrightarrow> (\<exists>x. a = Inl x)" proof (cases a)
+    case (Inl a)
+    then show ?thesis by auto
+  next
+    case (Inr b)
+    then show ?thesis using * by simp
+  qed
+next
+  assume "\<exists>x. a = Inl x"
+  then obtain x where "a = Inl x" by auto
+  then show "is_inl a" by simp
+qed
+
+primrec is_inr :: "('a + 'b) \<Rightarrow> bool" where
+  "is_inr (Inl l) = False" |
+  "is_inr (Inr r) = True"
+
+lemma is_inr_iff[iff]: "is_inr a \<longleftrightarrow> (\<exists>x. a = Inr x)"
+proof
+  assume *: "is_inr a"
+  then show "is_inr a \<Longrightarrow> (\<exists>x. a = Inr x)" proof (cases a)
+    case (Inl a)
+    then show ?thesis using * by auto
+  next
+    case (Inr b)
+    then show ?thesis by simp
+  qed
+next
+  assume "\<exists>x. a = Inr x"
+  then obtain x where "a = Inr x" by auto
+  then show "is_inr a" by simp
+qed
+
+primrec drop_left :: "('a + 'b) \<Rightarrow> 'b list" where
+  "drop_left (Inl l) = []" |
+  "drop_left (Inr r) = [r]" 
+
+primrec drop_right :: "('a + 'b) \<Rightarrow> 'a list" where
+  "drop_right (Inl l) = [l]" |
+  "drop_right (Inr r) = []" 
+
+
+definition concat_map :: "('b \<Rightarrow> 'c list) \<Rightarrow> ('a \<Rightarrow> 'b list) \<Rightarrow> 'a \<Rightarrow> 'c list" (infixl "\<odot>" 55) where
+  "concat_map f g = concat o map f o g"
+
+lemma concat_map_apply: "(f \<odot> g) x = concat (map f (g x))"
+  unfolding concat_map_def by simp
+
+lemma concat_map_lem: "concat (map (concat o map f o g) xs) = concat (map f (concat (map g xs)))"
+  by (induct xs, auto simp add: concat_map_apply)
+
+lemma concat_map_assoc: "(f \<odot> g) \<odot> h = f \<odot> (g \<odot> h)"
+  by (auto simp add: concat_map_lem concat_map_def)
 
 
 end

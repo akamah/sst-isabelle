@@ -568,7 +568,6 @@ lemma
  = (if k < length (snd scanned) then
        concat (map f (nth_string' [] (snd scanned) k)) else
        concat (map f w))"
-proof 
   
 
 

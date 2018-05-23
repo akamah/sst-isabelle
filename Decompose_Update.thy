@@ -119,6 +119,31 @@ next
   then show ?case by (simp add: append_scanned_assoc[symmetric] length_append_scanned_1) 
 qed
 
+lemma scanned_inorder_induct_aux:
+  assumes head: "\<And>w. P (w, [])"
+  assumes pair: "\<And>w x as xas. P (w, xas) \<Longrightarrow> P (w, (x, as) # xas)"
+  shows "P (w, xs)"
+proof (induct xs rule: pair_induct)
+  case Nil
+  then show ?case using head by simp
+next
+  case (PairCons x as xas)
+  then show ?case proof -
+    have "P (w, (x, as) # xas)" by (simp add: PairCons pair)
+    then show ?thesis by (simp add: append_scanned_simp)
+  qed
+qed
+
+lemma scanned_inorder_induct[case_names Nil PairCons]:
+  assumes head: "\<And>w. P (w, [])"
+  assumes pair: "\<And>w x as xas. P (w, xas) \<Longrightarrow> P (w, (x, as) # xas)"
+  shows "P sc"
+  apply (cases sc)
+  apply simp
+  apply (rule scanned_inorder_induct_aux)
+   apply (simp add: head)
+  apply (simp add: pair)
+  done
 
 lemma scanned_induct_aux:
   assumes head: "\<And>w. P (w, [])"
@@ -140,6 +165,7 @@ lemma scanned_induct[case_names Nil PairSnoc]:
   assumes pair: "\<And>x as sc. P sc \<Longrightarrow> P (sc @@@ [(x, as)])"
   shows "P sc"
   using assms by (cases sc, simp add: scanned_induct_aux)
+
 
 subsubsection \<open>Scan\<close>
 
@@ -270,7 +296,8 @@ next
   then show ?case by (simp add: append_scanned_assoc[symmetric])
 qed
 
-subsubsection \<open>Others\<close>
+
+subsubsection \<open>nth_string\<close>
 
 fun nth_string' where
   "nth_string' s [] k = s" |
@@ -296,10 +323,45 @@ next
   qed
 qed
 
+lemma nth_string'_length: "nth_string' s (xs @ ys) (length xs) = nth_string' s ys 0" 
+  by (induct xs rule: pair_induct, simp_all)
 
 fun nth_string'' where
   "nth_string'' s (w, xas) 0 = w" |
   "nth_string'' s (w, xas) (Suc n) = nth_string' s xas n"
+
+lemma nth_string''_length: "nth_string'' s (xas @@@ ys) (length_scanned xas) = nth_string' s ys 0" 
+proof (induct xas rule: scanned_inorder_induct)
+case (Nil w)
+  then show ?case by (simp add: append_scanned_simp)
+next
+  case (PairCons x as sc)
+  then show ?case by (simp add: append_scanned_simp)
+qed
+
+lemma nth_string''_over:
+  "\<not> k < length_scanned xas \<Longrightarrow> nth_string'' s xas k = s"
+proof (induct xas arbitrary: k rule: scanned_induct)
+  case (Nil w)
+  then show ?case by (cases k, auto)
+next
+  case (PairSnoc x as sc)
+  then show ?case apply auto sorry
+qed
+
+lemma nth_string''_append: 
+  "nth_string'' s (xas @@@ ys) n 
+ = (if n < length_scanned xas then nth_string'' s xas n
+                              else nth_string' s ys (n - length_scanned xas))"
+proof (induct ys arbitrary: xas n)
+  case Nil
+  then show ?case apply simp sorry
+next
+  case (Cons a ys)
+  then show ?case apply simp sorry
+qed
+
+
 
 
 definition flat_store where
@@ -307,18 +369,23 @@ definition flat_store where
     (Inl y) \<Rightarrow> [Inl y] |
     (Inr (x, k)) \<Rightarrow> map Inr (nth_string'' (d (x, k)) xas k))"
 
+lemma [simp]: "flat_store d xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
+
+lemma [simp]: "flat_store d (xas @@@ ((x, as) # yas)) (Inr (x, length_scanned xas)) = map Inr as"
+proof (induct xas arbitrary: yas rule: scanned_inorder_induct)
+  case (Nil w)
+  then show ?case by (simp add: append_scanned_simp flat_store_def)
+next
+  case (PairCons w x as sc)
+  then show ?case by (simp add: flat_store_def append_scanned_simp nth_string'_length)
+qed
+
 fun flat_store' where
   "flat_store' xs yi = flat_store (\<lambda>(x, k). []) xs yi"
 
 
 lemma scan_inverse: "flat (scan u) = u"
-proof (induct u rule: xw_induct)
-  case (Word w)
-  then show ?case apply simp done
-next
-  case (VarWord x w u)
-  then show ?case apply simp
-qed
+  by (induct u rule: xw_induct, simp_all)
 
 
 subsection \<open>Resolve\<close>
@@ -330,10 +397,6 @@ definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
 definition resolve_store :: "('y index \<Rightarrow> 'b list) \<Rightarrow> ('y, 'b) update \<Rightarrow> ('y, 'b) store" where
   "resolve_store d \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string'' (d (x, k)) (scan (\<theta> x)) k)"
 
-(*
-fun resolve_store' :: "('y, 'b) update \<Rightarrow> ('y, 'b) store" where
-  "resolve_store' \<theta> y = resolve_store (\<lambda>(x, k). []) \<theta> y"
-*)
 
 subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>
@@ -452,51 +515,41 @@ lemma concat_map_padding:
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
 
 
-lemma flat_append[simp]: "flat (b0, xs @ ys) = flat (b0, xs) @ flat_rec ys"
-proof (induct xs arbitrary: ys)
-  case Nil
-  then show ?case by (simp add: flat_def)
-next
-  case (Cons xas xs)
-  then show ?case proof (cases xas)
-    case (Pair x as)
-    then show ?thesis by (simp add: flat_def)
-  qed
-qed
-
-
 lemma flat_store_padding_append: 
-      "concat (map (flat_store d (b0, xs @ ys)) (padding y (b0, xs @ ys)))
-     = concat (map (flat_store d (b0, xs)) (padding y (b0, xs))) 
-       @ concat (map (flat_store d (b0, xs @ ys)) 
-                   (padding_rec (Suc (length xs)) y ys))"
-proof (induct xs arbitrary: ys rule: rev_induct)
+      "concat (map (flat_store d (xas @@@ ys)) (padding y (xas @@@ ys)))
+     = concat (map (flat_store d xas) (padding y xas)) 
+       @ concat (map (flat_store d (xas @@@ ys)) 
+                   (padding_rec (length_scanned xas) y ys))"
+proof (induct ys arbitrary: xas rule: pair_rev_induct)
   case Nil
-  then show ?case by (simp add: padding_def flat_store_def)
+  then show ?case by simp
 next
-  case (snoc xas xs)
-  show ?case proof (cases xas)
-    case (Pair x as)
-    then show ?thesis
-      by (simp add: snoc, simp add: flat_store_def nth_string'_append)
+  case (PairSnoc x as asc)
+  then show ?case
+    apply (simp add: append_scanned_assoc[symmetric] del: length_append_scanned)
   qed
 qed
+
+
+lemma "concat (map (flat_store d (sc @@@ ys)) (padding x sc)) 
+     = concat (map (flat_store d (sc @@@ zs)) (padding x sc))"
+proof (induct sc arbitrary: ys zs rule: scanned_induct)
+  case Nil
+  then show ?case by (simp add: append_scanned_simp flat_store_def)
+next
+  case (PairSnoc x as xas)
+  show ?case apply (simp add: append_scanned_simp append_scanned_assoc PairSnoc) thm PairSnoc
+  qed
 
 lemma flat_store_flat: "concat (map (flat_store d scanned) (padding x scanned)) = flat scanned"
-proof -
-  { fix b0 xs
-    have "concat (map (flat_store d (b0, xs)) (padding x (b0, xs))) = flat (b0, xs)"
-    proof (induct xs rule: pair_rev_induct)
-      case Nil
-      then show ?case by (simp add: flat_store_def padding_def flat_def)
-    next
-      case (PairSnoc y as xas) then show ?case
-        apply (simp add: flat_store_padding_append)
-        apply (simp add: flat_store_def nth_string'_append)
-        done
-    qed
-  }
-  then show ?thesis by (cases scanned, simp)
+proof (induct scanned rule: scanned_induct)
+  case (Nil w)
+  then show ?case by (simp add: flat_store_def)
+next
+  case (PairSnoc x as sc)
+  then show ?case apply (simp add: )
+qed
+  
 qed
 
 

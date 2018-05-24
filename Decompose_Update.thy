@@ -377,32 +377,13 @@ proof (induct xas arbitrary: n rule: scanned_induct)
   then show ?case by (auto simp add: append_scanned_simp nth_string_pos')
 next
   case (PairCons w x as xas)
-  then show ?case proof (cases n)
-    case 0
-    then show ?thesis by (simp add: append_scanned_simp)
-  next
-    case (Suc k)
-    then show ?thesis using PairCons by (simp add: append_scanned_simp PairCons)
-  qed
+  then show ?case by (cases n, simp_all add: append_scanned_simp)
 qed
 
-lemma nth_string_lt:
-  assumes "n < length_scanned (w, xas)"
-  shows "nth_string s (w, xas) n = nth_string [] (w, xas) n"
-  using assms proof (induct xas arbitrary: n w rule: pair_induct)
-  case (Nil w)
-  then show ?case by simp
-next
-  case (PairCons x as xas)
-  then show ?case proof (cases n)
-    case 0
-    then show ?thesis apply simp done
-  next
-    case (Suc k)
-    then have "k < length_scanned (w, xas)"  using PairCons.prems by auto
-    then show ?thesis by (simp add: PairCons.hyps Suc)
-  qed
-qed
+corollary nth_string_lt_length:
+  assumes "n < length_scanned sc"
+  shows "nth_string s (sc @@@ rest) n = nth_string s sc n"
+  using assms by (simp add: nth_string_append)
 
 
 definition flat_store where
@@ -411,18 +392,18 @@ definition flat_store where
     (Inr (x, k)) \<Rightarrow> map Inr (nth_string (d (x, k)) xas k))"
 
 lemma [simp]: "flat_store d xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
-lemma [simp]: "flat_store d (sc @@@ [(x, as)]) (Inr (x, length_scanned sc)) = map Inr as"
+
+lemma [simp]: "flat_store d (sc @@@ [(x, as)]) (Inr (y, length_scanned sc)) = map Inr as"
 proof (induct sc arbitrary: d rule: scanned_induct)
   case (Nil w)
-  then show ?case apply (simp add: flat_store_def append_scanned_simp) done
+  then show ?case by (simp add: flat_store_def append_scanned_simp)
 next
   case (PairCons w x as xas)
-  then show ?case apply (simp add: flat_store_def append_scanned_simp)
-    by (simp add: nth_string_eq nth_string'_length)
+  then show ?case by (simp add: flat_store_def append_scanned_simp  nth_string_eq nth_string'_length)
 qed
 
 
-lemma scan_inverse: "flat (scan u) = u"
+theorem scan_inverse: "flat (scan u) = u"
   by (induct u rule: xw_induct, simp_all)
 
 
@@ -510,14 +491,17 @@ next
     by (simp add: resolve_store_def synthesize_store_def flat_store_def)
 qed
 
-lemma padding_rec_x: "list_all (\<lambda>yi. (\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k))) (padding_rec n x xas)"
-  by (induct xas rule: padding_rec.induct, simp_all)
+subsection \<open>Properties of flat_store and synthesize_store & resolve_store\<close>
 
-lemma padding_x: "list_all (\<lambda>yi. (\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k))) (padding x xas)"
-  by (cases xas, simp add: padding_rec_x padding_def)
+abbreviation z_equal_var where
+  "z_equal_var x yi \<equiv> ((\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k)))"
+
+
+lemma padding_x: "list_all (z_equal_var x) (padding x xas)"
+  by (induct xas rule: scanned_rev_induct, simp_all)
 
 lemma concat_map_synthesize_resolve_flat:
-  assumes "list_all (\<lambda>yi. (\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k))) xs"
+  assumes "list_all (z_equal_var x) xs"
   shows "concat (map (synthesize_store (resolve_store d m)) xs) = concat (map (flat_store d (scan (m x))) xs)"
 using assms proof (induct xs rule: xa_induct)
   case Nil
@@ -536,24 +520,6 @@ lemma concat_map_padding:
    concat (map (flat_store d (scan (m x))) (padding x xas))"
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
 
-(*
-
-lemma flat_store_padding_append: 
-      "concat (map (flat_store d (xas @@@ ys)) (padding y (xas @@@ ys)))
-     = concat (map (flat_store d xas) (padding y xas)) 
-       @ concat (map (flat_store d (xas @@@ ys)) 
-                   (padding_rec (length_scanned xas) y ys))"
-proof (induct ys arbitrary: xas rule: pair_rev_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (PairSnoc x as asc)
-  then show ?case
-    apply (simp add: append_scanned_assoc[symmetric] del: length_append_scanned)
-  qed
-qed*)
-
-
 
 abbreviation z_less_than where
   "z_less_than n z \<equiv> (\<forall>y k. z = Inr (y, k) \<longrightarrow> k < n)"
@@ -562,57 +528,24 @@ lemma z_less_than_Suc: "z_less_than n z \<Longrightarrow> z_less_than (Suc n) z"
   by (simp add: less_SucI)
 
 lemma all_z_less_than_Suc:
-  assumes "list_all (\<lambda>z. z_less_than n z) xs"
-  shows "list_all (\<lambda>z. z_less_than (Suc n) z) xs"
+  assumes "list_all (z_less_than n) xs"
+  shows "list_all (z_less_than (Suc n)) xs"
   using assms by (induct xs, simp_all add: less_SucI)
-
-lemma nth_string_lt_length:
-  assumes "n < length_scanned sc"
-  shows "nth_string s (sc @@@ rest) n = nth_string s sc n"
-using assms proof (induct sc arbitrary: n rule: scanned_induct)
-  case (Nil w)
-  then show ?case by (cases n, simp_all add: append_scanned_simp)
-next
-  case (PairCons w x as xas)
-  then show ?case proof (cases n)
-    case 0
-    then show ?thesis by (simp add: append_scanned_simp )
-  next
-    case (Suc k) thm PairCons
-    then show ?thesis using PairCons by (simp add: append_scanned_simp)
-  qed
-qed
-
 
 lemma flat_store_lt_length:
   assumes "z_less_than (length_scanned sc) (Inr (y, n))"
   shows "flat_store d (sc @@@ rest) (Inr (y, n)) = flat_store d sc (Inr (y, n))"
-using assms proof (induct sc rule: scanned_induct)
-  case (Nil w)
-  then show ?case by (simp add: flat_store_def append_scanned_simp)
-next
-  case (PairCons w x as xas)
-  then show ?case proof (cases n)
-    case 0
-    then show ?thesis by (simp add: flat_store_def append_scanned_simp)
-  next
-    case (Suc k) thm PairCons
-    have "n < length_scanned ((w, [(x, as)]) @@@ xas)"
-      using PairCons.prems by blast
-    then show ?thesis using Suc by (simp add: flat_store_def nth_string_lt_length)
-  qed
-qed
-
+  using assms unfolding flat_store_def by (simp add: nth_string_lt_length)
 
 lemma cm_flat_store_ignore_rest:
   assumes "list_all (z_less_than (length_scanned sc)) us"
   shows "concat (map (flat_store d (sc @@@ rest)) us) = concat (map (flat_store d sc) us)"
 using assms proof (induct us rule: xa_induct)
   case Nil
-  then show ?case apply simp done
+  then show ?case by simp
 next
   case (Var x xs)
-  then show ?case apply simp done
+  then show ?case by simp
 next
   case (Alpha a xs)
   have "z_less_than (length_scanned sc) (Inr a)" using Alpha.prems by auto
@@ -645,9 +578,7 @@ proof (induct scanned rule: scanned_rev_induct)
   then show ?case by (simp add: flat_store_def)
 next
   case (PairSnoc x as sc)
-  then show ?case apply (simp add: cm_flat_store_padding_ignore)
-    apply (simp add: flat_store_def nth_string_length)
-    done
+  then show ?case by (simp add: cm_flat_store_padding_ignore)
 qed
   
 
@@ -672,8 +603,8 @@ qed
 
 theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize (s, a)) = s"
   apply (rule ext)
-  apply (simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map)
-  apply (simp add: extract_variables_synthesize_store extract_variables_padding_scan)
+  apply (simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map
+                   extract_variables_synthesize_store extract_variables_padding_scan)
   done
 
 

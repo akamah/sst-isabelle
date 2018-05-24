@@ -344,14 +344,14 @@ lemma map_alpha_resolve_store_0:
   "hat_hom t (fst (scan u)) = fst (scan (hat_alpha (update2hom t) u))"
 proof (induct u rule: xw_induct)
   case (Word w)
-  then show ?case by (simp add: scan_word_simp hat_alpha_right_map hat_hom_def)
+  then show ?case by (simp add: hat_alpha_right_map hat_hom_def)
 next
   case (VarWord x w u)
-  then show ?case by (simp add: scan_last_simp hat_alpha_right_map)
+  then show ?case by (simp add: hat_alpha_right_map)
 qed
 
-lemma length_scan_hat_alpha: "length (snd (scan (hat_alpha t u))) = length (snd (scan u))"
-  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map scan_word_simp scan_last_simp)
+lemma length_scan_hat_alpha: "length_scanned (scan (hat_alpha t u)) = length_scanned (scan u)"
+  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
 
 
 lemma map_alpha_resolve_store_suc:
@@ -359,12 +359,12 @@ lemma map_alpha_resolve_store_suc:
  = nth_string' (hat_hom t (d (y, Suc k))) (snd (scan (hat_alpha (update2hom t) u))) k"
 proof (induct u arbitrary: k rule: xw_induct)
   case (Word w)
-  then show ?case by (simp add: scan_word_simp hat_alpha_right_map)
+  then show ?case by (simp add: hat_alpha_right_map)
 next
   case (VarWord x w u)
   then show ?case proof (induct k)
     case 0
-    then show ?case by (simp add: scan_last_simp hat_alpha_right_map nth_string'_append length_scan_hat_alpha hat_hom_def)
+    then show ?case by (simp add: hat_alpha_right_map nth_string'_append length_scan_hat_alpha hat_hom_def)
   next
     case (Suc k)
     then show ?case apply (simp add: scan_last_simp hat_alpha_right_map) sorry

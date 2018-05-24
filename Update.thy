@@ -18,6 +18,16 @@ next
   case (Cons a xs) then show ?case by (cases a) simp_all
 qed
 
+lemma xa_rev_induct [consumes 0, case_names Nil Var Alpha]:
+  "P [] \<Longrightarrow> (\<And>x xs. P xs \<Longrightarrow> P (xs @ [Inl x]))
+        \<Longrightarrow> (\<And>a xs. P xs \<Longrightarrow> P (xs @ [Inr a]))
+        \<Longrightarrow> P xs"
+proof (induction xs rule: rev_induct)
+  case Nil then show ?case by simp
+next
+  case (snoc a xs) then show ?case by (cases a) simp_all
+qed
+
 
 subsection \<open>new induction rule\<close>
 

@@ -121,9 +121,9 @@ qed
 
 lemma scanned_inorder_induct_aux:
   assumes head: "\<And>w. P (w, [])"
-  assumes pair: "\<And>w x as xas. P (w, xas) \<Longrightarrow> P (w, (x, as) # xas)"
+  assumes pair: "\<And>w x as xas. (\<And>u. P (u, xas)) \<Longrightarrow> P (w, (x, as) # xas)"
   shows "P (w, xs)"
-proof (induct xs rule: pair_induct)
+proof (induct xs arbitrary: w rule: pair_induct)
   case Nil
   then show ?case using head by simp
 next
@@ -136,7 +136,7 @@ qed
 
 lemma scanned_inorder_induct[case_names Nil PairCons]:
   assumes head: "\<And>w. P (w, [])"
-  assumes pair: "\<And>w x as xas. P (w, xas) \<Longrightarrow> P (w, (x, as) # xas)"
+  assumes pair: "\<And>w x as xas. (\<And>u. P (u, xas)) \<Longrightarrow> P (w, (x, as) # xas)"
   shows "P sc"
   apply (cases sc)
   apply simp
@@ -328,40 +328,56 @@ lemma nth_string'_length: "nth_string' s (xs @ ys) (length xs) = nth_string' s y
 
 fun nth_string'' where
   "nth_string'' s (w, xas) 0 = w" |
-  "nth_string'' s (w, xas) (Suc n) = nth_string' s xas n"
+  "nth_string'' s (w, []) (Suc n) = s" |
+  "nth_string'' s (w, (x, as) # xas) (Suc n) = nth_string'' s (as, xas) n"
+
+
+lemma nth_string''_eq: "nth_string'' s (w, xas) (Suc n) = nth_string' s xas n"
+proof (induct xas arbitrary: n w rule: pair_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (PairCons x as xas)
+  then show ?case proof (cases n)
+    case 0
+    then show ?thesis by simp
+  next
+    case (Suc nat)
+    then show ?thesis by (simp add: PairCons)
+  qed
+qed
+
 
 lemma nth_string''_length: "nth_string'' s (xas @@@ ys) (length_scanned xas) = nth_string' s ys 0" 
 proof (induct xas rule: scanned_inorder_induct)
 case (Nil w)
-  then show ?case by (simp add: append_scanned_simp)
+  then show ?case by (simp add: append_scanned_simp nth_string''_eq)
 next
   case (PairCons x as sc)
-  then show ?case by (simp add: append_scanned_simp)
+  then show ?case by (simp add: append_scanned_simp nth_string''_eq)
 qed
 
-lemma nth_string''_over:
-  "\<not> k < length_scanned xas \<Longrightarrow> nth_string'' s xas k = s"
-proof (induct xas arbitrary: k rule: scanned_induct)
-  case (Nil w)
-  then show ?case by (cases k, auto)
-next
-  case (PairSnoc x as sc)
-  then show ?case apply auto sorry
-qed
+lemma nth_string''_pos: "0 < n \<Longrightarrow> nth_string'' s (w, xas) n = nth_string' s xas (n - 1)"
+  by (auto simp add: Nat.gr0_conv_Suc nth_string''_eq)
+
 
 lemma nth_string''_append: 
   "nth_string'' s (xas @@@ ys) n 
  = (if n < length_scanned xas then nth_string'' s xas n
                               else nth_string' s ys (n - length_scanned xas))"
-proof (induct ys arbitrary: xas n)
+proof (induct xas arbitrary: n rule: scanned_inorder_induct)
   case Nil
-  then show ?case apply simp sorry
+  then show ?case by (auto simp add: append_scanned_simp nth_string''_pos)
 next
-  case (Cons a ys)
-  then show ?case apply simp sorry
+  case (PairCons w x as xas)
+  then show ?case proof (cases n)
+    case 0
+    then show ?thesis by (simp add: append_scanned_simp)
+  next
+    case (Suc k)
+    then show ?thesis using PairCons by (simp add: append_scanned_simp PairCons)
+  qed
 qed
-
-
 
 
 definition flat_store where
@@ -377,7 +393,7 @@ proof (induct xas arbitrary: yas rule: scanned_inorder_induct)
   then show ?case by (simp add: append_scanned_simp flat_store_def)
 next
   case (PairCons w x as sc)
-  then show ?case by (simp add: flat_store_def append_scanned_simp nth_string'_length)
+  then show ?case apply (simp add: append_scanned_simp nth_string'_length)
 qed
 
 fun flat_store' where

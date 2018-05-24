@@ -89,8 +89,7 @@ type_synonym ('y, 'b) scanned_tail = "('y \<times> 'b list) list"
 type_synonym ('y, 'b) scanned = "'b list \<times> ('y, 'b) scanned_tail"
 
 fun length_scanned :: "('y, 'b) scanned \<Rightarrow> nat" where
-  "length_scanned (w, []) = 1" |
-  "length_scanned (w, xs#xas) = Suc (length_scanned ([], xas))"
+  "length_scanned (w, xas) = Suc (length xas)"
 
 definition append_scanned :: "('y, 'b) scanned \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'b) scanned" (infixl "@@@" 80) where
   "append_scanned = (\<lambda>(w, xas) yas. (w, xas @ yas))"
@@ -103,6 +102,25 @@ lemma append_scanned_simp: "(w, xas) @@@ yas = (w, xas @ yas)"
 
 lemma append_scanned_Nil[simp]: "xas @@@ [] = xas" 
   by (cases xas, simp add: append_scanned_def)
+
+lemma length_append_scanned_1: "length_scanned (xas @@@ [p]) = Suc (length_scanned xas)"
+proof (cases xas)
+  case (Pair w xs)
+  then show ?thesis by (induct xs, simp_all add: append_scanned_simp)
+qed
+
+lemma length_Cons_scanned_1: "length_scanned (w, x # xas) = Suc (length_scanned (w, xas))"
+  by (induct xas, simp_all add: append_scanned_simp)
+
+lemma length_append_scanned[simp]:
+  "length_scanned (xas @@@ ys) = length_scanned xas + length ys"
+proof (induct ys arbitrary: xas rule: rev_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (snoc x xs)
+  then show ?case by (simp add: append_scanned_assoc[symmetric] length_append_scanned_1) 
+qed
 
 lemma scanned_inorder_induct_aux:
   assumes head: "\<And>w. P (w, [])"
@@ -150,23 +168,6 @@ lemma scanned_induct[case_names Nil PairSnoc]:
   assumes pair: "\<And>x as sc. P sc \<Longrightarrow> P (sc @@@ [(x, as)])"
   shows "P sc"
   using assms by (cases sc, simp add: scanned_induct_aux)
-
-
-lemma length_append_scanned_1: "length_scanned (xas @@@ [p]) = Suc (length_scanned xas)"
-  by (induct xas rule: scanned_inorder_induct, simp_all add: append_scanned_simp)
-
-lemma length_Cons_scanned_1: "length_scanned (w, x # xas) = Suc (length_scanned (w, xas))"
-  by (induct xas, simp_all add: append_scanned_simp)
-
-lemma length_append_scanned[simp]:
-  "length_scanned (xas @@@ ys) = length_scanned xas + length ys"
-proof (induct ys arbitrary: xas rule: rev_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (snoc x xs)
-  then show ?case by (simp add: append_scanned_assoc[symmetric] length_append_scanned_1) 
-qed
 
 
 subsubsection \<open>Scan\<close>
@@ -280,7 +281,13 @@ lemma padding_word_simp[simp]:
 lemma padding_last_simp[simp]: 
   "padding y (xas @@@ [(x, as :: 'b list)])
  = padding y xas @ [Inl x, Inr (y, length_scanned xas)]"
-  by (induct xas rule: scanned_inorder_induct, simp_all add: append_scanned_simp padding_def)
+proof -
+  { fix n x yas and as :: "'b list"
+    have "padding_rec n y (yas @ [(x, as)]) = padding_rec n y yas @ [Inl x, Inr (y, n + length yas)]"
+      by (induct yas arbitrary: n rule: pair_induct, simp_all)
+  } note that = this
+  then show ?thesis by (cases xas, simp add: padding_def that append_scanned_simp)
+qed
 
 lemma padding_append_scanned:
   "padding y (xas @@@ ys) = padding y xas @ padding_rec (length_scanned xas) y ys"
@@ -349,8 +356,8 @@ proof (induct xas rule: scanned_inorder_induct)
 case (Nil w)
   then show ?case by (simp add: append_scanned_simp nth_string''_eq)
 next
-  case (PairCons w x as sc)
-  then show ?case apply (simp add: append_scanned_simp)
+  case (PairCons x as sc)
+  then show ?case by (simp add: append_scanned_simp nth_string''_eq)
 qed
 
 lemma nth_string''_pos: "0 < n \<Longrightarrow> nth_string'' s (w, xas) n = nth_string' s xas (n - 1)"

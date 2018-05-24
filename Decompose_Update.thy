@@ -103,6 +103,9 @@ lemma append_scanned_simp: "(w, xas) @@@ yas = (w, xas @ yas)"
 lemma append_scanned_Nil[simp]: "xas @@@ [] = xas" 
   by (cases xas, simp add: append_scanned_def)
 
+lemma fst_append_scanned[simp]: "fst (a @@@ b) = fst a"
+  by (cases a, simp add: append_scanned_simp)
+
 lemma length_append_scanned_1: "length_scanned (xas @@@ [p]) = Suc (length_scanned xas)"
 proof (cases xas)
   case (Pair w xs)
@@ -122,7 +125,7 @@ next
   then show ?case by (simp add: append_scanned_assoc[symmetric] length_append_scanned_1) 
 qed
 
-lemma scanned_inorder_induct_aux:
+lemma scanned_induct_aux:
   assumes head: "\<And>w. P (w, [])"
   assumes pair: "\<And>w x as xas. (\<And>u. P (u, xas)) \<Longrightarrow> P ((w, [(x, as)]) @@@ xas)"
   shows "P (w, xs)"
@@ -137,18 +140,18 @@ next
   qed
 qed
 
-lemma scanned_inorder_induct[case_names Nil PairCons]:
+lemma scanned_induct[case_names Nil PairCons]:
   assumes head: "\<And>w. P (w, [])"
   assumes pair: "\<And>w x as xas. (\<And>u. P (u, xas)) \<Longrightarrow> P ((w, [(x, as)]) @@@ xas)"
   shows "P sc"
   apply (cases sc)
   apply simp
-  apply (rule scanned_inorder_induct_aux)
+  apply (rule scanned_induct_aux)
    apply (simp add: head)
   apply (simp add: pair)
   done
 
-lemma scanned_induct_aux:
+lemma scanned_rev_induct_aux:
   assumes head: "\<And>w. P (w, [])"
   assumes pair: "\<And>x as sc. P sc \<Longrightarrow> P (sc @@@ [(x, as)])"
   shows "P (w, xs)"
@@ -163,11 +166,11 @@ next
   qed
 qed
 
-lemma scanned_induct[case_names Nil PairSnoc]:
+lemma scanned_rev_induct[case_names Nil PairSnoc]:
   assumes head: "\<And>w. P (w, [])"
   assumes pair: "\<And>x as sc. P sc \<Longrightarrow> P (sc @@@ [(x, as)])"
   shows "P sc"
-  using assms by (cases sc, simp add: scanned_induct_aux)
+  using assms by (cases sc, simp add: scanned_rev_induct_aux)
 
 
 subsubsection \<open>Scan\<close>
@@ -247,7 +250,7 @@ lemma flat_word_simp[simp]: "flat (w, []) = map Inr w"
   by (induct w, simp_all add: flat_def)
 
 lemma flat_append[simp]: "flat (xas @@@ xs) = flat xas @ flat_rec xs"
-proof (induct xas arbitrary: xs rule: scanned_induct)
+proof (induct xas arbitrary: xs rule: scanned_rev_induct)
   case (Nil w)
   then show ?case by (simp add: append_scanned_simp flat_def)
 next
@@ -352,7 +355,7 @@ qed
 
 
 lemma nth_string''_length: "nth_string'' s (xas @@@ ys) (length_scanned xas) = nth_string' s ys 0" 
-proof (induct xas rule: scanned_inorder_induct)
+proof (induct xas rule: scanned_induct)
 case (Nil w)
   then show ?case by (simp add: append_scanned_simp nth_string''_eq)
 next
@@ -368,7 +371,7 @@ lemma nth_string''_append:
   "nth_string'' s (xas @@@ ys) n 
  = (if n < length_scanned xas then nth_string'' s xas n
                               else nth_string' s ys (n - length_scanned xas))"
-proof (induct xas arbitrary: n rule: scanned_inorder_induct)
+proof (induct xas arbitrary: n rule: scanned_induct)
   case Nil
   then show ?case by (auto simp add: append_scanned_simp nth_string''_pos)
 next
@@ -408,7 +411,7 @@ definition flat_store where
 
 lemma [simp]: "flat_store d xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
 lemma [simp]: "flat_store d (sc @@@ [(x, as)]) (Inr (x, length_scanned sc)) = map Inr as"
-proof (induct sc arbitrary: d rule: scanned_inorder_induct)
+proof (induct sc arbitrary: d rule: scanned_induct)
   case (Nil w)
   then show ?case apply (simp add: flat_store_def append_scanned_simp) done
 next
@@ -569,7 +572,7 @@ lemma all_z_less_than_Suc:
 lemma nth_string''_lt_length:
   assumes "n < length_scanned sc"
   shows "nth_string'' s (sc @@@ rest) n = nth_string'' s sc n"
-using assms proof (induct sc arbitrary: n rule: scanned_inorder_induct)
+using assms proof (induct sc arbitrary: n rule: scanned_induct)
   case (Nil w)
   then show ?case by (cases n, simp_all add: append_scanned_simp)
 next
@@ -587,7 +590,7 @@ qed
 lemma flat_store_lt_length:
   assumes "z_less_than (length_scanned sc) (Inr (y, n))"
   shows "flat_store d (sc @@@ rest) (Inr (y, n)) = flat_store d sc (Inr (y, n))"
-using assms proof (induct sc rule: scanned_inorder_induct)
+using assms proof (induct sc rule: scanned_induct)
   case (Nil w)
   then show ?case by (simp add: flat_store_def append_scanned_simp)
 next
@@ -621,13 +624,13 @@ next
 qed
 
 lemma padding_lt_length_scanned: "list_all (z_less_than (length_scanned sc)) (padding x sc)"
-  by (induct sc rule: scanned_induct, simp_all add: all_z_less_than_Suc)
+  by (induct sc rule: scanned_rev_induct, simp_all add: all_z_less_than_Suc)
 
 
 lemma cm_flat_store_padding_ignore:
  "concat (map (flat_store d (sc @@@ rest)) (padding x sc)) 
 = concat (map (flat_store d sc) (padding x sc))"
-proof (induct sc arbitrary: rest rule: scanned_induct)
+proof (induct sc arbitrary: rest rule: scanned_rev_induct)
   case Nil
   then show ?case by (simp add: append_scanned_simp flat_store_def)
 next
@@ -640,7 +643,7 @@ next
 qed
 
 lemma flat_store_flat: "concat (map (flat_store d scanned) (padding x scanned)) = flat scanned"
-proof (induct scanned rule: scanned_induct)
+proof (induct scanned rule: scanned_rev_induct)
   case (Nil w)
   then show ?case by (simp add: flat_store_def)
 next

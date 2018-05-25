@@ -53,6 +53,7 @@ definition H' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) u
 lemma H'_simp2: "H' (\<alpha>, \<theta>) (x, y') = resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y'"
   by (simp add: H'_def)
 
+
 lemma \<Delta>'_assoc_string:
   fixes \<alpha> :: "'x \<Rightarrow> 'y shuffle"
   fixes \<theta> :: "('x, ('y, 'b) update) update"
@@ -66,7 +67,7 @@ proof (induct u rule: xa_induct)
 next
   case (Var x xs)
   then show ?case
-    by (simp add: resolve_shuffle_distrib hat_homU_append  \<iota>_def synthesize_inverse_shuffle)
+    by (simp add: resolve_shuffle_distrib hat_homU_append \<iota>_def synthesize_inverse_shuffle)
 next
   case (Alpha a xs)
   then show ?case by (simp add: resolve_shuffle_distrib)
@@ -355,9 +356,6 @@ lemma map_alpha_resolve_store:
   by (cases k, simp_all add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_aux)
 
 
-lemma "(t \<bullet> resolve_store d \<theta>) (y, k) = resolve_store (t \<bullet> d) (update2hom t \<star> \<theta>) (y, k)"
-  apply (simp add: comp_def)
-
 lemma "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
      = resolve_store (H' (\<alpha>, \<phi>) \<bullet> embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)"
   oops
@@ -409,30 +407,28 @@ next
   then show ?thesis 
     apply (simp add: Let_def)
     apply (simp add: comp_def H'_def idU_def resolve_shuffle_def \<alpha>0_def idS_def resolve_store_def)
+    sorry
 qed
 
 
-
-
+lemma \<Delta>'_id: "\<Delta>' (\<alpha>, idU) = \<alpha>"
+  apply (rule ext)
+  apply (simp add: \<Delta>'_def idU_def comp_right_neutral)
+  apply (simp add: resolve_shuffle_def \<iota>_def synthesize_inverse_shuffle)
+  done
 
 lemma convert_\<delta>_hat:
-  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>0), w) =
-   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>0, Monoid_SST.eta_hat msst (q, w)))"
+  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w) =
+   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))"
 proof (induct w arbitrary: q rule: rev_induct)
   case Nil
-  then show ?case 
-    apply (simp add: convert_\<delta>_def)
-    apply (intro ext)
-    apply (simp add: \<Delta>'_def idU_def \<iota>_def comp_right_neutral map_alpha_synthesize \<alpha>0_def idS_def)
-    apply (simp add: resolve_shuffle_def synthesize_def synthesize_shuffle_def comp_def)
-    apply (simp add: scan_def padding_def synthesize_store_def)
-    done
+  then show ?case by (simp add: convert_\<delta>_def \<Delta>'_id)
 next
   case (snoc a w)
   then show ?case by (simp add: delta_append eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
 qed
 
-lemma nth_string_vars: "nth_string' [Inl (x, y, Suc k)] [(y, [Inl (x, y, Suc 0)])] k = [Inl (x, y, Suc k)]"
+lemma nth_string_vars: "nth_string [Inl (x, y, Suc k)] ([Inl (x, y, Suc 0)], []) k = [Inl (x, y, Suc k)]"
   by (induct k, simp_all)
 
 lemma convert_\<eta>_hat_Nil:
@@ -485,10 +481,10 @@ term "ignore_left \<star> (\<theta> :: ('y, 'z + 'b) update)"
 lemma scan_valuate: "fst (scan (hat_alpha ignore_left u)) = valuate (fst (scan u))"
 proof (induct u rule: xw_induct)
   case (Word w)
-  then show ?case by (simp add: scan_word_simp hat_alpha_right_map valuate_ignore_left)
+  then show ?case by (simp add: hat_alpha_right_map valuate_ignore_left)
 next
   case (VarWord x w u)
-  then show ?case by (simp add: hat_alpha_right_map scan_last_simp)
+  then show ?case by (simp add: hat_alpha_right_map)
 qed
 
 
@@ -503,61 +499,134 @@ lemma map_scanned_Nil_simp[simp]: "map_scanned f (w, []) = (concat (map f w), []
   by (simp add: map_scanned_def)
 
 lemma map_scanned_pair_simp[simp]:
-  "map_scanned f (w, xas @ [(x, as)]) 
- = (fst (map_scanned f (w, xas)), snd (map_scanned f (w, xas)) @ [(x, concat (map f as))])"
+  "map_scanned f (sc @@@ [(x, as)])
+ = map_scanned f sc @@@ [(x, concat (map f as))]"
+  by (induct sc rule: scanned_induct, simp_all add: append_scanned_simp map_scanned_def)
+
+lemma length_map_scanned: "length_scanned (map_scanned f sc) = length_scanned sc"
+  by (induct sc rule: scanned_induct, simp_all add: append_scanned_simp map_scanned_def)
+
+lemma map_scanned_hat_alpha: "scan (hat_alpha f u) = map_scanned f (scan u)"
+  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
+
+
+lemma nth_string_valuate: 
+  "valuate (nth_string w (scan u) n)
+ = nth_string (valuate w) (map_scanned ignore_left (scan u)) n"
+proof (induct u arbitrary: n rule: xw_induct)
+  case (Word w)
+  then show ?case proof (cases n)
+    case 0
+    then show ?thesis by (simp add: valuate_ignore_left)
+  next
+    case (Suc nat)
+    then show ?thesis by (simp add: hat_alpha_right_map nth_string_pos_Nil)
+  qed
+next
+  case (VarWord x w u)
+  then show ?case proof (cases n)
+    case 0
+    then show ?thesis using VarWord
+      by (simp add: valuate_ignore_left nth_string_append_first)
+  next
+    case (Suc nat)
+    then show ?thesis using VarWord
+      by (auto simp add: valuate_ignore_left nth_string_append_last length_scan_hat_alpha length_map_scanned)
+  qed
+qed
+
+lemma hat_alpha_synthesize:
+  "hat_alpha t (synthesize (s, a) y) = synthesize (s, concat o map t o a) y"
 proof -
-  have "map_scanned' f (xas @ [(x, as)]) = map_scanned' f xas @ [(x, concat (map f as))]"
-    by (induct xas rule: pair_induct, simp_all)
-  then show ?thesis by (simp add: map_scanned_def)
+  have "\<And>y'. (hat_alpha t \<circ> synthesize (s, a)) y = synthesize (s, concat \<circ> map t \<circ> a) y"
+    by (simp add: map_alpha_synthesize[simplified map_alpha_def])
+  then show ?thesis by simp
 qed
 
+lemma concat_map_ignore_left_embed: "concat \<circ> map ignore_left \<circ> Convert_Monoid_SST.embed x = const []"
+  by (rule ext, simp)
 
-lemma "scan (hat_alpha f u) = map_scanned f (scan u)"
-proof (induct u rule: xw_induct)
+
+lemma cm_synthesize_store_const_is_inl: "list_all is_inl (concat (map (synthesize_store (const [])) ps))"
+  by (induct ps rule: xa_induct, simp_all add: synthesize_store_def)
+
+
+lemma list_all_is_inl_map_Inr:
+  assumes "list_all is_inl (map Inr bs)"
+  shows "bs = []"
+  using assms by (induct bs, simp_all)
+
+lemma nth_string_scan_is_inl:
+  assumes "list_all is_inl u"
+  shows "nth_string [] (scan u) k = []"
+using assms proof (induct u arbitrary: k rule: xw_induct)
   case (Word w)
-  then show ?case by (simp add: hat_alpha_right_map scan_word_simp)
+  then have "w = []" by (simp add: list_all_is_inl_map_Inr)
+  then show ?case by (cases k, simp_all)
 next
   case (VarWord x w u)
-  then show ?case by (simp add: hat_alpha_right_map scan_last_simp)
+  have "w = []" using VarWord.prems list_all_is_inl_map_Inr by auto
+  then show ?case using VarWord by (simp add: nth_string_append_last)
 qed
 
-lemma
-  "nth_string' (concat (map f w)) (snd (map_scanned f scanned)) k
- = (if k < length (snd scanned) then
-       concat (map f (nth_string' [] (snd scanned) k)) else
-       concat (map f w))"
-  
+
+lemma nth_string_map_scanned_ignore_left:
+  "nth_string [] (map_scanned ignore_left (scan (\<iota> \<alpha> x y))) k = []"
+  apply (simp add: comp_def map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize concat_map_ignore_left_embed)
+  apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def comp_def hat_hom_left_concat_map)
+  apply (simp add: nth_string_scan_is_inl cm_synthesize_store_const_is_inl)
+  done
+
+lemma valuate_H'_Nil_var: "valuate (H' (\<alpha>, idU) (x, y, k)) = []"
+  apply (simp add: H'_def idU_def comp_right_neutral)
+  apply (simp add: resolve_store_def nth_string_valuate nth_string_map_scanned_ignore_left)
+  done
 
 
-lemma nth_string'_valuate: 
-  "valuate (nth_string' w (snd (scan u)) n)
- = nth_string' (valuate w) (snd (map_scanned ignore_left (scan u))) n"
-proof (induct u rule: xw_induct)
-  case (Word w)
-  then show ?case by (simp add: hat_alpha_right_map scan_word_simp)
+lemma valuate_H'_Nil: "valuate (hat_hom (H' (\<alpha>, idU)) u) = valuate u"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by simp
 next
-  case (VarWord x w u)
-  then show ?case apply (simp add: hat_alpha_right_map scan_last_simp )
-qed
-
-
-lemma valuate_H'_Nil: "(valuate o H' (\<alpha>, idU)) (x, y, k) = (valuate o idU) (x, y, k)"
-proof (cases k)
-  case 0
-  then show ?thesis
-    apply (simp add: idU_def H'_def \<iota>_def comp_right_neutral)
-    apply (simp add: synthesize_def comp_apply hat_hom_left_concat_map)
-    
-    apply (simp add: \<alpha>0_def idS_def)
-    sorry
+  case (Var x xs)
+  then show ?case by (cases x, simp add: valuate_H'_Nil_var)
 next
-  case (Suc n)
-  then show ?thesis 
-    apply (simp add: idU_def H'_def \<iota>_def comp_right_neutral resolve_store)
+  case (Alpha a xs)
+  then show ?case by simp
 qed
 
 
+lemma "valuate (hat_hom (H' (\<alpha>, \<phi> \<bullet> \<psi>)) u)
+     = valuate (hat_hom (H' (\<alpha>, \<phi>)) (hat_hom (H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)) u))"
+  apply (simp add: H'_def comp_apply)
 
+lemma convert_\<eta>_hat:
+  "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w)) u) =
+   valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w))) u)"
+proof (induct w arbitrary: u q \<alpha> rule: rev_induct)
+  case Nil
+  then show ?case by (simp add: convert_\<delta>_def valuate_H'_Nil)
+next
+  case (snoc a w)
+  show ?case proof -
+    have "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w @ [a])) u)
+        = valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w))
+                           (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
+      apply (simp add: eta_append idU_def comp_right_neutral)
+      apply (simp add: comp_def comp_lem)
+      done
+    moreover have "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w))
+                                    (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))
+                 = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
+                                    (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
+      by (simp add: snoc)
+    moreover have "valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
+                                    (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))
+                 = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
+                                    (hat_hom (H' (\<Delta>' (\<alpha>, Monoid_SST.eta_hat msst (q, w)),
+                                                  MSST.eta msst (Monoid_SST.delta_hat msst (q, w), a))) u))"
+      by (simp add: convert_\<delta>_hat convert_\<eta>_def)
+qed
 
 
 

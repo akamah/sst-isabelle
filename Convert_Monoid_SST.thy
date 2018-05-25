@@ -66,10 +66,7 @@ proof (induct u rule: xa_induct)
 next
   case (Var x xs)
   then show ?case
-    apply (simp add: resolve_shuffle_distrib)
-    apply (simp add: hat_homU_append resolve_shuffle_distrib)
-    apply (simp add: \<iota>_def synthesize_inverse_shuffle)
-    done
+    by (simp add: resolve_shuffle_distrib hat_homU_append  \<iota>_def synthesize_inverse_shuffle)
 next
   case (Alpha a xs)
   then show ?case by (simp add: resolve_shuffle_distrib)
@@ -335,70 +332,31 @@ lemma hoge3:
   apply (simp add: update2hom_hat_alpha)
   apply (simp add: map_alpha_H'_iota_\<Delta>)
   apply (simp add: hat_homU_lem)
-  
-
   apply (simp add: iota_alpha0_remove)
   done
-
-lemma map_alpha_resolve_store_0:
-  "hat_hom t (fst (scan u)) = fst (scan (hat_alpha (update2hom t) u))"
-proof (induct u rule: xw_induct)
-  case (Word w)
-  then show ?case by (simp add: hat_alpha_right_map hat_hom_def)
-next
-  case (VarWord x w u)
-  then show ?case by (simp add: hat_alpha_right_map)
-qed
 
 lemma length_scan_hat_alpha: "length_scanned (scan (hat_alpha t u)) = length_scanned (scan u)"
   by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
 
 
-lemma map_alpha_resolve_store_suc:
-  "hat_hom t (nth_string' (d (y, Suc k)) (snd (scan u)) k)
- = nth_string' (hat_hom t (d (y, Suc k))) (snd (scan (hat_alpha (update2hom t) u))) k"
+lemma map_alpha_resolve_store_aux: "hat_hom t (nth_string s (scan u) k)
+ = nth_string (hat_hom t s) (scan (hat_alpha (update2hom t) u)) k"
 proof (induct u arbitrary: k rule: xw_induct)
   case (Word w)
-  then show ?case by (simp add: hat_alpha_right_map)
+  then show ?case by (simp add: hat_alpha_right_map nth_string_Nil hat_hom_def)
 next
   case (VarWord x w u)
-  then show ?case proof (induct k)
-    case 0
-    then show ?case by (simp add: hat_alpha_right_map nth_string'_append length_scan_hat_alpha hat_hom_def)
-  next
-    case (Suc k)
-    then show ?case apply (simp add: scan_last_simp hat_alpha_right_map) sorry
-  qed
-(*  then show ?case proof (cases "k < length (snd (scan u))")
-    case True
-    then show ?thesis
-      by (simp add: scan_last_simp hat_alpha_right_map nth_string'_append length_scan_hat_alpha VarWord)
-  next
-    case False
-    then show ?thesis proof (cases "k - length (snd (scan u))")
-      case 0
-      then show ?thesis
-        apply (simp add: scan_last_simp hat_alpha_right_map nth_string'_append length_scan_hat_alpha )
-    next
-      case (Suc nat)
-      then show ?thesis sorry
-    qed
-      thm VarWord
-  qed
-*)
+  then show ?case
+    by (auto simp add: hat_alpha_right_map nth_string_append_last length_scan_hat_alpha hat_hom_def)
 qed
-
 
 lemma map_alpha_resolve_store:
   "(t \<bullet> resolve_store d \<theta>) (y, k) = resolve_store (t \<bullet> d) (update2hom t \<star> \<theta>) (y, k)"
-proof (cases k)
-  case 0
-  then show ?thesis by (simp add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_0)
-next
-  case (Suc nat)
-  then show ?thesis by (simp add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_suc)
-qed
+  by (cases k, simp_all add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_aux)
 
+
+lemma "(t \<bullet> resolve_store d \<theta>) (y, k) = resolve_store (t \<bullet> d) (update2hom t \<star> \<theta>) (y, k)"
+  apply (simp add: comp_def)
 
 lemma "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
      = resolve_store (H' (\<alpha>, \<phi>) \<bullet> embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)"

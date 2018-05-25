@@ -351,6 +351,11 @@ next
   qed
 qed
 
+lemma nth_string'_pos: "0 < n \<Longrightarrow> nth_string' s ((x, as) # xas) n = nth_string' s xas (n - 1)"
+  by (auto simp add: Nat.gr0_conv_Suc)
+
+lemma nth_string_Nil: "nth_string s (w, []) n = (if n = 0 then w else s)"
+  by (cases n, simp_all)
 
 lemma nth_string_length: "nth_string s (xas @@@ ys) (length_scanned xas) = nth_string' s ys 0" 
 proof (induct xas rule: scanned_induct)
@@ -362,6 +367,9 @@ next
 qed
 
 lemma nth_string_pos: "0 < n \<Longrightarrow> nth_string s (w, (x, as) # xas) n = nth_string s (as, xas) (n - 1)"
+  by (auto simp add: Nat.gr0_conv_Suc)
+
+lemma nth_string_pos_Nil: "0 < n \<Longrightarrow> nth_string s (w, []) n = s"
   by (auto simp add: Nat.gr0_conv_Suc)
 
 lemma nth_string_pos': "0 < n \<Longrightarrow> nth_string s (w, xas) n = nth_string' s xas (n - 1)"
@@ -378,6 +386,30 @@ proof (induct xas arbitrary: n rule: scanned_induct)
 next
   case (PairCons w x as xas)
   then show ?case by (cases n, simp_all add: append_scanned_simp)
+qed
+
+
+lemma nth_string_append_last:
+  "nth_string s (xas @@@ [(x, as)]) n
+ = (if n = length_scanned xas then as else nth_string s xas n)"
+proof (induct xas arbitrary: n rule: scanned_induct)
+  case (Nil w)
+  then show ?case proof (cases n)
+    case 0
+    then show ?thesis by (simp add: append_scanned_simp)
+  next
+    case (Suc k)
+    then show ?thesis by (simp add: append_scanned_simp nth_string_pos_Nil)
+  qed
+next
+  case (PairCons w x as xas)
+  then show ?case proof (cases n)
+    case 0
+    then show ?thesis by (simp add: append_scanned_simp)
+  next
+    case (Suc k)
+    then show ?thesis using PairCons by (simp add: append_scanned_simp)
+  qed
 qed
 
 corollary nth_string_lt_length:

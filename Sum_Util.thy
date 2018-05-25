@@ -43,7 +43,7 @@ primrec is_inl :: "('a + 'b) \<Rightarrow> bool" where
   "is_inl (Inl l) = True" |
   "is_inl (Inr r) = False"
 
-lemma is_inl_iff[iff]: "is_inl a \<longleftrightarrow> (\<exists>x. a = Inl x)"
+lemma is_inl_iff: "is_inl a \<longleftrightarrow> (\<exists>x. a = Inl x)"
 proof
   assume *: "is_inl a"
   show "is_inl a \<Longrightarrow> (\<exists>x. a = Inl x)" proof (cases a)

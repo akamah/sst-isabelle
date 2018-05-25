@@ -106,6 +106,9 @@ lemma append_scanned_Nil[simp]: "xas @@@ [] = xas"
 lemma fst_append_scanned[simp]: "fst (a @@@ b) = fst a"
   by (cases a, simp add: append_scanned_simp)
 
+lemma length_scanned_gt: "length_scanned xas > 0"
+  by (cases xas, simp)
+
 lemma length_append_scanned_1: "length_scanned (xas @@@ [p]) = Suc (length_scanned xas)"
 proof (cases xas)
   case (Pair w xs)
@@ -411,6 +414,10 @@ next
     then show ?thesis using PairCons by (simp add: append_scanned_simp)
   qed
 qed
+
+lemma nth_string_append_first:
+  "nth_string s (xas @@@ ys) 0 = nth_string s xas 0"
+  by (cases xas, simp add: append_scanned_simp)
 
 corollary nth_string_lt_length:
   assumes "n < length_scanned sc"

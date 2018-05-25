@@ -360,6 +360,12 @@ lemma "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) 
      = resolve_store (H' (\<alpha>, \<phi>) \<bullet> embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)"
   oops
 
+lemma hat_homU_iota:
+  "hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)
+ = update2hom (H' (\<alpha>, \<phi>)) \<star> hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u"
+  by (simp add: hat_homU_map_alpha  map_alpha_H'_iota_\<Delta> hat_homU_lem)
+
+
 lemma H'_assoc_string:
   "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
  = (H' (\<alpha>, \<phi>) \<bullet> resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k)"
@@ -372,6 +378,16 @@ proof -
     done
   then show ?thesis
     apply (simp add: map_alpha_resolve_store)
+
+    sorry
+qed
+
+lemma H'_assoc_string_valuate:
+  "valuate (resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k))
+ = valuate ((H' (\<alpha>, \<phi>) \<bullet> resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k))"
+proof -
+  show ?thesis
+    apply (simp add: map_alpha_resolve_store hat_homU_iota)
 
     sorry
 qed
@@ -595,10 +611,20 @@ next
   then show ?case by simp
 qed
 
+term "valuate (hat_hom (\<lambda>(x, y, k). resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)) v)"
+
+lemma 
+  "valuate (hat_hom (\<lambda>(x, y, k). resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> (\<psi> x))) (y, k)) v)
+ = valuate (hat_hom (H' (\<alpha>, \<phi>) \<bullet> (\<lambda>(x, y, k). resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) (\<psi> x)) (y, k))) v) "
+  apply (simp add: hat_homU_iota)
+  apply (simp add: map_alpha_resolve_store)
+
 
 lemma "valuate (hat_hom (H' (\<alpha>, \<phi> \<bullet> \<psi>)) u)
      = valuate (hat_hom (H' (\<alpha>, \<phi>)) (hat_hom (H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)) u))"
   apply (simp add: H'_def comp_apply)
+  oops
+
 
 lemma convert_\<eta>_hat:
   "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w)) u) =

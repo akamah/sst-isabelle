@@ -48,9 +48,9 @@ definition \<Delta>' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) up
 
 
 definition H' :: "('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> 'y index, 'b) update" where
-  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y')"
+  "H' = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store (const []) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y')"
 
-lemma H'_simp2: "H' (\<alpha>, \<theta>) (x, y') = resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y'"
+lemma H'_simp2: "H' (\<alpha>, \<theta>) (x, y') = resolve_store (const []) (hat_homU (\<iota> \<alpha>) (\<theta> x)) y'"
   by (simp add: H'_def)
 
 
@@ -191,8 +191,11 @@ qed
 
 
 
-lemma H'_embed: "H' (\<alpha>, \<theta>) \<bullet> embed x = resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (\<theta> x))"
+lemma H'_embed: "H' (\<alpha>, \<theta>) \<bullet> embed x = resolve_store (const []) (hat_homU (\<iota> \<alpha>) (\<theta> x))"
   by (auto simp add: comp_def H'_def)
+
+lemma H'_const_Nil: "H' (\<alpha>, \<theta>) \<bullet> const [] = const []"
+  by (auto simp add: comp_def)
 
 
 lemma map_alpha_H'_iota_\<Delta>:
@@ -367,35 +370,12 @@ lemma hat_homU_iota:
 
 
 lemma H'_assoc_string:
-  "resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
- = (H' (\<alpha>, \<phi>) \<bullet> resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k)"
-proof -
-  have "hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)
-      = update2hom (H' (\<alpha>, \<phi>)) \<star> hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u"
-    apply (simp add: hat_homU_map_alpha)
-    apply (simp add: map_alpha_H'_iota_\<Delta>)
-    apply (simp add: hat_homU_lem)
-    done
-  then show ?thesis
-    apply (simp add: map_alpha_resolve_store)
+  "resolve_store (const []) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)
+ = (H' (\<alpha>, \<phi>) \<bullet> resolve_store (const []) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k)"
+  by (simp add: hat_homU_iota map_alpha_resolve_store H'_const_Nil)
 
-    sorry
-qed
-
-lemma H'_assoc_string_valuate:
-  "valuate (resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k))
- = valuate ((H' (\<alpha>, \<phi>) \<bullet> resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) u)) (y, k))"
-proof -
-  show ?thesis
-    apply (simp add: map_alpha_resolve_store hat_homU_iota)
-
-    sorry
-qed
-
-
-(* COUNTER EXAMPLE *)
-lemma H'_assoc: "H' (\<alpha>0, \<phi> \<bullet> \<psi>) = H' (\<alpha>0, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>0, \<phi>), \<psi>)"
-  sorry
+lemma H'_assoc: "H' (\<alpha>, \<phi> \<bullet> \<psi>) = H' (\<alpha>, \<phi>) \<bullet> H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)"
+  by (auto simp add: comp_def H'_assoc_string H'_simp2)
 
 
 lemma "let \<phi> = (\<lambda>x :: nat. []) in
@@ -408,23 +388,6 @@ lemma "let \<phi> = (\<lambda>x :: nat. []) in
 
 lemma [simp]: "scan [Inl y] = ([], [(y, [])])"
   by (simp add: scan_def)
-
-lemma "let \<phi> = (\<lambda>x :: nat. []) in
-  let \<psi> = (\<lambda>x :: nat. [Inr (\<lambda>x. [])]) in
-  H'(\<alpha>0, \<phi>) (x, y, k) = hoge (x, y, k)"
-proof (cases k)
-  case 0
-  then show ?thesis 
-    apply (simp add: Let_def)
-    apply (simp add: comp_def H'_def idU_def resolve_shuffle_def \<alpha>0_def idS_def resolve_store_def)
-    sorry
-next
-  case (Suc nat)
-  then show ?thesis 
-    apply (simp add: Let_def)
-    apply (simp add: comp_def H'_def idU_def resolve_shuffle_def \<alpha>0_def idS_def resolve_store_def)
-    sorry
-qed
 
 
 lemma \<Delta>'_id: "\<Delta>' (\<alpha>, idU) = \<alpha>"
@@ -447,6 +410,8 @@ qed
 lemma nth_string_vars: "nth_string [Inl (x, y, Suc k)] ([Inl (x, y, Suc 0)], []) k = [Inl (x, y, Suc k)]"
   by (induct k, simp_all)
 
+
+(* (* I think this lemma is old one *)
 lemma convert_\<eta>_hat_Nil:
   "idU (x, y, k) = H' (\<alpha>0, idU) (x, y, k)"
 proof (cases k)
@@ -470,6 +435,10 @@ next
     done
 qed
 
+*)
+
+(* also, this will not hold *)
+(* 
 lemma convert_\<eta>_hat:
   "SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q0, \<alpha>0), w) =
    H' (\<alpha>0, Monoid_SST.eta_hat msst (q0, w))"
@@ -483,6 +452,7 @@ next
     apply (simp add: H'_assoc)
     done
 qed
+*)
 
 lemma all_variable_map_Inl: "List.list_all is_inl (map Inl xs)"
   by (induct xs, simp_all)
@@ -611,22 +581,8 @@ next
   then show ?case by simp
 qed
 
-term "valuate (hat_hom (\<lambda>(x, y, k). resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> u)) (y, k)) v)"
 
-lemma 
-  "valuate (hat_hom (\<lambda>(x, y, k). resolve_store (embed x) (hat_homU (\<iota> \<alpha>) (hat_hom \<phi> (\<psi> x))) (y, k)) v)
- = valuate (hat_hom (H' (\<alpha>, \<phi>) \<bullet> (\<lambda>(x, y, k). resolve_store (embed x) (hat_homU (\<iota> (\<Delta>' (\<alpha>, \<phi>))) (\<psi> x)) (y, k))) v) "
-  apply (simp add: hat_homU_iota)
-  apply (simp add: map_alpha_resolve_store)
-
-
-lemma "valuate (hat_hom (H' (\<alpha>, \<phi> \<bullet> \<psi>)) u)
-     = valuate (hat_hom (H' (\<alpha>, \<phi>)) (hat_hom (H' (\<Delta>' (\<alpha>, \<phi>), \<psi>)) u))"
-  apply (simp add: H'_def comp_apply)
-  oops
-
-
-lemma convert_\<eta>_hat:
+lemma convert_\<eta>_hat_valuate:
   "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w)) u) =
    valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w))) u)"
 proof (induct w arbitrary: u q \<alpha> rule: rev_induct)
@@ -634,24 +590,26 @@ proof (induct w arbitrary: u q \<alpha> rule: rev_induct)
   then show ?case by (simp add: convert_\<delta>_def valuate_H'_Nil)
 next
   case (snoc a w)
-  show ?case proof -
+  show ?case (is "?lhs = ?rhs") proof -
     have "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w @ [a])) u)
         = valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w))
                            (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
       apply (simp add: eta_append idU_def comp_right_neutral)
       apply (simp add: comp_def comp_lem)
       done
-    moreover have "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w))
-                                    (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))
-                 = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
-                                    (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
+    also have "... = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
+                                      (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
       by (simp add: snoc)
-    moreover have "valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
-                                    (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))
-                 = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
+    also have "... = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
                                     (hat_hom (H' (\<Delta>' (\<alpha>, Monoid_SST.eta_hat msst (q, w)),
                                                   MSST.eta msst (Monoid_SST.delta_hat msst (q, w), a))) u))"
       by (simp add: convert_\<delta>_hat convert_\<eta>_def)
+    also have "... = ?rhs"
+      apply (simp add: eta_append H'_assoc comp_right_neutral)
+      apply (simp add: comp_def comp_lem del: Fun.comp_apply)
+      done
+    finally show ?thesis .
+  qed
 qed
 
 
@@ -673,13 +631,10 @@ next
     case Some2: (Some u)
     then show ?thesis
       apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat Some1)
-      apply (simp add: convert_\<eta>_hat)
+      apply (simp add: convert_\<eta>_hat_valuate comp_def)
       apply (simp add: comp_def hoge3)
       done
   qed
 qed
 
 end
-
-
-

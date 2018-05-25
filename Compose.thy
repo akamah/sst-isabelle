@@ -13,6 +13,10 @@ definition compose where
   "compose sst1 sst2 = convert_MSST (compose_SST_SST sst1 sst2)"
 
 
+theorem SST_can_compose:
+  "SST.run (compose sst1 sst2) w = Option.bind (SST.run sst1 w) (SST.run sst2)"
+  by (simp add: compose_def MSST_can_convert  can_compose_SST_SST)
+
 definition revrev where
   "revrev = compose_SST_SST rev rev"
 

@@ -1,37 +1,63 @@
 theory SingleUse
-imports Main Setsum
+  imports Main Setsum Update
 begin
-definition count_var :: "[('a::finite) \<Rightarrow> 'a list, 'a] \<Rightarrow> nat" where
-  "count_var f x == sum (\<lambda>y. count_list (f y) x) UNIV"
 
-lemma "count_list (f y) x \<le> count_var f x"
+definition count_var :: "[('x::finite, 'b) update, 'x] \<Rightarrow> nat" where
+  "count_var f x \<equiv> \<Sum>y\<in>UNIV. count_list (f y) (Inl x)"
+
+lemma "count_list (f y) (Inl x) \<le> count_var f x"
 proof -
-  have "sum (%y. count_list (f y) x) UNIV = sum (%y. count_list (f y) x) (UNIV - {y}) + (%y. count_list (f y) x) y"
+  have "(\<Sum>y\<in>UNIV. count_list (f y) (Inl x))
+      = (\<Sum>y\<in>(UNIV -{y}). count_list (f y) (Inl x)) + (\<lambda>y. count_list (f y) (Inl x)) y"
     by (simp add: add.commute sum.remove)
   thus ?thesis
     by (simp add: count_var_def)
 qed
 
-definition bounded :: "[nat, ('a::finite) => 'a list] => bool" where
+definition bounded :: "[nat, ('x::finite, 'b) update] \<Rightarrow> bool" where
   "bounded k f = (\<forall>x. count_var f x \<le> k)"
 
-definition single_use  :: "(('a::finite) \<Rightarrow> 'a list) \<Rightarrow> bool" where
-  "single_use f = bounded 1 f"
+abbreviation single_use  :: "(('x::finite, 'b) update) \<Rightarrow> bool" where
+  "single_use f \<equiv> bounded 1 f"
 
 lemma [simp]:  "count_list (xs@ys) a = count_list xs a + count_list ys a"
   by (induct xs, auto)
 
 
-lemma basic_count: "count_list (concat (map f xs)) a =
-                    sum (\<lambda>b. count_list (f b) a * count_list xs b) (UNIV::('a::finite) set)"
-proof (induct xs)
+lemma sum_cong: "\<And>x. x\<in>A \<Longrightarrow> f = g \<Longrightarrow> sum f A = sum g A" by auto
+
+lemma basic_count: "count_list (hat_hom f xs) (Inl y) =
+                    (\<Sum>z\<in>UNIV. (count_list (f z) (Inl y) * count_list xs (Inl z)))"
+proof (induct xs rule: xa_induct)
   case Nil
   show ?case
     by (auto)
 next
-  case (Cons b xs)
-  show ?case
+  case (Alpha a xs) 
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case proof (simp)
+    have "(\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * (if x = z then count_list xs (Inl z) + 1 
+                                                          else count_list xs (Inl z)))
+        = (\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * count_list xs (Inl z) 
+                   + (if x = z then count_list (f z) (Inl y) else 0))"
+      by (rule sum_cong, auto)
+    also have "... = (\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * count_list xs (Inl z))
+                 + (\<Sum>z\<in>UNIV. if x = z then count_list (f z) (Inl y) else 0)"
+      by (rule sum.distrib)
+    finally have "(\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * (if x = z then count_list xs (Inl z) + 1 
+                                                          else count_list xs (Inl z)))
+                 = (\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * count_list xs (Inl z))
+                 + (\<Sum>z\<in>UNIV. if x = z then count_list (f z) (Inl y) else 0)" .
+    then show "count_list (f x) (Inl y) + (\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * count_list xs (Inl z)) 
+            = (\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * (if x = z then count_list xs (Inl z) + 1 
+                                                              else count_list xs (Inl z)))"
+    proof (simp)
+    
+    (*have "(\<Sum>z\<in>UNIV. count_list (f z) (Inl y) * (if x = z then 1 else 0)) = count_list (f x) (Inl y)" *)
 
+(*
   proof (simp)
     let ?g = "(\<lambda>ba. if b = ba then count_list (f ba) a else 0)"
     let ?h = "(\<lambda>ba. count_list (f ba) a * (count_list xs ba))"
@@ -50,6 +76,8 @@ next
         by (rule Cons)
     qed
   qed
+
+*)
 qed
 
 

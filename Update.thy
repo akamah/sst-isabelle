@@ -93,7 +93,7 @@ proof (induct u rule: length_induct)
     then obtain l x r where hoge: "(xs = l @ x # r) \<and> List.find is_inl r = None \<and> is_inl x"
       by (metis find_split is_Some.simps(2))
     obtain v where v: "r = map Inr v" using find_var_None_then_all_alpha hoge by auto
-    obtain x' where x': "x = Inl x'" using hoge by blast
+    obtain x' where x': "x = Inl x'" by (meson hoge is_inl_iff)
     have "P (l @ Inl x' # map Inr v)" proof (rule var_word)
       show "P l" by (rule IH[rule_format], simp add: hoge)
     qed

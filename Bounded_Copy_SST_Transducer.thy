@@ -3,7 +3,7 @@ theory Bounded_Copy_SST_Transducer
 begin
 
 definition bounded_copy_SST :: "[ nat, ('q::finite, 'x::finite, 'a, 'b) SST ] \<Rightarrow> bool" where
-  "bounded_copy_SST k sst \<equiv> (\<forall>w. bounded k (SST.eta_hat sst (SST.initial sst, w)))"
+  "bounded_copy_SST k sst \<equiv> (\<forall>w q. bounded k (SST.eta_hat sst (q, w)))"
 
 
 lemma count_list_Inr: "count_list (map Inr w) (Inl x) = 0"
@@ -30,15 +30,14 @@ theorem compose_SST_Transducer_bounded:
   shows "bounded_copy_SST (card (UNIV::'q2 set) * k) (compose_SST_Transducer sst td)"
   unfolding bounded_copy_SST_def bounded_def compose_SST_Transducer_def count_var_def
 proof (simp add: compose_\<eta>_hat, intro allI)
-  fix w q0 x0
+  fix w qs f q0 x0
   let ?tr = "transducer.delta td" and ?to = "transducer.eta td"
-  let ?f0 = "(\<lambda>(q2, x1). q2)"
-  let ?xi = "SST.eta_hat sst (SST.initial sst, w)"
-  have "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (?f0, ?xi) y) (Inl (q0, x0)))
-      = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set). count_list (H ?tr ?to (?f0, ?xi) (q, x)) (Inl (q0, x0)))"
+  let ?xi = "SST.eta_hat sst (qs, w)"
+  have "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (f, ?xi) y) (Inl (q0, x0)))
+      = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set). count_list (H ?tr ?to (f, ?xi) (q, x)) (Inl (q0, x0)))"
     by (simp add: sum.Sigma)
   also have "... = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set). 
-                       count_list (Transducer.hat2 (delta2f ?f0 ?tr) (eta2f ?to) (q, ?xi x)) (Inl (q0, x0)))"
+                       count_list (Transducer.hat2 (delta2f f ?tr) (eta2f ?to) (q, ?xi x)) (Inl (q0, x0)))"
     by (simp add: H_def)
   also have "... \<le> (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set).
                        count_list (?xi x) (Inl x0))" by (intro sum_mono, rule count_list_H)
@@ -47,7 +46,7 @@ proof (simp add: compose_\<eta>_hat, intro allI)
     using assms 
     unfolding bounded_copy_SST_def bounded_def count_var_def
     by (simp)
-  finally show "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (?f0, ?xi) y) (Inl (q0, x0))) 
+  finally show "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (f, ?xi) y) (Inl (q0, x0))) 
               \<le> card (UNIV::'q2 set) * k" .
 qed
 

@@ -1,9 +1,6 @@
 theory Bounded_Copy_SST_Transducer
-  imports Main Update Compose_SST_Transducer SingleUse Finite_Set
+  imports Main Update Compose_SST_Transducer SingleUse Finite_Set Bounded_Copy
 begin
-
-definition bounded_copy_SST :: "[ nat, ('q::finite, 'x::finite, 'a, 'b) SST ] \<Rightarrow> bool" where
-  "bounded_copy_SST k sst \<equiv> (\<forall>w q. bounded k (SST.eta_hat sst (q, w)))"
 
 
 lemma count_list_Inr: "count_list (map Inr w) (Inl x) = 0"

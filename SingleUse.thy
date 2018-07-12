@@ -1,6 +1,8 @@
 theory SingleUse
-  imports Main Setsum Update
+  imports Main Setsum Update Decompose_Update
 begin
+
+lemma sum_cong: "\<And>x. x\<in>A \<Longrightarrow> f = g \<Longrightarrow> sum f A = sum g A" by auto
 
 definition count_var :: "[('x::finite, 'y::finite, 'b) update', 'y] \<Rightarrow> nat" where
   "count_var f y0 \<equiv> \<Sum>y\<in>UNIV. count_list (f y) (Inl y0)"
@@ -17,6 +19,24 @@ qed
 definition bounded :: "[nat, ('x::finite, 'y::finite, 'b) update'] \<Rightarrow> bool" where
   "bounded k f \<equiv> (\<forall>y. count_var f y \<le> k)"
 
+definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
+  "bounded_shuffle k f \<equiv> \<forall>x. (\<Sum>y\<in>UNIV. count_list (f y) x) \<le> k"
+
+lemma resolve_bounded:
+  fixes m :: "('x::finite, 'b) update"
+  assumes "bounded k m"
+  shows "bounded_shuffle k (resolve_shuffle m)"
+proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
+  fix x
+  { fix x' :: 'x and u :: "('x + 'b) list"
+    have "count_list (extract_variables u) x' = count_list u (Inl x')"
+      by (induct u rule: xa_induct, simp_all)
+  } note that = this
+  then show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
+    using assms unfolding bounded_def count_var_def
+    by simp
+qed
+
 abbreviation single_use  :: "(('x::finite, 'y::finite, 'b) update') \<Rightarrow> bool" where
   "single_use f \<equiv> bounded 1 f"
 
@@ -24,7 +44,6 @@ lemma [simp]:  "count_list (xs@ys) a = count_list xs a + count_list ys a"
   by (induct xs, auto)
 
 
-lemma sum_cong: "\<And>x. x\<in>A \<Longrightarrow> f = g \<Longrightarrow> sum f A = sum g A" by auto
 
 lemma basic_count: "count_list (hat_hom f xs) (Inl y) =
                     (\<Sum>z\<in>(UNIV::('a::finite) set). (count_list (f z) (Inl y) * count_list xs (Inl z)))"

@@ -20,31 +20,51 @@ next
   then show ?case by (auto simp add: count_list_Inr)
 qed
 
+lemma compose_reachable:
+  assumes "reachable (compose_SST_Transducer sst td) (q1, f)"
+  shows "reachable sst q1"
+  unfolding reachable_def
+proof -
+  obtain w where *: "(q1, f) = SST.delta_hat (compose_SST_Transducer sst td)
+                                (SST.initial (compose_SST_Transducer sst td), w)"
+    using assms unfolding reachable_def by auto
+  show "\<exists>w. q1 = SST.delta_hat sst (SST.initial sst, w)" proof 
+    show "q1 = SST.delta_hat sst (SST.initial sst, w)"
+      using * by (simp add: compose_\<delta>_hat compose_SST_Transducer_def)
+  qed
+qed
+
+
 theorem compose_SST_Transducer_bounded:
   fixes sst :: "('q1::finite, 'x::finite, 'a, 'b) SST"
   fixes td  :: "('q2::finite, 'b, 'c) transducer"
   assumes "bounded_copy_SST k sst"
   shows "bounded_copy_SST (card (UNIV::'q2 set) * k) (compose_SST_Transducer sst td)"
-  unfolding bounded_copy_SST_def bounded_def compose_SST_Transducer_def count_var_def
-proof (simp add: compose_\<eta>_hat, intro allI)
-  fix w qs f q0 x0
+proof (simp add: bounded_copy_SST_def, intro allI, rule impI)
+  fix w qs f
   let ?tr = "transducer.delta td" and ?to = "transducer.eta td"
   let ?xi = "SST.eta_hat sst (qs, w)"
-  have "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (f, ?xi) y) (Inl (q0, x0)))
-      = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set). count_list (H ?tr ?to (f, ?xi) (q, x)) (Inl (q0, x0)))"
-    by (simp add: sum.Sigma)
-  also have "... = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set). 
-                       count_list (Transducer.hat2 (delta2f f ?tr) (eta2f ?to) (q, ?xi x)) (Inl (q0, x0)))"
-    by (simp add: H_def)
-  also have "... \<le> (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set).
-                       count_list (?xi x) (Inl x0))" by (intro sum_mono, rule count_list_H)
-  also have "... = card (UNIV::'q2 set) * (\<Sum>x\<in>(UNIV::'x set). count_list (?xi x) (Inl x0))" by (simp)
-  also have "... \<le> card (UNIV::'q2 set) * k"
-    using assms 
-    unfolding bounded_copy_SST_def bounded_def count_var_def
-    by (simp)
-  finally show "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (f, ?xi) y) (Inl (q0, x0))) 
-              \<le> card (UNIV::'q2 set) * k" .
+  assume r0: "reachable (compose_SST_Transducer sst td) (qs, f)"
+  have reach: "reachable sst qs" by (rule compose_reachable, rule r0)
+  show "bounded (card (UNIV::'q2 set) * k) (SST.eta_hat (compose_SST_Transducer sst td) ((qs, f), w))"
+    unfolding compose_SST_Transducer_def bounded_def count_var_def
+  proof (simp add: compose_\<eta>_hat, intro allI)
+    fix q0 x0
+    have "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (f, ?xi) y) (Inl (q0, x0)))
+        = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set). count_list (H ?tr ?to (f, ?xi) (q, x)) (Inl (q0, x0)))"
+      by (simp add: sum.Sigma)
+    also have "... = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set). 
+                         count_list (Transducer.hat2 (delta2f f ?tr) (eta2f ?to) (q, ?xi x)) (Inl (q0, x0)))"
+      by (simp add: H_def)
+    also have "... \<le> (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x set).
+                         count_list (?xi x) (Inl x0))" by (intro sum_mono, rule count_list_H)
+    also have "... = card (UNIV::'q2 set) * (\<Sum>x\<in>(UNIV::'x set). count_list (?xi x) (Inl x0))" by (simp)
+    also have "... \<le> card (UNIV::'q2 set) * k"
+      using assms reach unfolding bounded_copy_SST_def bounded_def count_var_def
+      by (simp add: reach)
+    finally show "(\<Sum>y\<in>(UNIV::('q2\<times>'x)set). count_list (H ?tr ?to (f, ?xi) y) (Inl (q0, x0))) 
+                \<le> card (UNIV::'q2 set) * k" .
+  qed
 qed
 
 end

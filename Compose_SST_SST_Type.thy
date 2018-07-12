@@ -114,4 +114,30 @@ next
     done
 qed
 
+
+theorem compose_\<gamma>_bounded:
+  fixes sst2 :: "('q2::finite, 'x2::finite, 'b, 'c) SST"
+  assumes "bounded_copy_SST k sst2"
+  shows "bounded_copy_type k (compose_\<gamma> sst1 sst2)"
+proof (auto simp add: bounded_copy_type_def all_shuffles_def)
+  fix f q2 w and x :: "'x"
+  assume "SST.delta_hat sst2 (q2, w) = f (q2, x)"
+  have "reachable sst2"
+  show "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (q2, w)))"
+    sorry
+qed
+
 end
+
+
+
+
+
+
+
+
+
+
+
+
+

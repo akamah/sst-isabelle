@@ -114,10 +114,10 @@ next
   qed    
 qed
 
-definition finite_type where
+definition finite_type :: "('q, 'x, 'y) msst_type \<Rightarrow> bool" where
   "finite_type \<gamma> \<equiv> (\<forall>q x. finite (\<gamma> (q, x)))"
 
-definition bounded_copy_type where
-  "bounded_copy_type k \<gamma> \<equiv> (\<forall>q x. \<forall>m \<in> \<gamma> (q, x). bounded k m)"
+definition bounded_copy_type :: "nat \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
+  "bounded_copy_type k \<gamma> \<equiv> (\<forall>q x. \<forall>m \<in> \<gamma> (q, x). bounded_shuffle k m)"
 
 end

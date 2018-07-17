@@ -75,6 +75,8 @@ definition compose_SST_Transducer ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) SST" where
   "compose_SST_Transducer sst td = \<lparr>
+    states  = states sst \<times> {f. \<forall>q2\<in>Transducer.states td. \<forall>x1\<in>SST.variables sst. f (q2, x1) \<in> Transducer.states td},
+    variables = Transducer.states td \<times> variables sst,
     initial = (initial sst, \<lambda>(q2, x1). q2),
     delta   = compose_\<delta> sst td,
     eta     = compose_\<eta> sst td,
@@ -119,6 +121,44 @@ lemma valuate_eta_hat: "Transducer.hat2 tr td (q, valuate (u x)) = valuate (H tr
 
 
 subsection \<open>Main result\<close>
+
+lemma closed_\<Delta>: 
+  assumes "td_well_defined T"
+  assumes "\<forall>q2\<in>Transducer.states T. \<forall>x\<in>V. f (q2, x) \<in> Transducer.states T"
+  assumes "q\<in>Transducer.states T"
+  shows "\<forall>q2\<in>Transducer.states T. \<forall>x\<in>V. \<Delta> (Transducer.eta T) (f, \<theta>) (q2, x) \<in> Transducer.states T"
+  apply (auto simp add: \<Delta>_def)
+  
+
+
+theorem compose_SST_Transducer_well_defined:
+  assumes sst_well: "well_defined sst"
+  assumes td_well:  "td_well_defined td"
+  shows "well_defined (compose_SST_Transducer sst td)"
+proof (auto simp add: well_defined_def)
+  show "closed_delta (compose_SST_Transducer sst td)"
+    unfolding well_definedness compose_SST_Transducer_def compose_\<delta>_def
+  proof (auto)
+    fix q a
+    assume "q \<in> SST.states sst"
+    then show "SST.delta sst (q, a) \<in> SST.states sst"
+      using sst_well unfolding well_definedness by blast
+  next
+    fix f q1 a q2 x1
+    show "\<Delta> (transducer.delta td) (f, SST.eta sst (q1, a)) (q2, x1) \<in> transducer.states td"
+next
+  show "closed_eta (compose_SST_Transducer sst td)"
+    sorry
+next
+  show "closed_final (compose_SST_Transducer sst td)"
+    sorry
+next
+  show "initial_in_states (compose_SST_Transducer sst td)"
+    using sst_well unfolding well_definedness compose_SST_Transducer_def
+    by (simp add: sst_well)
+qed
+
+
 
 theorem can_compose_SST_Transducer:
   fixes sst :: "('q1, 'x, 'a, 'b) SST"

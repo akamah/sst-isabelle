@@ -25,11 +25,11 @@ lemma compose_reachable:
   shows "reachable sst q1"
   unfolding reachable_def
 proof -
-  obtain w where *: "(q1, f) = SST.delta_hat (compose_SST_Transducer sst td)
-                                (SST.initial (compose_SST_Transducer sst td), w)"
+  obtain w where *: "(q1, f) = delta_hat (compose_SST_Transducer sst td)
+                                (initial (compose_SST_Transducer sst td), w)"
     using assms unfolding reachable_def by auto
-  show "\<exists>w. q1 = SST.delta_hat sst (SST.initial sst, w)" proof 
-    show "q1 = SST.delta_hat sst (SST.initial sst, w)"
+  show "\<exists>w. q1 = delta_hat sst (initial sst, w)" proof 
+    show "q1 = delta_hat sst (initial sst, w)"
       using * by (simp add: compose_\<delta>_hat compose_SST_Transducer_def)
   qed
 qed
@@ -42,7 +42,7 @@ theorem compose_SST_Transducer_bounded:
   shows "bounded_copy_SST (card (UNIV::'q2 set) * k) (compose_SST_Transducer sst td)"
 proof (simp add: bounded_copy_SST_def, intro allI, rule impI)
   fix w qs f
-  let ?tr = "transducer.delta td" and ?to = "transducer.eta td"
+  let ?tr = "delta td" and ?to = "transducer.eta td"
   let ?xi = "SST.eta_hat sst (qs, w)"
   assume r0: "reachable (compose_SST_Transducer sst td) (qs, f)"
   have reach: "reachable sst qs" by (rule compose_reachable, rule r0)

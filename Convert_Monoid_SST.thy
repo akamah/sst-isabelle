@@ -87,32 +87,34 @@ definition \<alpha>0 :: "'x \<Rightarrow> 'y shuffle" where
 definition convert_\<delta> :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
                          ('q \<times> ('x \<Rightarrow> 'y shuffle), 'a) trans" where
   "convert_\<delta> msst =
-     (\<lambda>((q1, f), a). (MSST.delta msst (q1, a), \<Delta>' (f, MSST.eta msst (q1, a))))"
+     (\<lambda>((q1, f), a). (delta msst (q1, a), \<Delta>' (f, eta msst (q1, a))))"
 
 definition convert_\<eta> :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
                          ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> 'y index, 'a, 'b) updator" where
-  "convert_\<eta> msst = (\<lambda>((q, \<alpha>), b). H' (\<alpha>, MSST.eta msst (q, b)))"
+  "convert_\<eta> msst = (\<lambda>((q, \<alpha>), b). H' (\<alpha>, eta msst (q, b)))"
 
 definition convert_final :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
    ('q \<times> ('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x \<times> 'y index + 'b) list option)" where
   "convert_final msst = (\<lambda>(q, \<alpha>).
-     (case MSST.final_update msst q of
-        Some u \<Rightarrow> (case MSST.final_string msst q of
+     (case final_update msst q of
+        Some u \<Rightarrow> (case final_string msst q of
           Some v \<Rightarrow> Some (valuate (hat_hom (hat_homU (\<iota> \<alpha>) u) (hat_alpha inr_list v))) |
           None \<Rightarrow> None) |
         None \<Rightarrow> None))"
 
-lemma convert_\<delta>_simp: "convert_\<delta> msst ((q1, f), a) = (MSST.delta msst (q1, a), \<Delta>' (f, MSST.eta msst (q1, a)))"
+lemma convert_\<delta>_simp: "convert_\<delta> msst ((q1, f), a) = (delta msst (q1, a), \<Delta>' (f, eta msst (q1, a)))"
   by (simp add: convert_\<delta>_def)
 
-lemma convert_\<eta>_simp: "convert_\<eta> msst ((q1, f), a) = H' (f, MSST.eta msst (q1, a))"
+lemma convert_\<eta>_simp: "convert_\<eta> msst ((q1, f), a) = H' (f, eta msst (q1, a))"
   by (simp add: convert_\<eta>_def)
 
 definition convert_MSST :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
                             ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> 'y index, 'a, 'b) SST" where
   "convert_MSST msst = \<lparr>
-    SST.initial = (MSST.initial msst, \<alpha>0),
+    states = states msst \<times> {m1. True},
+    initial = (initial msst, \<alpha>0),
     delta       = convert_\<delta> msst,
+    variables = variables msst \<times> MSST.variables2 msst \<times> (UNIV::nat set),
     eta         = convert_\<eta> msst,
     final       = convert_final msst
   \<rparr>"
@@ -397,14 +399,14 @@ lemma \<Delta>'_id: "\<Delta>' (\<alpha>, idU) = \<alpha>"
   done
 
 lemma convert_\<delta>_hat:
-  "SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w) =
-   (Monoid_SST.delta_hat msst (q, w), \<Delta>' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))"
+  "hat1 (convert_\<delta> msst) ((q, \<alpha>), w) =
+   (delta_hat msst (q, w), \<Delta>' (\<alpha>, eta_hat msst (q, w)))"
 proof (induct w arbitrary: q rule: rev_induct)
   case Nil
   then show ?case by (simp add: convert_\<delta>_def \<Delta>'_id)
 next
   case (snoc a w)
-  then show ?case by (simp add: delta_append eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
+  then show ?case by (simp add: eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
 qed
 
 lemma nth_string_vars: "nth_string [Inl (x, y, Suc k)] ([Inl (x, y, Suc 0)], []) k = [Inl (x, y, Suc k)]"
@@ -584,7 +586,7 @@ qed
 
 lemma convert_\<eta>_hat_valuate:
   "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w)) u) =
-   valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w))) u)"
+   valuate (hat_hom (H' (\<alpha>, eta_hat msst (q, w))) u)"
 proof (induct w arbitrary: u q \<alpha> rule: rev_induct)
   case Nil
   then show ?case by (simp add: convert_\<delta>_def valuate_H'_Nil)
@@ -593,16 +595,16 @@ next
   show ?case (is "?lhs = ?rhs") proof -
     have "valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w @ [a])) u)
         = valuate (hat_hom (SST.hat2 (convert_\<delta> msst) (convert_\<eta> msst) ((q, \<alpha>), w))
-                           (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
+                           (hat_hom (convert_\<eta> msst (hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
       apply (simp add: eta_append idU_def comp_right_neutral)
       apply (simp add: comp_def comp_lem)
       done
-    also have "... = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
-                                      (hat_hom (convert_\<eta> msst (SST.hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
+    also have "... = valuate (hat_hom (H' (\<alpha>, eta_hat msst (q, w)))
+                                      (hat_hom (convert_\<eta> msst (hat1 (convert_\<delta> msst) ((q, \<alpha>), w), a)) u))"
       by (simp add: snoc)
-    also have "... = valuate (hat_hom (H' (\<alpha>, Monoid_SST.eta_hat msst (q, w)))
-                                    (hat_hom (H' (\<Delta>' (\<alpha>, Monoid_SST.eta_hat msst (q, w)),
-                                                  MSST.eta msst (Monoid_SST.delta_hat msst (q, w), a))) u))"
+    also have "... = valuate (hat_hom (H' (\<alpha>, eta_hat msst (q, w)))
+                                    (hat_hom (H' (\<Delta>' (\<alpha>, eta_hat msst (q, w)),
+                                                  SST.eta msst (delta_hat msst (q, w), a))) u))"
       by (simp add: convert_\<delta>_hat convert_\<eta>_def)
     also have "... = ?rhs"
       apply (simp add: eta_append H'_assoc comp_right_neutral)
@@ -617,13 +619,13 @@ qed
 
 theorem MSST_can_convert:
   "SST.run (convert_MSST msst) w = Monoid_SST.run msst w"
-proof (cases "MSST.final_update msst (hat1 (delta msst) (initial msst, w))")
+proof (cases "final_update msst (hat1 (delta msst) (initial msst, w))")
   case None
   then show ?thesis
     by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat)
 next
   case Some1: (Some m)
-  show ?thesis proof (cases "MSST.final_string msst (hat1 (delta msst) (initial msst, w))")
+  show ?thesis proof (cases "final_string msst (hat1 (delta msst) (initial msst, w))")
     case None
     then show ?thesis
       by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat Some1)

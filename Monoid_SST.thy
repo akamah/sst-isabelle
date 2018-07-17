@@ -8,20 +8,12 @@ theory Monoid_SST
   imports Main Update SST
 begin
 
-record ('q, 'x, 'y, 'a, 'b) "MSST" =
-  initial      :: "'q"
-  delta        :: "('q, 'a) trans"
-  eta          :: "('q, 'x, 'a, ('y, 'b) update) updator"
-  final_update :: "'q \<Rightarrow> ('x + ('y, 'b) update) list option"
+record ('q, 'x, 'y, 'a, 'b) "MSST" = "('q, 'x, 'a, ('y, 'b) update) SST" +
+  variables2 :: "'y set"
   final_string :: "'q \<Rightarrow> ('y + 'b) list option"
 
-(* \<delta>\<^sup>^(q, w) *)
-abbreviation delta_hat :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'a list) trans" where
-  "delta_hat msst \<equiv> hat1 (delta msst)"
-
-(* \<eta>(q, w) *)
-abbreviation eta_hat :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'a list, ('y, 'b) update) updator" where
-  "eta_hat msst \<equiv> hat2 (delta msst) (eta msst)"
+abbreviation final_update where
+  "final_update \<equiv> final"
 
 
 definition run :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where

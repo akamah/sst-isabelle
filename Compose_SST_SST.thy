@@ -34,7 +34,7 @@ definition H :: "('q2, 'b) trans \<Rightarrow> ('q2, 'x2, 'b, 'c) updator
 proposition \<Delta>_assoc_string:
   "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
    hat1 (delta2f f tr) (q, hat_hom theta u)"
-  by (induction u arbitrary: q rule: xa_induct, simp_all add: delta_append)
+  by (induction u arbitrary: q rule: xa_induct, simp_all)
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
   by (auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
@@ -54,19 +54,19 @@ subsection \<open>Construction\<close>
 definition compose_\<delta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'x2, 'b, 'c) SST \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'a) trans" where
   "compose_\<delta> sst1 sst2 =
-     (\<lambda>((q1, f), a). (SST.delta sst1 (q1, a), \<Delta> (SST.delta sst2) (f, SST.eta sst1 (q1, a))))"
+     (\<lambda>((q1, f), a). (delta sst1 (q1, a), \<Delta> (delta sst2) (f, SST.eta sst1 (q1, a))))"
 
 definition compose_\<eta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'x2, 'b, 'c) SST \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, ('x2, 'c) update) updator" where
-  "compose_\<eta> sst1 sst2 = (\<lambda>((q1, f), a). H (SST.delta sst2) (SST.eta sst2) (f, SST.eta sst1 (q1, a)))"
+  "compose_\<eta> sst1 sst2 = (\<lambda>((q1, f), a). H (delta sst2) (eta sst2) (f, SST.eta sst1 (q1, a)))"
 
 definition compose_final_update ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'x2, 'b, 'c) SST \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2) \<Rightarrow> ('q2 \<times> 'x1 + ('x2, 'c) update) list option)" where
   "compose_final_update sst1 sst2 = (\<lambda>(q1, f).
      case SST.final sst1 q1 of
-       Some u \<Rightarrow> Some (H (SST.delta sst2) (SST.eta sst2) (f, \<lambda>x. u)
-                        (SST.initial sst2, SOME x :: 'x1. True)) |
+       Some u \<Rightarrow> Some (H (delta sst2) (SST.eta sst2) (f, \<lambda>x. u)
+                        (initial sst2, SOME x :: 'x1. True)) |
        None \<Rightarrow> None)"
 
 definition compose_final_string ::
@@ -74,23 +74,26 @@ definition compose_final_string ::
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2) \<Rightarrow> ('x2 + 'c) list option)" where
   "compose_final_string sst1 sst2 = (\<lambda>(q1, f).
      case SST.final sst1 q1 of
-       Some u \<Rightarrow> SST.final sst2 (\<Delta> (SST.delta sst2) (f, \<lambda>x. u) (SST.initial sst2, SOME x :: 'x1. True)) |
+       Some u \<Rightarrow> SST.final sst2 (\<Delta> (delta sst2) (f, \<lambda>x. u) (initial sst2, SOME x :: 'x1. True)) |
        None \<Rightarrow> None)"
 
 definition compose_SST_SST ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'x2, 'b, 'c) SST \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'x2, 'a, 'c) MSST" where
   "compose_SST_SST sst1 sst2 = \<lparr>
-    initial = (SST.initial sst1, \<lambda>(q2, x1). q2),
+    states = states sst1 \<times> {f. \<forall>q2\<in>states sst2. \<forall>x1\<in>variables sst1. f (q2, x1) \<in> states sst2},
+    initial = (initial sst1, \<lambda>(q2, x1). q2),
     delta   = compose_\<delta> sst1 sst2,
+    variables = states sst2 \<times> variables sst1,
     eta     = compose_\<eta> sst1 sst2,
-    final_update = compose_final_update sst1 sst2,
+    final = compose_final_update sst1 sst2,
+    variables2 = variables sst2,
     final_string = compose_final_string sst1 sst2
    \<rparr>"
 
 lemma compose_\<delta>_hat: "hat1 (compose_\<delta> sst1 sst2) ((q, f), w) =
-        (SST.delta_hat sst1 (q, w),
-         \<Delta> (SST.delta sst2) (f, SST.eta_hat sst1 (q, w)))"
+        (delta_hat sst1 (q, w),
+         \<Delta> (delta sst2) (f, SST.eta_hat sst1 (q, w)))"
 proof (induction w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def \<Delta>_def)
 next
@@ -99,7 +102,7 @@ qed
 
 lemma compose_\<eta>_hat:
   "hat2 (compose_\<delta> sst1 sst2) (compose_\<eta> sst1 sst2) ((q, f), w) =
-   H (SST.delta sst2) (SST.eta sst2) (f, SST.eta_hat sst1 (q, w))"
+   H (delta sst2) (SST.eta sst2) (f, SST.eta_hat sst1 (q, w))"
 proof (induction w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def H_def)
 next
@@ -133,15 +136,15 @@ theorem can_compose_SST_SST:
   fixes sst2 :: "('q2, 'x2, 'b, 'c) SST"
   shows "Monoid_SST.run (compose_SST_SST sst1 sst2) w
        = Option.bind (SST.run sst1 w) (SST.run sst2)"
-proof (cases "SST.final sst1 (SST.delta_hat sst1 (SST.initial sst1, w))")
+proof (cases "SST.final sst1 (delta_hat sst1 (initial sst1, w))")
   case None then show ?thesis
     by (simp add: compose_SST_SST_def SST.run_def Monoid_SST.run_def compose_final_update_def compose_\<delta>_hat)
 next
   case Some_1: (Some output_final1)
   let ?output_of_1st_sst =
-    "valuate ((SST.eta_hat sst1 (SST.initial sst1, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x1. True))"
+    "valuate ((SST.eta_hat sst1 (initial sst1, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x1. True))"
   show ?thesis
-  proof (cases "SST.final sst2 (SST.delta_hat sst2 (SST.initial sst2, ?output_of_1st_sst))")
+  proof (cases "SST.final sst2 (delta_hat sst2 (initial sst2, ?output_of_1st_sst))")
     case None then show ?thesis
       by (simp add: SST.run_def Monoid_SST.run_def Transducer.run_def Some_1
           compose_SST_SST_def compose_\<delta>_hat compose_final_update_def compose_final_string_def valuate_delta_hat \<Delta>_assoc)

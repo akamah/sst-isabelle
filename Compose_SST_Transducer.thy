@@ -33,7 +33,7 @@ definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out
 proposition \<Delta>_assoc_string:
   "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
    hat1 (delta2f f tr) (q, hat_hom theta u)"
-  by (induction u arbitrary: q rule: xa_induct, simp_all add: delta_append)
+  by (induction u arbitrary: q rule: xa_induct, simp_all)
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
   by (auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
@@ -54,20 +54,20 @@ subsection \<open>Construction\<close>
 definition compose_\<delta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'a) trans" where
   "compose_\<delta> sst td = (\<lambda>((q1, f), a). (delta sst (q1, a),
-                                         \<Delta> (Transducer.delta td) (f, eta sst (q1, a))))"
+                                         \<Delta> (delta td) (f, eta sst (q1, a))))"
 
 definition compose_\<eta> :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) updator" where
-  "compose_\<eta> sst td = (\<lambda>((q1, f), a). H (Transducer.delta td) (Transducer.eta td) (f, eta sst (q1, a)))"
+  "compose_\<eta> sst td = (\<lambda>((q1, f), a). H (delta td) (Transducer.eta td) (f, eta sst (q1, a)))"
 
 definition compose_final :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
                              ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2) \<Rightarrow> ('q2 \<times> 'x1 + 'c) list option)" where
   "compose_final sst td = (\<lambda>(q1, f).
      case final sst q1 of
        Some u \<Rightarrow>
-         if Transducer.final td (\<Delta> (Transducer.delta td) (f, \<lambda>x. u) (Transducer.initial td, SOME x :: 'x1. True))
-         then Some (H (Transducer.delta td) (Transducer.eta td) (f, \<lambda>x. u)
-                      (Transducer.initial td, SOME x :: 'x1. True))
+         if Transducer.final td (\<Delta> (delta td) (f, \<lambda>x. u) (initial td, SOME x :: 'x1. True))
+         then Some (H (delta td) (Transducer.eta td) (f, \<lambda>x. u)
+                      (initial td, SOME x :: 'x1. True))
          else None |
        None \<Rightarrow> None)"
 
@@ -75,17 +75,17 @@ definition compose_SST_Transducer ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) transducer \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'a, 'c) SST" where
   "compose_SST_Transducer sst td = \<lparr>
-    states  = states sst \<times> {f. \<forall>q2\<in>Transducer.states td. \<forall>x1\<in>SST.variables sst. f (q2, x1) \<in> Transducer.states td},
-    variables = Transducer.states td \<times> variables sst,
+    states  = states sst \<times> {f. \<forall>q2\<in>states td. \<forall>x1\<in>variables sst. f (q2, x1) \<in> states td},
     initial = (initial sst, \<lambda>(q2, x1). q2),
     delta   = compose_\<delta> sst td,
+    variables = states td \<times> variables sst,
     eta     = compose_\<eta> sst td,
     final   = compose_final sst td
    \<rparr>"
 
 lemma compose_\<delta>_hat: "hat1 (compose_\<delta> sst td) ((q, f), w) =
-        (SST.delta_hat sst (q, w),
-         \<Delta> (Transducer.delta td) (f, eta_hat sst (q, w)))"
+        (delta_hat sst (q, w),
+         \<Delta> (delta td) (f, eta_hat sst (q, w)))"
 proof (induction w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def \<Delta>_def)
 next
@@ -94,7 +94,7 @@ qed
 
 lemma compose_\<eta>_hat:
   "hat2 (compose_\<delta> sst td) (compose_\<eta> sst td) ((q, f), w) =
-   H (Transducer.delta td) (Transducer.eta td) (f, eta_hat sst (q, w))"
+   H (delta td) (Transducer.eta td) (f, eta_hat sst (q, w))"
 proof (induction w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def H_def)
 next
@@ -124,28 +124,31 @@ subsection \<open>Main result\<close>
 
 lemma closed_\<Delta>: 
   assumes "td_well_defined T"
-  assumes "\<forall>q2\<in>Transducer.states T. \<forall>x\<in>V. f (q2, x) \<in> Transducer.states T"
-  assumes "q\<in>Transducer.states T"
-  shows "\<forall>q2\<in>Transducer.states T. \<forall>x\<in>V. \<Delta> (Transducer.eta T) (f, \<theta>) (q2, x) \<in> Transducer.states T"
+  assumes "\<forall>q2\<in>states T. \<forall>x\<in>V. f (q2, x) \<in> states T"
+  assumes "q\<in>states T"
+  shows "\<forall>q2\<in>states T. \<forall>x\<in>V. \<Delta> (Transducer.eta T) (f, \<theta>) (q2, x) \<in> states T"
   apply (auto simp add: \<Delta>_def)
-  
+  oops
 
-
+(*
 theorem compose_SST_Transducer_well_defined:
   assumes sst_well: "well_defined sst"
   assumes td_well:  "td_well_defined td"
   shows "well_defined (compose_SST_Transducer sst td)"
-proof (auto simp add: well_defined_def)
+proof (auto simp add: well_defined_simps compose_SST_Transducer_def compose_\<delta>_def compose_\<eta>_def)
+  show "initial "
+    using sst_well unfolding well_definedness compose_SST_Transducer_def
+    by (simp add: sst_well)
   show "closed_delta (compose_SST_Transducer sst td)"
-    unfolding well_definedness compose_SST_Transducer_def compose_\<delta>_def
+    unfolding well_defined_simps compose_SST_Transducer_def compose_\<delta>_def
   proof (auto)
     fix q a
-    assume "q \<in> SST.states sst"
-    then show "SST.delta sst (q, a) \<in> SST.states sst"
+    assume "q \<in> states sst"
+    then show "delta sst (q, a) \<in> states sst"
       using sst_well unfolding well_definedness by blast
   next
     fix f q1 a q2 x1
-    show "\<Delta> (transducer.delta td) (f, SST.eta sst (q1, a)) (q2, x1) \<in> transducer.states td"
+    show "\<Delta> (delta td) (f, SST.eta sst (q1, a)) (q2, x1) \<in> states td"
 next
   show "closed_eta (compose_SST_Transducer sst td)"
     sorry
@@ -153,11 +156,9 @@ next
   show "closed_final (compose_SST_Transducer sst td)"
     sorry
 next
-  show "initial_in_states (compose_SST_Transducer sst td)"
-    using sst_well unfolding well_definedness compose_SST_Transducer_def
-    by (simp add: sst_well)
-qed
 
+qed
+*)
 
 
 theorem can_compose_SST_Transducer:
@@ -165,15 +166,15 @@ theorem can_compose_SST_Transducer:
   fixes td  :: "('q2, 'b, 'c) transducer"
   shows "SST.run (compose_SST_Transducer sst td) w
        = Option.bind (SST.run sst w) (Transducer.run td)"
-proof (cases "SST.final sst (SST.delta_hat sst (SST.initial sst, w))")
+proof (cases "SST.final sst (delta_hat sst (initial sst, w))")
   case None then show ?thesis
     by (simp add: compose_SST_Transducer_def SST.run_def Transducer.run_def compose_final_def compose_\<delta>_hat)
 next
   case (Some output_final1)
   let ?output_of_1st_sst =
-    "valuate ((SST.eta_hat sst (SST.initial sst, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x. True))"
+    "valuate ((SST.eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x. True))"
   show ?thesis
-  proof (cases "transducer.final td (Transducer.delta_hat td (transducer.initial td, ?output_of_1st_sst))")
+  proof (cases "transducer.final td (delta_hat td (initial td, ?output_of_1st_sst))")
     case False then show ?thesis
       by (simp add: SST.run_def Transducer.run_def Some
             compose_SST_Transducer_def compose_\<delta>_hat compose_final_def valuate_delta_hat \<Delta>_assoc)

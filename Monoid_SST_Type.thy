@@ -65,8 +65,8 @@ fun type_hom :: "('q, 'x, 'y) msst_type \<Rightarrow> ('q \<times> (('x + ('y, '
   "type_hom \<gamma> (q, (Inr m#xs)) = mult_shuffles { resolve_shuffle m } (type_hom \<gamma> (q, xs))"
 
 definition is_type :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
-  "is_type msst \<gamma> \<equiv> (\<forall>x. idS \<in> \<gamma> (MSST.initial msst, x)) \<and>
-                     (\<forall>x q a. type_hom \<gamma> (q, MSST.eta msst (q, a) x) \<subseteq> \<gamma> (MSST.delta msst (q, a), x))"
+  "is_type msst \<gamma> \<equiv> (\<forall>x. idS \<in> \<gamma> (initial msst, x)) \<and>
+                     (\<forall>x q a. type_hom \<gamma> (q, eta msst (q, a) x) \<subseteq> \<gamma> (delta msst (q, a), x))"
 
 
 lemma type_hom_append [simp]: "type_hom \<gamma> (q, u @ v) = mult_shuffles (type_hom \<gamma> (q, u)) (type_hom \<gamma> (q, v))"
@@ -74,8 +74,8 @@ lemma type_hom_append [simp]: "type_hom \<gamma> (q, u @ v) = mult_shuffles (typ
 
 lemma type_hom_subset:
   assumes "is_type msst \<gamma>"
-  shows "type_hom \<gamma> (q, hat_hom (Monoid_SST.eta msst (q, a)) u) 
-      \<subseteq> type_hom \<gamma> (Monoid_SST.delta msst (q, a), u)"
+  shows "type_hom \<gamma> (q, hat_hom (SST.eta msst (q, a)) u) 
+      \<subseteq> type_hom \<gamma> (delta msst (q, a), u)"
 proof (induct u rule: xa_induct)
 case Nil
   then show ?case by simp
@@ -97,20 +97,20 @@ qed
 
 lemma
   assumes "is_type msst \<gamma>"
-  shows "type_hom \<gamma> (q, hat_hom (Monoid_SST.eta_hat msst (q, w)) u)
-      \<subseteq> type_hom \<gamma> (Monoid_SST.delta_hat msst (q, w), u)"
+  shows "type_hom \<gamma> (q, hat_hom (eta_hat msst (q, w)) u)
+      \<subseteq> type_hom \<gamma> (delta_hat msst (q, w), u)"
 proof (induct w arbitrary: q u)
 case Nil
   then show ?case by simp
 next
   case (Cons a w)
   then show ?case proof (simp add: comp_def comp_lem[symmetric] del: Fun.comp_apply)
-    let ?q' = "MSST.delta msst (q, a)"
-    let ?e' = "MSST.eta msst (q, a)"
-    let ?uu = "hat_hom (Monoid_SST.eta_hat msst (?q', w)) u"
+    let ?q' = "delta msst (q, a)"
+    let ?e' = "SST.eta msst (q, a)"
+    let ?uu = "hat_hom (SST.eta_hat msst (?q', w)) u"
     have "type_hom \<gamma> (q, hat_hom ?e' ?uu) \<subseteq> type_hom \<gamma> (?q', ?uu)" using assms by (simp add: type_hom_subset)
-    also have "... \<subseteq> type_hom \<gamma> (Monoid_SST.delta_hat msst (?q', w), u)" by (simp add: Cons)
-    finally show "type_hom \<gamma> (q, hat_hom ?e' ?uu) \<subseteq> type_hom \<gamma> (Monoid_SST.delta_hat msst (?q', w), u)" .
+    also have "... \<subseteq> type_hom \<gamma> (delta_hat msst (?q', w), u)" by (simp add: Cons)
+    finally show "type_hom \<gamma> (q, hat_hom ?e' ?uu) \<subseteq> type_hom \<gamma> (delta_hat msst (?q', w), u)" .
   qed    
 qed
 

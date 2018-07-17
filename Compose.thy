@@ -24,12 +24,12 @@ definition revrevconv where
   "revrevconv = convert_MSST revrev"
 
 definition SST_run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "SST_run sst w = (case SST.final sst (SST.delta_hat sst (SST.initial sst, w)) of
-      Some u \<Rightarrow> Some ((valuate o (SST.eta_hat sst (SST.initial sst, w) \<bullet> (\<lambda>x :: nat. u))) 0) |
+  "SST_run sst w = (case SST.final sst (delta_hat sst (initial sst, w)) of
+      Some u \<Rightarrow> Some ((valuate o (SST.eta_hat sst (initial sst, w) \<bullet> (\<lambda>x :: nat. u))) 0) |
       None   \<Rightarrow> None)"
 
 lemma "SST.run sst w = SST_run sst w"
-proof (cases "SST.final sst (SST.delta_hat sst (SST.initial sst, w))")
+proof (cases "SST.final sst (delta_hat sst (initial sst, w))")
   case None
   then show ?thesis unfolding SST.run_def SST_run_def by simp
 next
@@ -38,9 +38,9 @@ next
 qed
 
 definition MSST_run :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "MSST_run msst w = (case final_update msst (hat1 (MSST.delta msst) (MSST.initial msst, w)) of
-      Some u \<Rightarrow> (case final_string msst (hat1 (MSST.delta msst) (MSST.initial msst, w)) of
-         Some v \<Rightarrow> (let m = concatU ((valuate o (Monoid_SST.eta_hat msst (initial msst, w) \<bullet> (\<lambda>x. u))) (0 :: nat))
+  "MSST_run msst w = (case final_update msst (hat1 (delta msst) (initial msst, w)) of
+      Some u \<Rightarrow> (case final_string msst (hat1 (delta msst) (initial msst, w)) of
+         Some v \<Rightarrow> (let m = concatU ((valuate o (eta_hat msst (initial msst, w) \<bullet> (\<lambda>x. u))) (0 :: nat))
                     in Some ((valuate o (m \<bullet> (\<lambda>y. v))) (0 :: nat))) |
          None \<Rightarrow> None) |
       None \<Rightarrow> None)"

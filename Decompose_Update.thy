@@ -31,21 +31,7 @@ type_synonym ('y, 'b) store = "'y index \<Rightarrow> 'b list"
 
 subsection \<open>Utility functions\<close>
 
-(* extract only variables from var-alphabet list *)
-fun extract_variables :: "('x + 'b) list \<Rightarrow> 'x list" where
-  "extract_variables [] = []" |
-  "extract_variables (Inl x#xs) = x # extract_variables xs" |
-  "extract_variables (Inr a#xs) = extract_variables xs"
 
-
-lemma [simp]: "extract_variables (u @ v) = extract_variables u @ extract_variables v"
-  by (induct u arbitrary: v rule: xa_induct; simp_all)
-
-lemma extract_variables_left_id[simp]: "extract_variables (map Inl u) = u"
-  by (induct u, simp_all)
-
-lemma extract_variables_right_ignore[simp]: "extract_variables (map Inr u) = []"
-  by (induct u, simp_all)
 
 
 subsubsection \<open>Induction on list of pairs\<close>

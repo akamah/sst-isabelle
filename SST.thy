@@ -69,10 +69,10 @@ definition closed_final where
       \<forall>u\<in>set_option (SST.final sst q).
         \<forall>y\<in>set (extract_variables u). y \<in> SST.variables sst"
 
-definition well_defined where
+abbreviation well_defined where
   "well_defined sst \<equiv> st_well_defined sst \<and> closed_eta sst \<and> closed_final sst"
 
-lemmas well_defined_simps = st_well_defined_simps closed_eta_def closed_final_def well_defined_def
+lemmas well_defined_simps = st_well_defined_simps closed_eta_def closed_final_def
 
 
 (* if the output is undefined, return None, or return some output *)
@@ -99,11 +99,8 @@ definition rev :: "(nat, nat, nat, nat) SST" where
     eta = \<lambda>(q, a) x. [Inr a, Inl 0],
     final = \<lambda>q. Some [Inl 0] |)"
 
-lemmas well_definedness = 
-  st_well_defined_simps closed_eta_def closed_final_def well_defined_def
-
 lemma "well_defined rev"
-  unfolding well_definedness rev_def
+  unfolding well_defined_simps rev_def
   by simp
   
 definition reset :: "(nat, nat, nat, nat) SST" where
@@ -116,7 +113,7 @@ definition reset :: "(nat, nat, nat, nat) SST" where
     final = \<lambda>q. Some [Inl 0] \<rparr>"
 
 lemma "well_defined reset"
-  unfolding reset_def well_definedness
+  unfolding reset_def well_defined_simps
   by simp
 
 lemma "run reset [1, 2, 0, 1, 2] = Some [1, 2]"

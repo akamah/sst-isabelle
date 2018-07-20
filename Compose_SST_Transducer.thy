@@ -120,35 +120,52 @@ lemma valuate_eta_hat: "Transducer.hat2 tr td (q, valuate (u x)) = valuate (H tr
   by (simp add: H_def valuate_eta_hat_string)
 
 
-subsection \<open>Main result\<close>
+subsection \<open>Main results\<close>
 
-lemma closed_\<Delta>: 
-  assumes "td_well_defined T"
-  assumes "\<forall>q2\<in>states T. \<forall>x\<in>V. f (q2, x) \<in> states T"
-  assumes "q\<in>states T"
-  shows "\<forall>q2\<in>states T. \<forall>x\<in>V. \<Delta> (Transducer.eta T) (f, \<theta>) (q2, x) \<in> states T"
-  apply (auto simp add: \<Delta>_def)
-  oops
+lemma closed_delta2f: 
+  assumes "closed_delta st var f"
+  assumes "closed_delta st  al tr"
+  shows "closed_delta st (var <+> al) (delta2f f tr)"
+  unfolding closed_delta_def
+proof (intro ballI)
+  fix q ax
+  assume q: "q \<in> st" and ax: "ax \<in> var <+> al"
+  show "delta2f f tr (q, ax) \<in> st"
+  proof (cases ax)
+    case (Inl x)
+    then have "x \<in> var" using ax by blast
+    then have "f (q, x) \<in> st" by (meson assms(1) closed_delta_def q)
+    then show ?thesis by (simp add: Inl)
+  next
+    case (Inr a)
+    then have "a \<in> al" using ax by blast
+    then have "tr (q, a) \<in> st" by (meson assms(2) closed_delta_def q)
+    then show ?thesis by (simp add: Inr)
+  qed
+qed
 
-(*
+  
 theorem compose_SST_Transducer_well_defined:
   assumes sst_well: "well_defined sst"
   assumes td_well:  "td_well_defined td"
-  shows "well_defined (compose_SST_Transducer sst td)"
-proof (auto simp add: well_defined_simps compose_SST_Transducer_def compose_\<delta>_def compose_\<eta>_def)
-  show "initial "
-    using sst_well unfolding well_definedness compose_SST_Transducer_def
-    by (simp add: sst_well)
-  show "closed_delta (compose_SST_Transducer sst td)"
+  shows "well_defined (compose_SST_Transducer sst td)" (is "well_defined ?comp")
+proof (auto)
+  show "initial_in_states (states ?comp) (initial ?comp)"
+    using sst_well unfolding well_defined_simps compose_SST_Transducer_def
+    by simp
+  show "closed_delta (states ?comp) UNIV (delta ?comp)"
     unfolding well_defined_simps compose_SST_Transducer_def compose_\<delta>_def
   proof (auto)
     fix q a
     assume "q \<in> states sst"
     then show "delta sst (q, a) \<in> states sst"
-      using sst_well unfolding well_definedness by blast
+      using sst_well unfolding well_defined_simps
+      by blast
   next
     fix f q1 a q2 x1
     show "\<Delta> (delta td) (f, SST.eta sst (q1, a)) (q2, x1) \<in> states td"
+      apply (simp add: \<Delta>_def)
+      
 next
   show "closed_eta (compose_SST_Transducer sst td)"
     sorry
@@ -158,7 +175,7 @@ next
 next
 
 qed
-*)
+
 
 
 theorem can_compose_SST_Transducer:

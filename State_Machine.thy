@@ -27,15 +27,14 @@ abbreviation delta_hat ::
 definition initial_in_states :: "['q set, 'q] \<Rightarrow> bool" where
   "initial_in_states st q0 \<equiv> q0 \<in> st"
 
-definition closed_delta :: "['q set, ('q, 'a) trans] \<Rightarrow> bool" where
-  "closed_delta st tr \<equiv> \<forall>q\<in>st. \<forall>a. tr (q, a) \<in> st"
+definition closed_delta :: "['q set, 'a set, ('q, 'a) trans] \<Rightarrow> bool" where
+  "closed_delta st al tr \<equiv> \<forall>q\<in>st. \<forall>a\<in>al. tr (q, a) \<in> st"
 
-definition st_well_defined :: "('q, 'a, 'e) state_machine_scheme \<Rightarrow> bool" where
+abbreviation st_well_defined :: "('q, 'a, 'e) state_machine_scheme \<Rightarrow> bool" where
   "st_well_defined m \<equiv> initial_in_states (states m) (initial m)
-                      \<and> closed_delta (states m) (delta m)"
+                      \<and> closed_delta (states m) (UNIV::'a set) (delta m)"
 
-lemmas st_well_defined_simps =
-  st_well_defined_def initial_in_states_def closed_delta_def
+lemmas st_well_defined_simps = initial_in_states_def closed_delta_def
 
 
 definition reachable :: "('q, 'a, 'e) state_machine_scheme \<Rightarrow> 'q \<Rightarrow> bool" where
@@ -46,34 +45,25 @@ definition trim :: "('q, 'a, 'e) state_machine_scheme \<Rightarrow> bool" where
 
 section \<open>Properties\<close>
 
-lemma closed_delta_hat_iff_closed_delta[iff]:
-  "closed_delta st (hat1 tr) \<longleftrightarrow> closed_delta st tr"
-proof
-  assume 0: "closed_delta st (hat1 tr)"
-  show "closed_delta st tr"
-    unfolding closed_delta_def
-  proof (rule ballI, rule allI)
-    fix q a
-    assume q: "q \<in> st"
-    have "hat1 tr (q, [a]) \<in> st"
-      using 0 unfolding closed_delta_def
-      by (simp add: 0 q del: hat1.simps)
-    then show "tr (q, a) \<in> st" by simp
-  qed
-next
-  assume 0: "closed_delta st tr"
-  show "closed_delta st (hat1 tr)"
-    unfolding closed_delta_def
-  proof (rule ballI, rule allI)
-    fix q w
-    assume q: "q \<in> st"
-    { fix q w
-      have "q \<in> st \<Longrightarrow> hat1 tr (q, w) \<in> st"
-        using 0 unfolding closed_delta_def
-        by (induct w arbitrary: q, simp_all)
-    }
-    then show "hat1 tr (q, w) \<in> st" using q by simp
-  qed
+definition star :: "'a set \<Rightarrow> 'a list set" where
+  "star A \<equiv> {w. list_all (\<lambda>a. a \<in> A) w}"
+
+
+lemma closed_delta_hat:
+  fixes tr :: "('q, 'a) trans"
+  assumes "closed_delta st al tr"
+  shows "closed_delta st (star al) (hat1 tr)"
+  unfolding closed_delta_def
+proof (intro ballI)
+  fix q w
+  assume q: "q \<in> st"
+  assume w: "w \<in> star al"
+  { fix q w
+    have "q \<in> st \<Longrightarrow> w \<in> star al \<Longrightarrow> hat1 tr (q, w) \<in> st"
+      using assms unfolding closed_delta_def
+      by (induct w arbitrary: q, simp_all add: star_def)
+  }
+  then show "hat1 tr (q, w) \<in> st" using q w by simp
 qed
 
 

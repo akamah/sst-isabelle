@@ -60,8 +60,7 @@ subsection \<open>Well-definedness\<close>
 definition closed_eta where
   "closed_eta sst \<equiv>
      \<forall>q\<in>states sst. \<forall>a. \<forall>x\<in>SST.variables sst.
-       \<forall>y\<in>set (extract_variables (SST.eta sst (q, a) x)).
-         y \<in> SST.variables sst"
+       SST.eta sst (q, a) x \<in> star (SST.variables sst <+> UNIV)"
 
 definition closed_final where
   "closed_final sst \<equiv>
@@ -88,6 +87,26 @@ lemma eta_append: "hat2 tf to (q, as @ bs) = hat2 tf to (q, as) \<bullet> hat2 t
   by (induction as arbitrary: q, auto simp add: comp_assoc comp_left_neutral)
 
 
+lemma extract_star:
+  assumes "\<forall>y\<in>set (extract_variables u). y\<in>V"
+  shows "u \<in> star (V <+> UNIV)"
+using assms by (induct u rule: xa_induct, auto simp add: star_def)
+
+
+(*
+lemma eta_closed_iff: 
+  assumes "closed_eta sst"
+  assumes "q1 \<in> states sst"
+  assumes "x1 \<in> variables sst"
+  shows "SST.eta sst (q1, a) x1 \<in> star (variables sst <+> UNIV)"
+  apply (rule extract_star)
+  using assms
+  unfolding well_defined_simps
+  by auto
+*)
+  
+  
+
 subsection \<open>Examples\<close>
 
 definition rev :: "(nat, nat, nat, nat) SST" where
@@ -100,8 +119,8 @@ definition rev :: "(nat, nat, nat, nat) SST" where
     final = \<lambda>q. Some [Inl 0] |)"
 
 lemma "well_defined rev"
-  unfolding well_defined_simps rev_def
-  by simp
+  unfolding well_defined_simps rev_def star_def
+  by auto
   
 definition reset :: "(nat, nat, nat, nat) SST" where
   "reset = \<lparr>
@@ -113,8 +132,8 @@ definition reset :: "(nat, nat, nat, nat) SST" where
     final = \<lambda>q. Some [Inl 0] \<rparr>"
 
 lemma "well_defined reset"
-  unfolding reset_def well_defined_simps
-  by simp
+  unfolding reset_def well_defined_simps star_def
+  by auto
 
 lemma "run reset [1, 2, 0, 1, 2] = Some [1, 2]"
   by (simp add: run_def reset_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)

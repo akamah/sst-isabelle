@@ -30,6 +30,13 @@ definition initial_in_states :: "['q set, 'q] \<Rightarrow> bool" where
 definition closed_delta :: "['q set, 'a set, ('q, 'a) trans] \<Rightarrow> bool" where
   "closed_delta st al tr \<equiv> \<forall>q\<in>st. \<forall>a\<in>al. tr (q, a) \<in> st"
 
+lemma closed_delta_simp:
+  assumes "closed_delta st al tr"
+  assumes "q \<in> st"
+  assumes "a \<in> al"
+  shows "tr (q, a) \<in> st"
+  using assms unfolding closed_delta_def by simp
+
 abbreviation st_well_defined :: "('q, 'a, 'e) state_machine_scheme \<Rightarrow> bool" where
   "st_well_defined m \<equiv> initial_in_states (states m) (initial m)
                       \<and> closed_delta (states m) (UNIV::'a set) (delta m)"
@@ -48,6 +55,11 @@ section \<open>Properties\<close>
 definition star :: "'a set \<Rightarrow> 'a list set" where
   "star A \<equiv> {w. list_all (\<lambda>a. a \<in> A) w}"
 
+lemma star_Cons: "(a#as) \<in> star A \<Longrightarrow> as \<in> star A"
+  by (induct as, simp_all add: star_def)
+
+lemma star_append: "u \<in> star A \<Longrightarrow> v \<in> star A \<Longrightarrow> (u @ v) \<in> star A"
+  by (induct u, simp_all add: star_def)
 
 lemma closed_delta_hat:
   fixes tr :: "('q, 'a) trans"

@@ -144,6 +144,50 @@ proof (intro ballI)
   qed
 qed
 
+lemma list_all_Plus_Inl:
+  "list_all (\<lambda>a. a \<in> A <+> B) (map Inl u) = list_all (\<lambda>a. a \<in> A) u"
+  by (induct u, auto)
+
+lemma list_all_Plus_Inr:
+  "list_all (\<lambda>a. a \<in> A <+> B) (map Inr u) = list_all (\<lambda>a. a \<in> B) u"
+  by (induct u, auto)
+
+lemma star_Inr [simp]: "map Inr u \<in> star (A <+> B) \<longleftrightarrow> u \<in> star B"
+  by (simp add: star_def, rule list_all_Plus_Inr)
+
+lemma star_UNIV [simp]: "star UNIV = UNIV"
+  unfolding star_def
+  using Ball_set by blast
+
+lemma closed_eta2f:
+  assumes "closed_delta st var f"
+  assumes "closed_delta st al tr"
+  assumes "q2 \<in> st"
+  assumes "u \<in> star (var <+> al)"
+  shows "Transducer.hat2 (delta2f f tr) (eta2f to) (q2, u) \<in> star (st \<times> var <+> UNIV)"
+  using assms proof (induct u arbitrary: q2 rule: xa_induct)
+  case Nil
+  then show ?case by (simp add: star_def)
+next
+  case (Var x xs)
+  then show ?case by (auto simp add: star_def closed_delta_def)
+next
+  case (Alpha a xs)
+  assume q2: "q2 \<in> st"
+  have a: "a \<in> al" by (insert Alpha.prems(4), auto simp add: star_def)
+  have q': "tr (q2, a) \<in> st"
+    apply (rule closed_delta_simp[of st al tr])
+    by (simp_all add: assms q2 a)
+  have xs: "xs \<in> star (var <+> al)"
+    by (rule star_Cons[OF Alpha(5)])
+  then show ?case
+    apply (simp add: list_all_Plus_Inr list.pred_True)
+    apply (rule star_append)
+    apply (simp)
+    apply (rule Alpha)
+    using assms apply (simp_all add: q')
+    done
+qed
   
 theorem compose_SST_Transducer_well_defined:
   assumes sst_well: "well_defined sst"
@@ -154,7 +198,7 @@ proof (auto)
     using sst_well unfolding well_defined_simps compose_SST_Transducer_def
     by simp
   show "closed_delta (states ?comp) UNIV (delta ?comp)"
-    unfolding well_defined_simps compose_SST_Transducer_def compose_\<delta>_def
+    unfolding closed_delta_def compose_SST_Transducer_def compose_\<delta>_def \<Delta>_def
   proof (auto)
     fix q a
     assume "q \<in> states sst"
@@ -163,12 +207,46 @@ proof (auto)
       by blast
   next
     fix f q1 a q2 x1
-    show "\<Delta> (delta td) (f, SST.eta sst (q1, a)) (q2, x1) \<in> states td"
-      apply (simp add: \<Delta>_def)
-      
+    assume q1: "q1 \<in> states sst"
+    assume q2: "q2 \<in> states td"
+    assume f: "\<forall>q2\<in>states td. \<forall>x1\<in>variables sst. f (q2, x1) \<in> states td"
+    assume x1: "x1 \<in> variables sst"
+
+    show "hat1 (delta2f f (delta td)) (q2, SST.eta sst (q1, a) x1) \<in> states td"
+    proof (rule closed_delta_simp)
+      have "closed_delta (states td) UNIV (delta td)"
+      using td_well td_well_defined_def by auto
+      moreover have "closed_delta (states td) (variables sst) f"
+        using closed_delta_def f by blast
+      ultimately have "closed_delta (states td) (variables sst <+> UNIV) (delta2f f (delta td))"
+        by (simp add: closed_delta2f)
+      then show delta2f_hat_closed:
+        "closed_delta (states td) (star (variables sst <+> UNIV)) (hat1 (delta2f f (delta td)))"
+        by (simp add: closed_delta_hat)
+    next
+      show "q2 \<in> states td" by (rule q2)
+    next
+      show "SST.eta sst (q1, a) x1 \<in> star (variables sst <+> UNIV)"
+        apply (rule eta_closed_iff)
+        by (auto simp add: sst_well q1 x1)
+    qed
+  qed
 next
   show "closed_eta (compose_SST_Transducer sst td)"
-    sorry
+    unfolding closed_eta_def compose_SST_Transducer_def compose_\<eta>_def H_def
+  proof (auto)
+    fix q1 f a q2 x1
+    assume q1: "q1 \<in> states sst"
+    assume q2: "q2 \<in> states td"
+    assume f: "\<forall>q2\<in>states td. \<forall>x1\<in>variables sst. f (q2, x1) \<in> states td"
+    assume x1: "x1 \<in> variables sst"
+    have eta_hat_alphabet:
+      "SST.eta sst (q1, a) x1 \<in> star (variables sst <+> UNIV)"
+      apply (rule eta_closed_iff[OF _ q1 x1])
+      by (auto simp add: sst_well)
+    
+
+  qed
 next
   show "closed_final (compose_SST_Transducer sst td)"
     sorry

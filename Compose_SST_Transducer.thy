@@ -190,6 +190,8 @@ next
 qed
   
 theorem compose_SST_Transducer_well_defined:
+  fixes sst :: "('q1, 'x1, 'a, 'b) SST"
+  fixes td  :: "('q2, 'b, 'c) transducer"
   assumes sst_well: "well_defined sst"
   assumes td_well:  "td_well_defined td"
   shows "well_defined (compose_SST_Transducer sst td)" (is "well_defined ?comp")
@@ -227,8 +229,7 @@ proof (auto)
       show "q2 \<in> states td" by (rule q2)
     next
       show "SST.eta sst (q1, a) x1 \<in> star (variables sst <+> UNIV)"
-        apply (rule eta_closed_iff)
-        by (auto simp add: sst_well q1 x1)
+        using closed_eta_def q1 sst_well x1 by fastforce
     qed
   qed
 next
@@ -242,16 +243,28 @@ next
     assume x1: "x1 \<in> variables sst"
     have eta_hat_alphabet:
       "SST.eta sst (q1, a) x1 \<in> star (variables sst <+> UNIV)"
-      apply (rule eta_closed_iff[OF _ q1 x1])
-      by (auto simp add: sst_well)
-    
-
+      using closed_eta_def q1 sst_well x1 by fastforce
+    show "Transducer.hat2 (delta2f f (delta td))
+        (eta2f (transducer.eta td)) (q2, SST.eta sst (q1, a) x1)
+       \<in> star (states td \<times> variables sst <+> UNIV)"
+    proof (rule closed_eta2f)
+      show "closed_delta (states td) (variables sst) f"
+        unfolding closed_delta_def by (rule f)
+    next
+      show "closed_delta (states td) UNIV (delta td)"
+        using td_well unfolding td_well_defined_simps by simp
+    next
+      show "q2 \<in> states td" by (rule q2)
+    next
+      show "SST.eta sst (q1, a) x1 \<in> star (variables sst <+> UNIV)"
+        using sst_well q1 x1 unfolding well_defined_simps by simp
+    qed
   qed
 next
   show "closed_final (compose_SST_Transducer sst td)"
-    sorry
-next
-
+    apply (simp add: closed_final_def compose_SST_Transducer_def)
+    apply (simp add: compose_final_def)
+    apply auto
 qed
 
 

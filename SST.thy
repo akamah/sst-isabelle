@@ -65,8 +65,7 @@ definition closed_eta where
 definition closed_final where
   "closed_final sst \<equiv>
     \<forall>q\<in>states sst.
-      \<forall>u\<in>set_option (SST.final sst q).
-        \<forall>y\<in>set (extract_variables u). y \<in> SST.variables sst"
+      \<forall>u\<in>set_option (SST.final sst q). u \<in> star (SST.variables sst <+> UNIV)"
 
 abbreviation well_defined where
   "well_defined sst \<equiv> st_well_defined sst \<and> closed_eta sst \<and> closed_final sst"

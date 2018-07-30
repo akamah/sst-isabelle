@@ -5,7 +5,7 @@
 section \<open>Decomposition of an Update\<close>
 
 theory Decompose_Update
-  imports Main Update List SST
+  imports Main Enum Update List SST
 begin
 
 (* an Update can be divided into two objects:
@@ -16,7 +16,7 @@ begin
 (* an detailed index of string in Append. 
  * (x, k) means the position of a k-th variable used in the assignment to x.
  *)
-type_synonym 'y index = "'y \<times> nat"
+type_synonym ('y, 'i) index = "'y \<times> 'i"
 
 (* Shuffle *)
 type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
@@ -26,13 +26,75 @@ definition idS :: "'y shuffle" where
   "idS \<equiv> (\<lambda>y. [y])"
 
 (* Store *)
-type_synonym ('y, 'b) store = "'y index \<Rightarrow> 'b list"
+type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
 
 subsection \<open>Utility functions\<close>
 
+fun enum_to_nat' :: "'e list \<Rightarrow> 'e \<Rightarrow> nat" where
+  "enum_to_nat' [] e = undefined" |
+  "enum_to_nat' (x#xs) e = (if x = e then 0 else 1 + enum_to_nat' xs e)"
+
+fun nat_to_enum' :: "'e list \<Rightarrow> nat \<Rightarrow> 'e" where
+  "nat_to_enum' [] n = undefined" |
+  "nat_to_enum' (x#xs) 0 = x" |
+  "nat_to_enum' (x#xs) (Suc n) = nat_to_enum' xs n"
+
+definition enum_to_nat :: "'e::enum \<Rightarrow> nat" where
+  "enum_to_nat e = enum_to_nat' Enum.enum e"
+
+definition nat_to_enum :: "nat \<Rightarrow> 'e::enum" where
+  "nat_to_enum n = nat_to_enum' Enum.enum n"
+
+lemma nat_to_enum'_in:
+  assumes "n < length xs"
+  shows "nat_to_enum' xs n \<in> set xs"
+using assms by (induct xs n rule: nat_to_enum'.induct, simp_all)
 
 
+lemma list_nat_iso:
+  assumes "e \<in> set xs"
+  shows "nat_to_enum' xs (enum_to_nat' xs e) = e"
+  unfolding enum_to_nat_def
+using assms by (induct xs arbitrary: e, auto)
+
+lemma enum_nat_iso:
+  assumes "e \<in> set Enum.enum"
+  shows "nat_to_enum (enum_to_nat e) = e"
+  unfolding nat_to_enum_def enum_to_nat_def
+  by (rule list_nat_iso, rule assms(1))
+
+lemma nat_list_iso:
+  assumes "n < length xs"
+  assumes "distinct xs"
+  shows "enum_to_nat' xs (nat_to_enum' xs n) = n"
+using assms proof (induct xs n rule: nat_to_enum'.induct)
+  case (1 n)
+  then show ?case by simp
+next
+  case (2 x xs)
+  then show ?case by simp
+next
+  case (3 x xs n)
+  then show ?case proof (simp)
+    have "n < length xs"
+      using "3.prems"(1) by auto
+    moreover have "distinct xs"
+      using "3.prems"(2) by auto
+    moreover have "enum_to_nat' xs (nat_to_enum' xs n) = n"
+      by (simp add: "3.hyps" calculation(1) calculation(2))
+    moreover have "nat_to_enum' xs n \<in> set xs"
+      by (simp add: calculation(1) nat_to_enum'_in)
+    ultimately show "x \<noteq> nat_to_enum' xs n"
+      using "3.prems"(2) by auto
+  qed
+qed
+
+lemma nat_enum_iso:
+  assumes "n < length (Enum.enum :: ('e::enum) list)"
+  shows "enum_to_nat (nat_to_enum n :: 'e) = n"
+  unfolding enum_to_nat_def nat_to_enum_def
+  by (rule nat_list_iso, rule assms(1), rule Enum.enum_distinct)
 
 subsubsection \<open>Induction on list of pairs\<close>
 
@@ -253,30 +315,45 @@ subsubsection \<open>Padding\<close>
 
 text \<open>replace strings with a special meta-variable\<close>
 
-fun padding_rec :: "nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y + 'y index) list" where
+fun padding_rec :: "nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y + ('y, 'i::enum) index) list" where
   "padding_rec n y [] = []" |
-  "padding_rec n y ((x, _)#xs) = Inl x # Inr (y, n) # padding_rec (Suc n) y xs"
+  "padding_rec n y ((x, _)#xs) = Inl x # Inr (y, nat_to_enum n) # padding_rec (Suc n) y xs"
 
-definition padding :: "'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y + 'y index) list" where
-  "padding y = (\<lambda>(a0, xs). Inr (y, 0) # padding_rec 1 y xs)"
+lemma [simp]: "padding_rec (i#is) y ((x, a)#xs) = Inl x # Inr (y, i) # padding_rec is y xs"
+  by (simp add: padding_rec.simps(3))
+
+fun padding :: "'i list \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y + ('y, 'i) index) list" where
+  "padding (i#is) y (a0, xs) = Inr (y, i) # padding_rec is y xs" |
+  "padding is y axs = []"
 
 lemma padding_rec_append[simp]:
-  "padding_rec n y (xs @ ys) = padding_rec n y xs @ padding_rec (length xs + n) y ys"
-  by (induct xs arbitrary: n ys rule: pair_induct, simp_all)
+  "padding_rec is y (xs @ ys) = padding_rec is y xs @ padding_rec (drop (length xs) is) y ys"
+proof (induct xs arbitrary: ys "is" rule: pair_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (PairCons x as xas)
+  then show ?case by (cases "is", simp_all)
+qed
+
 
 lemma padding_word_simp[simp]: 
-  "padding y (w, []) = [Inr (y, 0)]"
-  by (simp add: padding_def)
+  "padding (i#is) y (w, []) = [Inr (y, i)]"
+  by (simp)
 
 lemma padding_last_simp[simp]: 
-  "padding y (xas @@@ [(x, as :: 'b list)])
- = padding y xas @ [Inl x, Inr (y, length_scanned xas)]"
-proof -
-  { fix n x yas and as :: "'b list"
-    have "padding_rec n y (yas @ [(x, as)]) = padding_rec n y yas @ [Inl x, Inr (y, n + length yas)]"
+  "padding is y (xas @@@ [(x, as :: 'b list)])
+ = padding is y xas @ [Inl x, Inr (y, is ! length_scanned xas)]"
+proof (cases xas)
+  case (Pair as xs)
+  then show ?thesis
+    apply (simp add: append_scanned_simp)
+qed
+  { fix x yas and as :: "'b list"
+    have "padding_rec is y (yas @ [(x, as)]) = padding_rec is y yas @ [Inl x, Inr (y, is ! (n + length yas))]"
       by (induct yas arbitrary: n rule: pair_induct, simp_all)
   } note that = this
-  then show ?thesis by (cases xas, simp add: padding_def that append_scanned_simp)
+  then show ?thesis by (cases xas, simp add: that append_scanned_simp)
 qed
 
 lemma padding_append_scanned:

@@ -3,7 +3,7 @@
 *)
 
 theory Compose_SST_Transducer
-  imports Main List Option Update Transducer SST
+  imports Main List Option "../Core/Update" "../Core/Transducer" "../Core/SST"
 begin
 
 section \<open>Composition of SST and Transducer\<close>

@@ -1,5 +1,5 @@
 theory Bounded_Copy
-  imports Main SST Finite_Set SingleUse Decompose_Update
+  imports Main Finite_Set "../Core/SST" SingleUse
 begin
 
 

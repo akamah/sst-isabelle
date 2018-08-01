@@ -3,7 +3,7 @@
 *)
 
 theory Update
-  imports Main List Sum_Util
+  imports Main List "../Util/Sum_Util"
 begin
 
 (* an induction rule for variable and alphabet list *)

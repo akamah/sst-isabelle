@@ -4,7 +4,7 @@
 
 
 theory Monoid_SST_Type
-  imports Main Update Monoid_SST Decompose_Update Bounded_Copy
+  imports Main "../Core/Update" "../Core/Monoid_SST" "../Decomposition/Decompose_Update" "../Single_Use/Bounded_Copy"
 begin
 
 type_synonym ('q, 'x, 'y) msst_type = "'q \<times> 'x \<Rightarrow> 'y shuffle set"

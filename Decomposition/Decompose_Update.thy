@@ -5,7 +5,7 @@
 section \<open>Decomposition of an Update\<close>
 
 theory Decompose_Update
-  imports Main Enum Update List SST
+  imports Main Enum List "../Core/Update" "../Core/SST"
 begin
 
 (* an Update can be divided into two objects:

@@ -5,7 +5,7 @@
 section \<open>Composition of SST and SST\<close>
 
 theory Compose_SST_SST
-  imports Main List Option Update Transducer SST Monoid_SST
+  imports Main List Option "../Core/Update" "../Core/Transducer" "../Core/SST" "../Core/Monoid_SST"
 begin
 
 subsection \<open>Definition of a strange transducer and its property\<close>

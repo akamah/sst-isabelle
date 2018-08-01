@@ -1,5 +1,5 @@
-theory SingleUse
-  imports Main Setsum Update Decompose_Update
+theory Single_Use
+  imports Main "../Util/Setsum" "../Core/Update" "../Decomposition/Decompose_Update"
 begin
 
 lemma sum_cong: "\<And>x. x\<in>A \<Longrightarrow> f = g \<Longrightarrow> sum f A = sum g A" by auto

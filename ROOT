@@ -7,4 +7,4 @@ session "SST" = "HOL-Library" +
     A formalization and theories of Streaming String Transducers
   *}
   options [document = false]
-  theories Monoid Transducer Update SST Compose_SST_Transducer Compose_SST_SST
+  theories "Core/Transducer" "Core/Update" "Core/SST" "Composition/Compose_SST_Transducer" "Composition/Compose_SST_SST"

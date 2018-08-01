@@ -1,5 +1,5 @@
 theory Compose_SST_SST_Type 
-  imports Compose_SST_SST Decompose_Update Monoid_SST_Type
+  imports "../Composition/Compose_SST_SST" "../Decomposition/Decompose_Update" Monoid_SST_Type
 begin
 
 

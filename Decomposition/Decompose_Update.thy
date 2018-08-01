@@ -656,10 +656,37 @@ proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
 qed
 
 
-lemma bounded_copy_length_scanned:
+lemma variable_count_in_bounded_update:
+  fixes m :: "('x::finite, 'a) update"
   assumes "bounded k m"
-  shows "length_scanned (scan (m x)) \<le> k * k"
-  oops 
+  shows "length (extract_variables (m x)) \<le> card (UNIV::'x set) * k"
+  using assms unfolding bounded_def count_var_def
+(*  have "(\<Sum>x\<in>UNIV. (\<Sum>y\<in>UNIV. count_list (m y) (Inl x))) \<le> card (UNIV::'x set) * k" *)
+  sorry
+
+lemma length_scanned_of_variable_count:
+  fixes u :: "('x::finite + 'a) list"
+  assumes "length (extract_variables u) = k"
+  shows "length_scanned (scan u) = k + 1"
+using assms proof (induct u arbitrary: k rule: xw_induct)
+  case (Word w)
+  then show ?case by simp
+next
+  case (VarWord x w u)
+  then show ?case by (simp del: length_scanned.simps)
+qed
+
+
+lemma bounded_copy_length_scanned:
+  fixes m :: "('x::finite, 'a) update"
+  assumes "bounded k m"
+  shows "length_scanned (scan (m x)) \<le> card (UNIV::'x set) * k + 1"
+proof -
+  have "length (extract_variables (m x)) \<le> card (UNIV::'x set) * k"
+    using assms by (simp add: variable_count_in_bounded_update)
+  then show ?thesis
+    by (simp add: length_scanned_of_variable_count)
+qed
 
 
 theorem resolve_inverse: "synthesize B (resolve_shuffle B m, resolve_store B m :: ('y, 'i::enum, 'b) store) = m"

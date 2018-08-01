@@ -253,15 +253,15 @@ text \<open>replace strings with a special meta-variable\<close>
 type_synonym ('y, 'i) pad = "('y + ('y, 'i) index) list"
 
 
-fun padding_rec :: "nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'i::enum) pad" where
-  "padding_rec n y [] = []" |
-  "padding_rec n y ((x, _)#xs) = Inl x # Inr (y, nat_to_enum n) # padding_rec (Suc n) y xs"
+fun padding_rec :: "'i::enum boundedness \<Rightarrow> nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'i) pad" where
+  "padding_rec B n y [] = []" |
+  "padding_rec B n y ((x, _)#xs) = Inl x # Inr (y, nat_to_enum n) # padding_rec B (Suc n) y xs"
 
-fun padding :: "'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y, 'i::enum) pad" where
-  "padding y (a0, xs) = Inr (y, nat_to_enum 0) # padding_rec 1 y xs"
+fun padding :: "'i::enum boundedness \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y, 'i) pad" where
+  "padding B y (a0, xs) = Inr (y, nat_to_enum 0) # padding_rec B 1 y xs"
 
 lemma padding_rec_append[simp]:
-  "padding_rec n y (xs @ ys) = padding_rec n y xs @ padding_rec (n + length xs) y ys"
+  "padding_rec B n y (xs @ ys) = padding_rec B n y xs @ padding_rec B (n + length xs) y ys"
 proof (induct xs arbitrary: ys n rule: pair_induct)
   case Nil
   then show ?case by simp
@@ -272,22 +272,22 @@ qed
 
 
 lemma padding_word_simp[simp]: 
-  "padding y (w, []) = [Inr (y, nat_to_enum 0)]"
+  "padding B y (w, []) = [Inr (y, nat_to_enum 0)]"
   by (simp)
 
 lemma padding_last_simp[simp]: 
-  "padding y (xas @@@ [(x, as :: 'b list)])
- = padding y xas @ [Inl x, Inr (y, nat_to_enum (length_scanned xas))]"
+  "padding B y (xas @@@ [(x, as :: 'b list)])
+ = padding B y xas @ [Inl x, Inr (y, nat_to_enum (length_scanned xas))]"
 proof -
   { fix n x yas and as :: "'b list"
-    have "padding_rec n y (yas @ [(x, as)]) = padding_rec n y yas @ [Inl x, Inr (y, nat_to_enum (n + length yas))]"
+    have "padding_rec B n y (yas @ [(x, as)]) = padding_rec B n y yas @ [Inl x, Inr (y, nat_to_enum (n + length yas))]"
       by (induct yas arbitrary: n rule: pair_induct, simp_all)
   } note that = this
   then show ?thesis by (cases xas, simp add: that append_scanned_simp)
 qed
 
 lemma padding_append_scanned:
-  "padding y (xas @@@ ys) = padding y xas @ padding_rec (length_scanned xas) y ys"
+  "padding B y (xas @@@ ys) = padding B y xas @ padding_rec B (length_scanned xas) y ys"
 proof (induct ys arbitrary: xas rule: pair_rev_induct)
   case Nil 
   then show ?case by (simp add: append_scanned_simp)
@@ -418,16 +418,17 @@ corollary nth_string_lt_length:
   using assms by (simp add: nth_string_append)
 
 
-definition flat_store where
-  "flat_store xas yi = (case yi of
+definition flat_store :: "'i::enum boundedness \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y + ('y, 'i) index) \<Rightarrow> ('y + 'b) list" where
+  "flat_store B xas yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
     (Inr (x, i)) \<Rightarrow> map Inr (nth_string xas (enum_to_nat i)))"
 
-lemma [simp]: "flat_store xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
+lemma [simp]: "flat_store B xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
 
 lemma [simp]:
+  fixes B :: "'e::enum boundedness"
   assumes "length_scanned sc < length (Enum.enum :: ('e::enum) list)"
-  shows  "flat_store (sc @@@ [(x, as)]) (Inr (y, nat_to_enum (length_scanned sc) :: 'e)) = map Inr as"
+  shows  "flat_store B (sc @@@ [(x, as)]) (Inr (y, nat_to_enum (length_scanned sc) :: 'e)) = map Inr as"
 using assms proof (induct sc rule: scanned_induct)
   case (Nil w)
   then show ?case by (simp add: flat_store_def append_scanned_simp nat_enum_iso)
@@ -445,49 +446,49 @@ theorem scan_inverse: "flat (scan u) = u"
 subsection \<open>Resolve\<close>
 text \<open>\<pi> in the thesis\<close>
 
-definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
-  "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
+definition resolve_shuffle :: "'i::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y shuffle" where
+  "resolve_shuffle B \<theta> y = extract_variables (\<theta> y)"
 
-definition resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'i::enum, 'b) store" where
-  "resolve_store \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string (scan (\<theta> x)) (enum_to_nat k))"
+definition resolve_store :: "'i::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> ('y, 'i, 'b) store" where
+  "resolve_store B \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string (scan (\<theta> x)) (enum_to_nat k))"
 
 
 subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>
 
-definition synthesize_shuffle :: "'y shuffle \<Rightarrow> ('y, 'y + ('y, 'i::enum) index, 'b) update'" where
-  "synthesize_shuffle s y = map Inl (padding y (scan (map Inl (s y) :: ('y + 'y) list)))"
+definition synthesize_shuffle :: "'i::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> ('y, 'y + ('y, 'i) index, 'b) update'" where
+  "synthesize_shuffle B s y = map Inl (padding B y (scan (map Inl (s y) :: ('y + 'y) list)))"
 
-definition synthesize_store :: "('y, 'i::enum, 'b) store \<Rightarrow> ('y + ('y, 'i) index, 'y, 'b) update'" where
-  "synthesize_store a yi = (case yi of
+definition synthesize_store :: "'i::enum boundedness \<Rightarrow> ('y, 'i, 'b) store \<Rightarrow> ('y + ('y, 'i) index, 'y, 'b) update'" where
+  "synthesize_store B a yi = (case yi of
      (Inl y) \<Rightarrow> [Inl y] | 
      (Inr i) \<Rightarrow> map Inr (a i))"
 
 lemma concat_map_synthesize_store_map_Inr:
-  "concat (map (synthesize_store a) (map Inr w)) = map Inr (concat (map a w))"
+  "concat (map (synthesize_store B a) (map Inr w)) = map Inr (concat (map a w))"
   by (induct w, simp_all add: synthesize_store_def)
 
-definition synthesize :: "'y shuffle \<times> ('y, 'i::enum, 'b) store \<Rightarrow> ('y, 'b) update" where
-  "synthesize sa = (case sa of (s, a) \<Rightarrow> synthesize_store a \<bullet> synthesize_shuffle s)"
+definition synthesize :: "'i::enum boundedness \<Rightarrow> 'y shuffle \<times> ('y, 'i, 'b) store \<Rightarrow> ('y, 'b) update" where
+  "synthesize B sa = (case sa of (s, a) \<Rightarrow> synthesize_store B a \<bullet> synthesize_shuffle B s)"
 
 
 subsection \<open>Properties of Decomposition\<close>
 
 
-lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle s = synthesize_shuffle s"
+lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle B s = synthesize_shuffle B s"
   by (auto simp add: map_alpha_def hat_alpha_left_ignore synthesize_shuffle_def)
 
-lemma map_alpha_synthesize_store: "t \<star> synthesize_store p = synthesize_store (concat o map t o p)"
+lemma map_alpha_synthesize_store: "t \<star> synthesize_store B p = synthesize_store B (concat o map t o p)"
   by (rule ext_sum, simp_all add: map_alpha_def Update.hat_alpha_right_map synthesize_store_def)
 
-lemma map_alpha_synthesize: "t \<star> synthesize (s, a) = synthesize (s, concat o map t o a)"
+lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, concat o map t o a)"
   by (auto simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store synthesize_def)
 
 
-lemma resolve_idU_idS: "resolve_shuffle idU = idS"
+lemma resolve_idU_idS: "resolve_shuffle B idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
-lemma resolve_idU_empty: "resolve_store idU (y, k) = (\<lambda>y'. []) (y, k)"
+lemma resolve_idU_empty: "resolve_store B idU (y, k) = (\<lambda>y'. []) (y, k)"
 proof (cases "enum_to_nat k")
   case 0
   then show ?thesis by (simp add: resolve_store_def idU_def scan_def)
@@ -498,10 +499,10 @@ qed
 
 
 lemma resolve_shuffle_distrib_str: 
-  "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle \<phi>) (extract_variables u))"
+  "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle B \<phi>) (extract_variables u))"
   by (induct u rule: xa_induct, simp_all add: resolve_shuffle_def)
 
-lemma resolve_shuffle_distrib: "resolve_shuffle (\<phi> \<bullet> \<psi>) = concat o map (resolve_shuffle \<phi>) o resolve_shuffle \<psi>"
+lemma resolve_shuffle_distrib: "resolve_shuffle B (\<phi> \<bullet> \<psi>) = concat o map (resolve_shuffle B \<phi>) o resolve_shuffle B \<psi>"
   by (rule ext, simp add: comp_def resolve_shuffle_def resolve_shuffle_distrib_str)
 
 
@@ -510,12 +511,12 @@ lemma length_scanned_ignore_alphabet:
   by (induct u rule: xw_induct, simp_all)
 
 lemma padding_scan_ignore_alphabet:
-  "padding x (scan (map Inl (extract_variables u))) = padding x (scan u)"
+  "padding B x (scan (map Inl (extract_variables u))) = padding B x (scan u)"
   by (induct u rule: xw_induct, auto simp add: length_scanned_ignore_alphabet)
 
 lemma synthesize_resolve_eq_flat:
   assumes "yi = Inl y \<or> yi = Inr (x, k::('e::enum))"
-  shows "synthesize_store (resolve_store m) yi = flat_store (scan (m x)) yi"
+  shows "synthesize_store B (resolve_store B m) yi = flat_store B (scan (m x)) yi"
 proof (cases "yi")
   case (Inl a)
   then show ?thesis by (simp add: resolve_store_def synthesize_store_def flat_store_def)
@@ -532,12 +533,12 @@ abbreviation z_equal_var where
   "z_equal_var x yi \<equiv> ((\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k)))"
 
 
-lemma padding_x: "list_all (z_equal_var x) (padding x xas)"
+lemma padding_x: "list_all (z_equal_var x) (padding B x xas)"
   by (induct xas rule: scanned_rev_induct, simp_all)
 
 lemma concat_map_synthesize_resolve_flat:
   assumes "list_all (z_equal_var x) xs"
-  shows "concat (map (synthesize_store (resolve_store m)) xs) = concat (map (flat_store (scan (m x))) xs)"
+  shows "concat (map (synthesize_store B (resolve_store B m)) xs) = concat (map (flat_store B (scan (m x))) xs)"
 using assms proof (induct xs rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -549,10 +550,9 @@ next
   then show ?case using synthesize_resolve_eq_flat by force
 qed
 
-  
 lemma concat_map_padding:
-  "concat (map (synthesize_store (resolve_store m)) (padding x xas :: ('y, 'i::enum) pad)) =
-   concat (map (flat_store (scan (m x))) (padding x xas :: ('y, 'i) pad))"
+  "concat (map (synthesize_store B (resolve_store B m)) (padding B x xas))
+ = concat (map (flat_store B (scan (m x))) (padding B x xas))"
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
 
 
@@ -569,12 +569,12 @@ lemma all_z_less_than_Suc:
 
 lemma flat_store_lt_length:
   assumes "z_less_than (length_scanned sc) (Inr (y, i))"
-  shows "flat_store (sc @@@ rest) (Inr (y, i)) = flat_store sc (Inr (y, i))"
+  shows "flat_store B (sc @@@ rest) (Inr (y, i)) = flat_store B sc (Inr (y, i))"
   using assms unfolding flat_store_def by (simp add: nth_string_lt_length)
 
 lemma cm_flat_store_ignore_rest:
   assumes "list_all (z_less_than (length_scanned sc)) us"
-  shows "concat (map (flat_store (sc @@@ rest)) us) = concat (map (flat_store sc) us)"
+  shows "concat (map (flat_store B (sc @@@ rest)) us) = concat (map (flat_store B sc) us)"
 using assms proof (induct us rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -589,8 +589,8 @@ next
 qed
 
 lemma padding_lt_length_scanned:
-  assumes "length_scanned sc \<le> length (Enum.enum :: 'i list)"
-  shows "list_all (z_less_than (length_scanned sc)) (padding x sc :: ('y, 'i::enum) pad)"
+  assumes "length_scanned sc \<le> length (Enum.enum :: 'i::enum list)"
+  shows "list_all (z_less_than (length_scanned sc)) (padding B x sc :: ('y, 'i::enum) pad)"
 using assms proof (induct sc rule: scanned_rev_induct)
   case (Nil w)
   then show ?case proof (simp)
@@ -613,17 +613,17 @@ qed
 
 lemma cm_flat_store_padding_ignore:
   assumes "length_scanned sc \<le> length (Enum.enum :: ('i::enum) list)"
-  shows "concat (map (flat_store (sc @@@ rest)) (padding x sc :: ('y, 'i) pad)) 
-       = concat (map (flat_store sc) (padding x sc :: ('y, 'i) pad))"
+  shows "concat (map (flat_store B (sc @@@ rest)) (padding B x sc :: ('y, 'i) pad)) 
+       = concat (map (flat_store B sc) (padding B x sc :: ('y, 'i) pad))"
 proof -
-  have "list_all (z_less_than (length_scanned sc)) (padding x sc :: ('y, 'i) pad)"
+  have "list_all (z_less_than (length_scanned sc)) (padding B x sc :: ('y, 'i) pad)"
     using assms by (simp add: padding_lt_length_scanned)
   then show ?thesis by (simp add: cm_flat_store_ignore_rest)
 qed
 
 lemma flat_store_flat:
   assumes "length_scanned sc \<le> length (Enum.enum :: ('i::enum) list)"
-  shows "concat (map (flat_store sc) (padding x sc :: ('y, 'i) pad)) = flat sc"
+  shows "concat (map (flat_store B sc) (padding B x sc :: ('y, 'i) pad)) = flat sc"
 using assms proof (induct sc rule: scanned_rev_induct)
   case (Nil w)
   then have "0 < length (Enum.enum :: 'i list)"
@@ -643,7 +643,7 @@ definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
 lemma resolve_bounded:
   fixes m :: "('x::finite, 'b) update"
   assumes "bounded k m"
-  shows "bounded_shuffle k (resolve_shuffle m)"
+  shows "bounded_shuffle k (resolve_shuffle B m)"
 proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
   fix x
   { fix x' :: 'x and u :: "('x + 'b) list"
@@ -656,14 +656,13 @@ proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
 qed
 
 
-
 lemma bounded_copy_length_scanned:
-  assumes "bounded_copy k m"
+  assumes "bounded k m"
   shows "length_scanned (scan (m x)) \<le> k * k"
   oops 
 
 
-theorem resolve_inverse: "synthesize (resolve_shuffle m, resolve_store m :: ('y, 'i::enum, 'b) store) = m"
+theorem resolve_inverse: "synthesize B (resolve_shuffle B m, resolve_store B m :: ('y, 'i::enum, 'b) store) = m"
   apply (rule ext)
   apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
   apply (simp add: resolve_shuffle_def)
@@ -671,10 +670,10 @@ theorem resolve_inverse: "synthesize (resolve_shuffle m, resolve_store m :: ('y,
   apply (simp add: concat_map_padding flat_store_flat scan_inverse)
   oops
 
-lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store a) u)) = extract_variables u"
+lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"
   by (induct u rule: xa_induct, simp_all add: synthesize_store_def)
 
-lemma extract_variables_padding_scan: "extract_variables (padding x (scan (map Inl u))) = u"
+lemma extract_variables_padding_scan: "extract_variables (padding B x (scan (map Inl u))) = u"
 proof (induct u rule: rev_induct)
   case Nil
   then show ?case by (simp add: scan_def synthesize_store_def)
@@ -684,7 +683,7 @@ next
 qed
 
 
-theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize (s, a)) = s"
+theorem synthesize_inverse_shuffle: "resolve_shuffle B (synthesize B (s, a)) = s"
   apply (rule ext)
   apply (simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map
                    extract_variables_synthesize_store extract_variables_padding_scan)
@@ -701,10 +700,10 @@ definition poyo :: "(int, char) update" where
 declare poyo_def [simp]
 
 value "poyo 1"
-value "resolve_store poyo (0, False)"
+value "resolve_store B poyo (0, False)"
 
-lemma "resolve_shuffle poyo 0 = [0, 0]" by (simp add: resolve_shuffle_def)
-lemma "resolve_shuffle poyo 1 = [0, 1]" by (simp add: resolve_shuffle_def)
+lemma "resolve_shuffle B poyo 0 = [0, 0]" by (simp add: resolve_shuffle_def)
+lemma "resolve_shuffle B poyo 1 = [0, 1]" by (simp add: resolve_shuffle_def)
 
 (*
 lemma "resolve_store poyo (0, False) = ''P''" apply (auto simp add: resolve_store_def scan_def enum_to_nat_def)

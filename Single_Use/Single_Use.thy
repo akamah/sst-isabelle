@@ -136,4 +136,8 @@ lemma bounded_copy_SST_simp:
   shows "bounded k (SST.eta_hat sst (q, w))"
   using assms unfolding bounded_copy_SST_def by simp
 
+text \<open>Phantom type used to state bounded-ness using size of UNIV :: 'i set\<close>
+datatype ('i::enum) boundedness = Boundedness
+
+
 end

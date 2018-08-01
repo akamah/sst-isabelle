@@ -315,11 +315,14 @@ subsubsection \<open>Padding\<close>
 
 text \<open>replace strings with a special meta-variable\<close>
 
-fun padding_rec :: "nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y + ('y, 'i::enum) index) list" where
+type_synonym ('y, 'i) pad = "('y + ('y, 'i) index) list"
+
+
+fun padding_rec :: "nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'i::enum) pad" where
   "padding_rec n y [] = []" |
   "padding_rec n y ((x, _)#xs) = Inl x # Inr (y, nat_to_enum n) # padding_rec (Suc n) y xs"
 
-fun padding :: "'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y + ('y, 'i::enum) index) list" where
+fun padding :: "'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y, 'i::enum) pad" where
   "padding y (a0, xs) = Inr (y, nat_to_enum 0) # padding_rec 1 y xs"
 
 lemma padding_rec_append[simp]:
@@ -362,14 +365,14 @@ qed
 subsubsection \<open>nth_string\<close>
 
 fun nth_string' where
-  "nth_string' s [] k = s" |
-  "nth_string' s ((x,as)#xas) 0 = as" |
-  "nth_string' s  (_#xas) (Suc k) = nth_string' s xas k"
+  "nth_string' [] k = []" |
+  "nth_string' ((x,as)#xas) 0 = as" |
+  "nth_string' (_#xas) (Suc k) = nth_string' xas k"
 
 lemma nth_string'_append:
- "nth_string' s (xs @ ys) k
- = (if k < length xs then nth_string' s xs k 
-                     else nth_string' s ys (k - length xs))"
+ "nth_string' (xs @ ys) k
+ = (if k < length xs then nth_string' xs k 
+                     else nth_string' ys (k - length xs))"
 proof (induct xs arbitrary: k rule: pair_induct)
   case Nil
   then show ?case by simp
@@ -384,17 +387,17 @@ next
   qed
 qed
 
-lemma nth_string'_length: "nth_string' s (xs @ ys) (length xs) = nth_string' s ys 0" 
+lemma nth_string'_length: "nth_string' (xs @ ys) (length xs) = nth_string' ys 0" 
   by (induct xs rule: pair_induct, simp_all)
 
 
 fun nth_string where
-  "nth_string s (w, xas) 0 = w" |
-  "nth_string s (w, []) (Suc n) = s" |
-  "nth_string s (w, (x, as) # xas) (Suc n) = nth_string s (as, xas) n"
+  "nth_string (w, xas) 0 = w" |
+  "nth_string (w, []) (Suc n) = []" |
+  "nth_string (w, (x, as) # xas) (Suc n) = nth_string (as, xas) n"
 
 
-lemma nth_string_eq: "nth_string s (w, xas) (Suc n) = nth_string' s xas n"
+lemma nth_string_eq: "nth_string (w, xas) (Suc n) = nth_string' xas n"
 proof (induct xas arbitrary: n w rule: pair_induct)
   case Nil
   then show ?case by simp
@@ -409,13 +412,13 @@ next
   qed
 qed
 
-lemma nth_string'_pos: "0 < n \<Longrightarrow> nth_string' s ((x, as) # xas) n = nth_string' s xas (n - 1)"
+lemma nth_string'_pos: "0 < n \<Longrightarrow> nth_string' ((x, as) # xas) n = nth_string' xas (n - 1)"
   by (auto simp add: Nat.gr0_conv_Suc)
 
-lemma nth_string_Nil: "nth_string s (w, []) n = (if n = 0 then w else s)"
+lemma nth_string_Nil: "nth_string (w, []) n = (if n = 0 then w else [])"
   by (cases n, simp_all)
 
-lemma nth_string_length: "nth_string s (xas @@@ ys) (length_scanned xas) = nth_string' s ys 0" 
+lemma nth_string_length: "nth_string (xas @@@ ys) (length_scanned xas) = nth_string' ys 0" 
 proof (induct xas rule: scanned_induct)
 case (Nil w)
   then show ?case by (simp add: append_scanned_simp nth_string_eq)
@@ -424,20 +427,20 @@ next
   then show ?case by (simp add: append_scanned_simp nth_string_eq)
 qed
 
-lemma nth_string_pos: "0 < n \<Longrightarrow> nth_string s (w, (x, as) # xas) n = nth_string s (as, xas) (n - 1)"
+lemma nth_string_pos: "0 < n \<Longrightarrow> nth_string (w, (x, as) # xas) n = nth_string (as, xas) (n - 1)"
   by (auto simp add: Nat.gr0_conv_Suc)
 
-lemma nth_string_pos_Nil: "0 < n \<Longrightarrow> nth_string s (w, []) n = s"
+lemma nth_string_pos_Nil: "0 < n \<Longrightarrow> nth_string (w, []) n = []"
   by (auto simp add: Nat.gr0_conv_Suc)
 
-lemma nth_string_pos': "0 < n \<Longrightarrow> nth_string s (w, xas) n = nth_string' s xas (n - 1)"
+lemma nth_string_pos': "0 < n \<Longrightarrow> nth_string (w, xas) n = nth_string' xas (n - 1)"
   by (auto simp add: Nat.gr0_conv_Suc nth_string_eq)
 
 
 lemma nth_string_append: 
-  "nth_string s (xas @@@ ys) n 
- = (if n < length_scanned xas then nth_string s xas n
-                              else nth_string' s ys (n - length_scanned xas))"
+  "nth_string (xas @@@ ys) n 
+ = (if n < length_scanned xas then nth_string xas n
+                              else nth_string' ys (n - length_scanned xas))"
 proof (induct xas arbitrary: n rule: scanned_induct)
   case Nil
   then show ?case by (auto simp add: append_scanned_simp nth_string_pos')
@@ -448,8 +451,8 @@ qed
 
 
 lemma nth_string_append_last:
-  "nth_string s (xas @@@ [(x, as)]) n
- = (if n = length_scanned xas then as else nth_string s xas n)"
+  "nth_string (xas @@@ [(x, as)]) n
+ = (if n = length_scanned xas then as else nth_string xas n)"
 proof (induct xas arbitrary: n rule: scanned_induct)
   case (Nil w)
   then show ?case proof (cases n)
@@ -471,30 +474,32 @@ next
 qed
 
 lemma nth_string_append_first:
-  "nth_string s (xas @@@ ys) 0 = nth_string s xas 0"
+  "nth_string (xas @@@ ys) 0 = nth_string xas 0"
   by (cases xas, simp add: append_scanned_simp)
 
 corollary nth_string_lt_length:
   assumes "n < length_scanned sc"
-  shows "nth_string s (sc @@@ rest) n = nth_string s sc n"
+  shows "nth_string (sc @@@ rest) n = nth_string sc n"
   using assms by (simp add: nth_string_append)
 
 
 definition flat_store where
-  "flat_store d xas yi = (case yi of
+  "flat_store xas yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
-    (Inr (x, i)) \<Rightarrow> map Inr (nth_string (d (x, i)) xas (enum_to_nat i)))"
+    (Inr (x, i)) \<Rightarrow> map Inr (nth_string xas (enum_to_nat i)))"
 
-lemma [simp]: "flat_store d xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
+lemma [simp]: "flat_store xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
 
-lemma [simp]: "flat_store d (sc @@@ [(x, as)]) (Inr (y, nat_to_enum (length_scanned sc))) = map Inr as"
-proof (induct sc arbitrary: d rule: scanned_induct)
+lemma [simp]:
+  assumes "length_scanned sc < length (Enum.enum :: ('e::enum) list)"
+  shows  "flat_store (sc @@@ [(x, as)]) (Inr (y, nat_to_enum (length_scanned sc) :: 'e)) = map Inr as"
+using assms proof (induct sc rule: scanned_induct)
   case (Nil w)
-  then show ?case
-    apply (simp add: flat_store_def append_scanned_simp nat_enum_iso)
+  then show ?case by (simp add: flat_store_def append_scanned_simp nat_enum_iso)
 next
   case (PairCons w x as xas)
-  then show ?case by (simp add: flat_store_def append_scanned_simp  nth_string_eq nth_string'_length)
+  then show ?case 
+    by (simp add: flat_store_def append_scanned_simp  nth_string_eq nth_string'_length nat_enum_iso)
 qed
 
 
@@ -508,8 +513,8 @@ text \<open>\<pi> in the thesis\<close>
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
-definition resolve_store :: "(('y, 'i::enum) index \<Rightarrow> 'b list) \<Rightarrow> ('y, 'b) update \<Rightarrow> ('y, 'i, 'b) store" where
-  "resolve_store d \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string (d (x, k)) (scan (\<theta> x)) (enum_to_nat k))"
+definition resolve_store :: "('y, 'b) update \<Rightarrow> ('y, 'i::enum, 'b) store" where
+  "resolve_store \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string (scan (\<theta> x)) (enum_to_nat k))"
 
 
 subsection \<open>Synthesize\<close>
@@ -547,7 +552,7 @@ lemma map_alpha_synthesize: "t \<star> synthesize (s, a) = synthesize (s, concat
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
-lemma resolve_idU_empty: "resolve_store (\<lambda>x. []) idU (y, k) = (\<lambda>y'. []) (y, k)"
+lemma resolve_idU_empty: "resolve_store idU (y, k) = (\<lambda>y'. []) (y, k)"
 proof (cases "enum_to_nat k")
   case 0
   then show ?thesis by (simp add: resolve_store_def idU_def scan_def)
@@ -574,9 +579,9 @@ lemma padding_scan_ignore_alphabet:
   by (induct u rule: xw_induct, auto simp add: length_scanned_ignore_alphabet)
 
 lemma synthesize_resolve_eq_flat:
-  assumes "yi = Inl y \<or> yi = Inr (x, k)"
-  shows "synthesize_store (resolve_store d m) yi = flat_store d (scan (m x)) yi"
-proof (cases "enum_to_nat yi")
+  assumes "yi = Inl y \<or> yi = Inr (x, k::('e::enum))"
+  shows "synthesize_store (resolve_store m) yi = flat_store (scan (m x)) yi"
+proof (cases "yi")
   case (Inl a)
   then show ?thesis by (simp add: resolve_store_def synthesize_store_def flat_store_def)
 next
@@ -597,7 +602,7 @@ lemma padding_x: "list_all (z_equal_var x) (padding x xas)"
 
 lemma concat_map_synthesize_resolve_flat:
   assumes "list_all (z_equal_var x) xs"
-  shows "concat (map (synthesize_store (resolve_store d m)) xs) = concat (map (flat_store d (scan (m x))) xs)"
+  shows "concat (map (synthesize_store (resolve_store m)) xs) = concat (map (flat_store (scan (m x))) xs)"
 using assms proof (induct xs rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -610,14 +615,14 @@ next
 qed
 
   
-lemma concat_map_padding: 
-  "concat (map (synthesize_store (resolve_store d m)) (padding x xas)) =
-   concat (map (flat_store d (scan (m x))) (padding x xas))"
+lemma concat_map_padding:
+  "concat (map (synthesize_store (resolve_store m)) (padding x xas :: ('y, 'i::enum) pad)) =
+   concat (map (flat_store (scan (m x))) (padding x xas :: ('y, 'i) pad))"
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
 
 
 abbreviation z_less_than where
-  "z_less_than n z \<equiv> (\<forall>y k. z = Inr (y, k) \<longrightarrow> k < n)"
+  "z_less_than n z \<equiv> (\<forall>y i. z = Inr (y, i) \<longrightarrow> enum_to_nat i < n)"
 
 lemma z_less_than_Suc: "z_less_than n z \<Longrightarrow> z_less_than (Suc n) z"
   by (simp add: less_SucI)
@@ -628,13 +633,13 @@ lemma all_z_less_than_Suc:
   using assms by (induct xs, simp_all add: less_SucI)
 
 lemma flat_store_lt_length:
-  assumes "z_less_than (length_scanned sc) (Inr (y, n))"
-  shows "flat_store d (sc @@@ rest) (Inr (y, n)) = flat_store d sc (Inr (y, n))"
+  assumes "z_less_than (length_scanned sc) (Inr (y, i))"
+  shows "flat_store (sc @@@ rest) (Inr (y, i)) = flat_store sc (Inr (y, i))"
   using assms unfolding flat_store_def by (simp add: nth_string_lt_length)
 
 lemma cm_flat_store_ignore_rest:
   assumes "list_all (z_less_than (length_scanned sc)) us"
-  shows "concat (map (flat_store d (sc @@@ rest)) us) = concat (map (flat_store d sc) us)"
+  shows "concat (map (flat_store (sc @@@ rest)) us) = concat (map (flat_store sc) us)"
 using assms proof (induct us rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -648,40 +653,66 @@ next
   ultimately show ?case by (cases a, simp add: flat_store_lt_length Alpha)
 qed
 
-lemma padding_lt_length_scanned: "list_all (z_less_than (length_scanned sc)) (padding x sc)"
-  by (induct sc rule: scanned_rev_induct, simp_all add: all_z_less_than_Suc)
+lemma padding_lt_length_scanned:
+  assumes "length_scanned sc \<le> length (Enum.enum :: 'i list)"
+  shows "list_all (z_less_than (length_scanned sc)) (padding x sc :: ('y, 'i::enum) pad)"
+using assms proof (induct sc rule: scanned_rev_induct)
+  case (Nil w)
+  then show ?case proof (simp)
+    assume "Suc 0 \<le> length (Enum.enum :: 'i list)"
+    then have "0 < length (Enum.enum :: 'i list)"
+      by (simp add: less_eq_Suc_le)
+    then show "enum_to_nat (nat_to_enum 0 :: 'i) = 0"
+      by (simp add: nat_enum_iso)
+  qed
+next
+  case (PairSnoc x as sc)
+  then show ?case proof (simp add: all_z_less_than_Suc)
+    assume "Suc (length_scanned sc) \<le> length (Enum.enum :: 'i list)"
+    then have "length_scanned sc < length (Enum.enum :: 'i list)" by simp
+    then show "enum_to_nat (nat_to_enum (length_scanned sc) :: 'i) < Suc (length_scanned sc)"
+      by (simp add: nat_enum_iso)
+  qed
+qed
 
 
 lemma cm_flat_store_padding_ignore:
- "concat (map (flat_store d (sc @@@ rest)) (padding x sc)) 
-= concat (map (flat_store d sc) (padding x sc))"
-proof (induct sc arbitrary: rest rule: scanned_rev_induct)
-  case Nil
-  then show ?case by (simp add: append_scanned_simp flat_store_def)
-next
-  case (PairSnoc x as xas)
-  then show ?case 
-    apply (simp add: padding_lt_length_scanned cm_flat_store_ignore_rest)
-    apply (simp add: flat_store_lt_length)
-    apply (simp add: append_scanned_assoc PairSnoc)
-    done
+  assumes "length_scanned sc \<le> length (Enum.enum :: ('i::enum) list)"
+  shows "concat (map (flat_store (sc @@@ rest)) (padding x sc :: ('y, 'i) pad)) 
+       = concat (map (flat_store sc) (padding x sc :: ('y, 'i) pad))"
+proof -
+  have "list_all (z_less_than (length_scanned sc)) (padding x sc :: ('y, 'i) pad)"
+    using assms by (simp add: padding_lt_length_scanned)
+  then show ?thesis by (simp add: cm_flat_store_ignore_rest)
 qed
 
-lemma flat_store_flat: "concat (map (flat_store d scanned) (padding x scanned)) = flat scanned"
-proof (induct scanned rule: scanned_rev_induct)
+lemma flat_store_flat:
+  assumes "length_scanned sc \<le> length (Enum.enum :: ('i::enum) list)"
+  shows "concat (map (flat_store sc) (padding x sc :: ('y, 'i) pad)) = flat sc"
+using assms proof (induct sc rule: scanned_rev_induct)
   case (Nil w)
-  then show ?case by (simp add: flat_store_def)
+  then have "0 < length (Enum.enum :: 'i list)"
+    by auto
+  then show ?case using assms by (simp add: flat_store_def nat_enum_iso)
 next
   case (PairSnoc x as sc)
   then show ?case by (simp add: cm_flat_store_padding_ignore)
 qed
-  
 
-theorem resolve_inverse: "synthesize (resolve_shuffle m, resolve_store d m) = m"
-  by (auto simp add: comp_def synthesize_shuffle_def hat_hom_left_concat_map resolve_shuffle_def
-                     padding_scan_ignore_alphabet concat_map_padding flat_store_flat scan_inverse
-                     synthesize_def)
 
+lemma bounded_copy_length_scanned:
+  assumes "bounded_copy k m"
+  shows "length_scanned (scan (m x)) \<le> k * k"
+  oops 
+
+
+theorem resolve_inverse: "synthesize (resolve_shuffle m, resolve_store m :: ('y, 'i::enum, 'b) store) = m"
+  apply (rule ext)
+  apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
+  apply (simp add: resolve_shuffle_def)
+  apply (simp add: hat_hom_left_concat_map padding_scan_ignore_alphabet)
+  apply (simp add: concat_map_padding flat_store_flat scan_inverse)
+  oops
 
 lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store a) u)) = extract_variables u"
   by (induct u rule: xa_induct, simp_all add: synthesize_store_def)
@@ -689,7 +720,7 @@ lemma extract_variables_synthesize_store: "extract_variables (concat (map (synth
 lemma extract_variables_padding_scan: "extract_variables (padding x (scan (map Inl u))) = u"
 proof (induct u rule: rev_induct)
   case Nil
-  then show ?case by (simp add: scan_def padding_def synthesize_store_def)
+  then show ?case by (simp add: scan_def synthesize_store_def)
 next
   case (snoc x xs)
   then show ?case by (simp add: )
@@ -713,16 +744,17 @@ definition poyo :: "(int, char) update" where
 declare poyo_def [simp]
 
 value "poyo 1"
-value "resolve_store (\<lambda>_. ''NOT FOUND'') poyo (0, 2)"
+value "resolve_store poyo (0, False)"
 
 lemma "resolve_shuffle poyo 0 = [0, 0]" by (simp add: resolve_shuffle_def)
 lemma "resolve_shuffle poyo 1 = [0, 1]" by (simp add: resolve_shuffle_def)
 
-lemma "resolve_store f poyo (0, 0) = ''P''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store f poyo (0, 1) = ''Q''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store f poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_def)
-lemma "resolve_store f poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
-
+(*
+lemma "resolve_store poyo (0, False) = ''P''" apply (auto simp add: resolve_store_def scan_def enum_to_nat_def)
+lemma "resolve_store poyo (0, 1) = ''Q''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store poyo (1, 0) = ''A''" by (simp add: resolve_store_def scan_def)
+lemma "resolve_store poyo (1, 1) = ''B''" by (simp add: resolve_store_def scan_def)
+*)
 
 
 

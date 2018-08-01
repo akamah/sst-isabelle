@@ -1,6 +1,6 @@
 chapter SST
   
-session SST = Pure +
+session "SST" = "HOL-Library" +
   description {*
     Author:    Akama Hitoshi
 

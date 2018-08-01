@@ -5,7 +5,7 @@
 section \<open>Decomposition of an Update\<close>
 
 theory Decompose_Update
-  imports Main Enum List "../Core/Update" "../Core/SST" "../Single_Use/Single_Use"
+  imports Main Enum List "../Util/Enum_Nat" "../Core/Update" "../Core/SST" "../Single_Use/Single_Use"
 begin
 
 (* an Update can be divided into two objects:
@@ -30,71 +30,6 @@ type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
 
 subsection \<open>Utility functions\<close>
-
-fun enum_to_nat' :: "'e list \<Rightarrow> 'e \<Rightarrow> nat" where
-  "enum_to_nat' [] e = undefined" |
-  "enum_to_nat' (x#xs) e = (if x = e then 0 else 1 + enum_to_nat' xs e)"
-
-fun nat_to_enum' :: "'e list \<Rightarrow> nat \<Rightarrow> 'e" where
-  "nat_to_enum' [] n = undefined" |
-  "nat_to_enum' (x#xs) 0 = x" |
-  "nat_to_enum' (x#xs) (Suc n) = nat_to_enum' xs n"
-
-definition enum_to_nat :: "'e::enum \<Rightarrow> nat" where
-  "enum_to_nat e = enum_to_nat' Enum.enum e"
-
-definition nat_to_enum :: "nat \<Rightarrow> 'e::enum" where
-  "nat_to_enum n = nat_to_enum' Enum.enum n"
-
-lemma nat_to_enum'_in:
-  assumes "n < length xs"
-  shows "nat_to_enum' xs n \<in> set xs"
-using assms by (induct xs n rule: nat_to_enum'.induct, simp_all)
-
-
-lemma list_nat_iso:
-  assumes "e \<in> set xs"
-  shows "nat_to_enum' xs (enum_to_nat' xs e) = e"
-  unfolding enum_to_nat_def
-using assms by (induct xs arbitrary: e, auto)
-
-lemma enum_nat_iso:
-  assumes "e \<in> set Enum.enum"
-  shows "nat_to_enum (enum_to_nat e) = e"
-  unfolding nat_to_enum_def enum_to_nat_def
-  by (rule list_nat_iso, rule assms(1))
-
-lemma nat_list_iso:
-  assumes "n < length xs"
-  assumes "distinct xs"
-  shows "enum_to_nat' xs (nat_to_enum' xs n) = n"
-using assms proof (induct xs n rule: nat_to_enum'.induct)
-  case (1 n)
-  then show ?case by simp
-next
-  case (2 x xs)
-  then show ?case by simp
-next
-  case (3 x xs n)
-  then show ?case proof (simp)
-    have "n < length xs"
-      using "3.prems"(1) by auto
-    moreover have "distinct xs"
-      using "3.prems"(2) by auto
-    moreover have "enum_to_nat' xs (nat_to_enum' xs n) = n"
-      by (simp add: "3.hyps" calculation(1) calculation(2))
-    moreover have "nat_to_enum' xs n \<in> set xs"
-      by (simp add: calculation(1) nat_to_enum'_in)
-    ultimately show "x \<noteq> nat_to_enum' xs n"
-      using "3.prems"(2) by auto
-  qed
-qed
-
-lemma nat_enum_iso:
-  assumes "n < length (Enum.enum :: ('e::enum) list)"
-  shows "enum_to_nat (nat_to_enum n :: 'e) = n"
-  unfolding enum_to_nat_def nat_to_enum_def
-  by (rule nat_list_iso, rule assms(1), rule Enum.enum_distinct)
 
 subsubsection \<open>Induction on list of pairs\<close>
 

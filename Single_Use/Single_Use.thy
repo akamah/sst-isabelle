@@ -1,5 +1,5 @@
 theory Single_Use
-  imports Main "../Util/Setsum" "../Core/Update" "../Decomposition/Decompose_Update"
+  imports Main "../Util/Setsum" "../Core/Update" "../Core/SST"
 begin
 
 lemma sum_cong: "\<And>x. x\<in>A \<Longrightarrow> f = g \<Longrightarrow> sum f A = sum g A" by auto
@@ -18,24 +18,6 @@ qed
 
 definition bounded :: "[nat, ('x::finite, 'y::finite, 'b) update'] \<Rightarrow> bool" where
   "bounded k f \<equiv> (\<forall>y. count_var f y \<le> k)"
-
-definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
-  "bounded_shuffle k f \<equiv> \<forall>x. (\<Sum>y\<in>UNIV. count_list (f y) x) \<le> k"
-
-lemma resolve_bounded:
-  fixes m :: "('x::finite, 'b) update"
-  assumes "bounded k m"
-  shows "bounded_shuffle k (resolve_shuffle m)"
-proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
-  fix x
-  { fix x' :: 'x and u :: "('x + 'b) list"
-    have "count_list (extract_variables u) x' = count_list u (Inl x')"
-      by (induct u rule: xa_induct, simp_all)
-  } note that = this
-  then show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
-    using assms unfolding bounded_def count_var_def
-    by simp
-qed
 
 abbreviation single_use  :: "(('x::finite, 'y::finite, 'b) update') \<Rightarrow> bool" where
   "single_use f \<equiv> bounded 1 f"
@@ -143,5 +125,15 @@ proof (rule allI)
     qed
   qed
 qed
+
+section \<open>Bounded-ness of SST\<close>
+
+definition bounded_copy_SST :: "[ nat, ('q::finite, 'x::finite, 'a, 'b) SST ] \<Rightarrow> bool" where
+  "bounded_copy_SST k sst \<equiv> (\<forall>w q. reachable sst q \<longrightarrow> bounded k (SST.eta_hat sst (q, w)))"
+
+lemma bounded_copy_SST_simp:
+  assumes "bounded_copy_SST k sst" and "reachable sst q"
+  shows "bounded k (SST.eta_hat sst (q, w))"
+  using assms unfolding bounded_copy_SST_def by simp
 
 end

@@ -188,7 +188,7 @@ next
     using assms apply (simp_all add: q')
     done
 qed
-  
+(*  
 theorem compose_SST_Transducer_well_defined:
   fixes sst :: "('q1, 'x1, 'a, 'b) SST"
   fixes td  :: "('q2, 'b, 'c) transducer"
@@ -266,7 +266,7 @@ next
     apply (simp add: compose_final_def)
     apply auto
 qed
-
+*)
 
 
 theorem can_compose_SST_Transducer:

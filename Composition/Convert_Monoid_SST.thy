@@ -39,7 +39,7 @@ lemma hat_homU_append: "hat_homU \<phi> (u @ v) = hat_homU \<phi> u \<bullet> ha
 fun embed :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y + 'b) list" where
   "embed x y = [Inl (x, y)]"
 
-definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> 'x \<Rightarrow> ('y, 'x \<times> 'y index + 'b) update" where
+definition \<iota> :: "('x \<Rightarrow> 'y shuffle) \<Rightarrow> 'x \<Rightarrow> ('y, 'x \<times> ('y, 'i::enum) index + 'b) update" where
   "\<iota> \<alpha> x = synthesize (\<alpha> x, embed x)"
 
 

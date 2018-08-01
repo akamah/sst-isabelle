@@ -656,13 +656,59 @@ proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
 qed
 
 
+lemma count_extract_variables:
+  fixes m :: "('x::finite, 'a) update"
+  shows "(\<Sum>y\<in>(UNIV::'x set). count_list u (Inl y)) = length (extract_variables u)"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case proof (simp)
+    have "(\<Sum>y\<in>(UNIV::'x set). if x = y then count_list xs (Inl y) + 1 else count_list xs (Inl y))
+        = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0) + count_list xs (Inl y))" (is "?lhs = _")
+    proof (rule sum_cong)
+      fix x :: "'x"
+      show "x \<in> UNIV" by simp
+    next
+      show "(\<lambda>y. if x = y then count_list xs (Inl y) + 1  else count_list xs (Inl y)) =
+            (\<lambda>y. (if x = y then 1 else 0) + count_list xs (Inl y))"
+        by auto
+    qed
+    also have "...  = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0)) + (\<Sum>y\<in>(UNIV::'x set). count_list xs (Inl y))"
+      by (rule sum.distrib)
+    also have "... = Suc (length (extract_variables xs))" (is "_ = ?rhs")
+      by (simp add: Var)
+    finally show "?lhs = ?rhs".
+  qed
+next
+  case (Alpha a xs)
+  then show ?case by simp
+qed
+
 lemma variable_count_in_bounded_update:
   fixes m :: "('x::finite, 'a) update"
   assumes "bounded k m"
-  shows "length (extract_variables (m x)) \<le> card (UNIV::'x set) * k"
+  shows "length (extract_variables (m x0)) \<le> card (UNIV::'x set) * k"
   using assms unfolding bounded_def count_var_def
-(*  have "(\<Sum>x\<in>UNIV. (\<Sum>y\<in>UNIV. count_list (m y) (Inl x))) \<le> card (UNIV::'x set) * k" *)
-  sorry
+proof -
+  let ?univ = "UNIV::'x set"
+  assume *: "\<forall>y::'x. (\<Sum>x\<in>(UNIV::'x set). count_list (m x) (Inl y)) \<le> k"
+  have le: "\<And>x. x \<in> (UNIV::'x set) - {x0} \<Longrightarrow> 0 \<le> length (extract_variables (m x))"
+    by simp
+  have "length (extract_variables (m x0))
+         \<le> (\<Sum>x\<in>?univ. length (extract_variables (m x)))" (is "?lhs \<le> _")
+    by (rule member_le_sum, simp_all add: le)
+  also have "... = (\<Sum>x\<in>?univ. (\<Sum>y\<in>?univ. count_list (m x) (Inl y)))"
+    by (rule sum.cong, auto simp add: count_extract_variables)
+  also have "... = (\<Sum>y\<in>?univ. (\<Sum>x\<in>?univ. count_list (m x) (Inl y)))"
+    by (rule sum.commute)
+  also have "... \<le> (\<Sum>y\<in>?univ. k)"
+    by (rule sum_mono, auto simp add: *)
+  also have "... = card ?univ * k" (is "_ = ?rhs")
+    by simp
+  finally show "?lhs \<le> ?rhs" .
+qed
 
 lemma length_scanned_of_variable_count:
   fixes u :: "('x::finite + 'a) list"

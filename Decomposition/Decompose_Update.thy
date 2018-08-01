@@ -735,13 +735,37 @@ proof -
 qed
 
 
-theorem resolve_inverse: "synthesize B (resolve_shuffle B m, resolve_store B m :: ('y, 'i::enum, 'b) store) = m"
-  apply (rule ext)
-  apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
-  apply (simp add: resolve_shuffle_def)
-  apply (simp add: hat_hom_left_concat_map padding_scan_ignore_alphabet)
-  apply (simp add: concat_map_padding flat_store_flat scan_inverse)
-  oops
+(* TODO: consider, assume y an enum instance, then express B as another combination of enum classes 
+
+  B' :: ('y \<times> k) option boundedness
+*)
+theorem resolve_inverse:
+  fixes B :: "'i::enum boundedness"
+  fixes m :: "('y::finite, 'b) update"
+  assumes "bounded k m"
+  assumes "card (UNIV::'y set) * k + 1 \<le> length (Enum.enum :: 'i list)"
+  shows "synthesize B (resolve_shuffle B m, resolve_store B m) = m"
+proof -
+  have x: "\<And>x. synthesize B (resolve_shuffle B m, resolve_store B m) x = flat (scan (m x))"
+    apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
+    apply (simp add: resolve_shuffle_def)
+    apply (simp add: hat_hom_left_concat_map padding_scan_ignore_alphabet)
+    apply (simp add: concat_map_padding)
+    apply (rule flat_store_flat)
+  proof -
+    fix x
+    have "length_scanned (scan (m x)) \<le> card (UNIV::'y set) * k + 1"
+      by (rule bounded_copy_length_scanned, rule assms(1))
+    also have "... \<le> length (Enum.enum :: 'i list)"
+      by (rule assms(2))
+    finally show "length_scanned (scan (m x)) \<le> length (Enum.enum :: 'i list)" .
+  qed
+  show ?thesis
+    apply (rule ext)
+    apply (simp add: x scan_inverse)
+    done
+qed
+
 
 lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"
   by (induct u rule: xa_induct, simp_all add: synthesize_store_def)

@@ -1,6 +1,6 @@
 theory Bounded_Copy_SST_Transducer
   imports Main Finite_Set
-          "../Core/Update" "../Composition/Compose_SST_Transducer" "../Single_Use/Single_Use" "../Single_Use/Bounded_Copy"
+          "../Core/Update" "../Composition/Compose_SST_Transducer" "../Single_Use/Single_Use"
 begin
 
 

@@ -139,5 +139,7 @@ lemma bounded_copy_SST_simp:
 text \<open>Phantom type used to state bounded-ness using size of UNIV :: 'i set\<close>
 datatype ('i::enum) boundedness = Boundedness
 
+definition boundedness :: "'i::enum boundedness \<Rightarrow> nat \<Rightarrow> bool" where 
+  "boundedness B k \<equiv> (k = length (Enum.enum :: 'i list))"
 
 end

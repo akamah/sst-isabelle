@@ -208,7 +208,7 @@ lemma map_alpha_H'_iota_\<Delta>:
   apply (rule ext)
   apply (simp add: \<iota>_def)
   apply (simp add: map_alpha_synthesize comp_def[symmetric] hat_hom_def[symmetric])
-  apply (simp add: H'_embed \<Delta>'_def)
+  apply (simp add: H'_embed \<Delta>'_def) 
   apply (simp add: resolve_inverse)
   done
 
@@ -238,15 +238,6 @@ qed
 
 lemma valuate_update_map_alpha: "valuate (valuate (\<theta> x)) = valuate ((ignore_left \<star> \<theta>) x)"
   by (simp add: map_alpha_def valuate_update)
-
-lemma synthesize_idU: "synthesize B (idS :: 'x \<Rightarrow> 'x list, \<lambda>(y, k). []) = (idU :: ('x, 'a) update)"
-proof -
-  have 1: "(idS :: 'x \<Rightarrow> 'x list) = resolve_shuffle B (idU :: ('x, 'a) update)"
-    by (simp add: resolve_idU_idS[symmetric])
-  have 2: "(\<lambda>(y, k). []) = resolve_store B idU"
-    by (auto simp add: resolve_idU_empty)
-  show ?thesis by (simp add: 1 2 resolve_inverse)
-qed
 
 
 definition idA :: "'x \<Rightarrow> 'x list" where
@@ -351,8 +342,8 @@ lemma map_alpha_resolve_store:
 lemma hat_homU_iota:
   "hat_homU (\<iota> B \<alpha>) (hat_hom \<phi> u)
  = update2hom (H' B (\<alpha>, \<phi>)) \<star> hat_homU (\<iota> B (\<Delta>' B (\<alpha>, \<phi>))) u"
-  by (simp add: hat_homU_map_alpha map_alpha_H'_iota_\<Delta> hat_homU_lem)
-
+  apply (simp add: hat_homU_map_alpha map_alpha_H'_iota_\<Delta> hat_homU_lem)
+  done
 
 lemma H'_assoc_string:
   "resolve_store B (hat_homU (\<iota> B \<alpha>) (hat_hom \<phi> u)) (y, k)
@@ -392,15 +383,6 @@ next
   then show ?case by (simp add: eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
 qed
 
-
-
-lemma all_variable_map_Inl: "List.list_all is_inl (map Inl xs)"
-  by (induct xs, simp_all)
-
-lemma "List.list_all is_inl (synthesize_shuffle B \<theta> x)"
-  by (simp add: synthesize_shuffle_def all_variable_map_Inl)
-
-term "ignore_left \<star> (\<theta> :: ('y, 'z + 'b) update)"
 
 
 lemma scan_valuate: "fst (scan (hat_alpha ignore_left u)) = valuate (fst (scan u))"

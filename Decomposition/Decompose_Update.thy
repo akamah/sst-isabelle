@@ -787,6 +787,9 @@ theorem synthesize_inverse_shuffle: "resolve_shuffle B (synthesize B (s, a)) = s
   done
 
 
+lemma synthesize_idU: "synthesize B (idS :: 'x \<Rightarrow> 'x list, \<lambda>(y, k). []) = (idU :: ('x, 'a) update)"
+  by (auto simp add: synthesize_def synthesize_shuffle_def synthesize_store_def idU_def idS_def scan_def comp_def)
+
 subsection \<open>Example\<close>
 
 definition poyo :: "(int, char) update" where

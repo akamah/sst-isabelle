@@ -74,7 +74,7 @@ lemmas well_defined_simps = st_well_defined_simps closed_eta_def closed_final_de
 
 
 (* if the output is undefined, return None, or return some output *)
-definition run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
+definition run :: "('q, 'x, 'a, 'b, 'e) SST_scheme \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run sst w = (case final sst (delta_hat sst (initial sst, w)) of
       Some u \<Rightarrow> Some ((valuate o (eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) (SOME x :: 'x. True)) |
       None   \<Rightarrow> None)"

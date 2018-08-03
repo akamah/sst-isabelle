@@ -39,15 +39,16 @@ lemma hat_homU_append: "hat_homU \<phi> (u @ v) = hat_homU \<phi> u \<bullet> ha
 fun embed :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y + 'b) list" where
   "embed x y = [Inl (x, y)]"
 
-definition \<iota> :: "'i::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y shuffle) \<Rightarrow> 'x \<Rightarrow> ('y, 'x \<times> ('y, 'i::enum) index + 'b) update" where
+definition \<iota> :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y::enum shuffle) \<Rightarrow> 'x 
+              \<Rightarrow> ('y, 'x \<times> ('y, 'k) index + 'b) update" where
   "\<iota> B \<alpha> x = synthesize B (\<alpha> x, embed x)"
 
 
-definition \<Delta>' :: "'i::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<Rightarrow> 'y shuffle)" where
-  "\<Delta>' B = (\<lambda>(\<alpha>, \<theta>). \<lambda>x. resolve_shuffle B (hat_homU (\<iota> B \<alpha>) (\<theta> x)))"
+definition \<Delta>' :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y::enum shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<Rightarrow> 'y shuffle)" where
+  "\<Delta>' B = (\<lambda>(\<alpha>, \<theta>). \<lambda>x. resolve_shuffle (hat_homU (\<iota> B \<alpha>) (\<theta> x)))"
 
 
-definition H' :: "'i::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> ('y, 'i) index, 'b) update" where
+definition H' :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y::enum shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> ('y, 'k) index, 'b) update" where
   "H' B = (\<lambda>(\<alpha>, \<theta>). \<lambda>(x, y'). resolve_store B (hat_homU (\<iota> B \<alpha>) (\<theta> x)) y')"
 
 lemma H'_simp2: "H' B (\<alpha>, \<theta>) (x, y') = resolve_store B (hat_homU (\<iota> B \<alpha>) (\<theta> x)) y'"
@@ -55,13 +56,13 @@ lemma H'_simp2: "H' B (\<alpha>, \<theta>) (x, y') = resolve_store B (hat_homU (
 
 
 lemma \<Delta>'_assoc_string:
-  fixes B :: "'i::enum boundedness"
-  fixes \<alpha> :: "'x \<Rightarrow> 'y shuffle"
+  fixes B :: "'k::enum boundedness"
+  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
   fixes \<theta> :: "('x, ('y, 'b) update) update"
   fixes u :: "('x + ('y, 'b) update) list"
   fixes y :: "'y"
-  shows "resolve_shuffle B (hat_homU (\<iota> B \<alpha>) (hat_hom \<theta> u)) y
-       = resolve_shuffle B (hat_homU (\<iota> B (\<lambda>y. resolve_shuffle B (hat_homU (\<iota> B \<alpha>) (\<theta> y)))) u) y"
+  shows "resolve_shuffle (hat_homU (\<iota> B \<alpha>) (hat_hom \<theta> u)) y
+       = resolve_shuffle (hat_homU (\<iota> B (\<lambda>y. resolve_shuffle (hat_homU (\<iota> B \<alpha>) (\<theta> y)))) u) y"
 proof (induct u rule: xa_induct)
   case Nil
   then show ?case by (simp add: resolve_shuffle_def idU_def)
@@ -85,15 +86,15 @@ definition \<alpha>0 :: "'x \<Rightarrow> 'y shuffle" where
   "\<alpha>0 x = idS"
 
 
-definition convert_\<delta> :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q \<times> ('x \<Rightarrow> 'y shuffle), 'a) trans" where
+definition convert_\<delta> :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum, 'a, 'b) MSST \<Rightarrow> ('q \<times> ('x \<Rightarrow> 'y shuffle), 'a) trans" where
   "convert_\<delta> B msst =
      (\<lambda>((q1, f), a). (delta msst (q1, a), \<Delta>' B (f, eta msst (q1, a))))"
 
-definition convert_\<eta> :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
+definition convert_\<eta> :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum, 'a, 'b) MSST \<Rightarrow>
                          ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> ('y, 'i) index, 'a, 'b) updator" where
   "convert_\<eta> B msst = (\<lambda>((q, \<alpha>), b). H' B (\<alpha>, eta msst (q, b)))"
 
-definition convert_final :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
+definition convert_final :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum, 'a, 'b) MSST \<Rightarrow>
    ('q \<times> ('x \<Rightarrow> 'y shuffle) \<Rightarrow> ('x \<times> ('y, 'i) index + 'b) list option)" where
   "convert_final B msst = (\<lambda>(q, \<alpha>).
      (case final_update msst q of
@@ -108,13 +109,13 @@ lemma convert_\<delta>_simp: "convert_\<delta> B msst ((q1, f), a) = (delta msst
 lemma convert_\<eta>_simp: "convert_\<eta> B msst ((q1, f), a) = H' B (f, eta msst (q1, a))"
   by (simp add: convert_\<eta>_def)
 
-definition convert_MSST :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow>
+definition convert_MSST :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum, 'a, 'b) MSST \<Rightarrow>
                             ('q \<times> ('x \<Rightarrow> 'y shuffle), 'x \<times> ('y, 'i) index, 'a, 'b) SST" where
   "convert_MSST B msst = \<lparr>
     states = states msst \<times> {m1. True},
     initial = (initial msst, \<alpha>0),
     delta       = convert_\<delta> B msst,
-    variables = variables msst \<times> MSST.variables2 msst \<times> (UNIV::'i set),
+    variables = undefined,
     eta         = convert_\<eta> B msst,
     final       = convert_final B msst
   \<rparr>"
@@ -199,7 +200,7 @@ lemma H'_embed: "H' B (\<alpha>, \<theta>) \<bullet> embed x = resolve_store B (
 lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> const [] = const []"
   by (auto simp add: comp_def)
 
-
+(* TODO: How to convey boundedness constraint to this lemma?  *)
 lemma map_alpha_H'_iota_\<Delta>:
   fixes x :: "'x"
   fixes \<alpha> :: "'x \<Rightarrow> 'y shuffle"
@@ -306,7 +307,7 @@ lemma iota_alpha0_remove:
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
 lemma hoge3:
-  fixes u :: "('y + 'b) list"
+  fixes u :: "('y::enum + 'b) list"
   fixes m :: "('x + ('y, 'b) update) list"
   shows "valuate (hat_hom (H' B (\<alpha>0, \<theta>)) (valuate (hat_hom (hat_homU (\<iota> B (\<Delta>' B (\<alpha>0, \<theta>))) m) (hat_alpha inr_list u))))
        = valuate (hat_hom (concatU (valuate (hat_hom \<theta> m))) u)"
@@ -348,19 +349,13 @@ lemma hat_homU_iota:
 lemma H'_assoc_string:
   "resolve_store B (hat_homU (\<iota> B \<alpha>) (hat_hom \<phi> u)) (y, k)
  = (H' B (\<alpha>, \<phi>) \<bullet> resolve_store B (hat_homU (\<iota> B (\<Delta>' B (\<alpha>, \<phi>))) u)) (y, k)"
-  by (simp add: hat_homU_iota map_alpha_resolve_store H'_const_Nil)
+  apply (simp add: hat_homU_iota map_alpha_resolve_store H'_const_Nil)
+  done
 
 lemma H'_assoc: "H' B (\<alpha>, \<phi> \<bullet> \<psi>) = H' B (\<alpha>, \<phi>) \<bullet> H' B (\<Delta>' B (\<alpha>, \<phi>), \<psi>)"
-  by (auto simp add: comp_def H'_assoc_string H'_simp2)
-
-
-lemma "let \<phi> = (\<lambda>x :: nat. []) in
-  let \<psi> = (\<lambda>x :: nat. [Inr (\<lambda>x. [])]) in
-  \<Delta>' B (\<alpha>0, \<phi>) = \<alpha>0"
-  apply (simp add: Let_def)
-  apply (intro ext)
-  apply (simp add: comp_def \<Delta>'_def idU_def resolve_shuffle_def \<alpha>0_def idS_def)
+  apply (auto simp add: comp_def H'_assoc_string H'_simp2)
   done
+
 
 lemma [simp]: "scan [Inl y] = ([], [(y, [])])"
   by (simp add: scan_def)

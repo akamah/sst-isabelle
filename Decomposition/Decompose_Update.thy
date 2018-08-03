@@ -13,10 +13,14 @@ begin
  * Store   (M\<^sup>2): stores strings which'll be concatenated to variables:
  *)
 
+text \<open>this is type of max-count of scanned length give variables 'y and bounded count 'i\<close>
+type_synonym ('y, 'k) type_mult_suc = "('y \<times> 'k) option"
+
+
 (* an detailed index of string in Append. 
  * (x, k) means the position of a k-th variable used in the assignment to x.
  *)
-type_synonym ('y, 'i) index = "'y \<times> 'i"
+type_synonym ('y, 'i) index = "'y \<times> ('y, 'i) type_mult_suc"
 
 (* Shuffle *)
 type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
@@ -251,15 +255,15 @@ subsubsection \<open>Padding\<close>
 text \<open>replace strings with a special meta-variable\<close>
 
 type_synonym ('i) scan_max = "'i type_nat"
-type_synonym ('y, 'i) pad = "('y + ('y, 'i) index) list"
+type_synonym ('y, 'k) pad = "('y + ('y, 'k) index) list"
 
 
-fun padding_rec :: "'i::enum scan_max \<Rightarrow> nat \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'i) pad" where
-  "padding_rec L n y [] = []" |
-  "padding_rec L n y ((x, _)#xs) = Inl x # Inr (y, nat_to_enum n) # padding_rec L (Suc n) y xs"
+fun padding_rec :: "'k::enum boundedness \<Rightarrow> nat \<Rightarrow> 'y::enum \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> ('y, 'k) pad" where
+  "padding_rec B n y [] = []" |
+  "padding_rec B n y ((x, _)#xs) = Inl x # Inr (y, nat_to_enum n) # padding_rec B (Suc n) y xs"
 
-fun padding :: "'i::enum scan_max \<Rightarrow> 'y \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y, 'i) pad" where
-  "padding L y (a0, xs) = Inr (y, nat_to_enum 0) # padding_rec L 1 y xs"
+fun padding :: "'k::enum boundedness \<Rightarrow> 'y::enum \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y, 'k) pad" where
+  "padding B y (a0, xs) = Inr (y, nat_to_enum 0) # padding_rec B 1 y xs"
 
 lemma padding_rec_append[simp]:
   "padding_rec L n y (xs @ ys) = padding_rec L n y xs @ padding_rec L (n + length xs) y ys"
@@ -277,18 +281,18 @@ lemma padding_word_simp[simp]:
   by (simp)
 
 lemma padding_last_simp[simp]: 
-  "padding L y (xas @@@ [(x, as :: 'b list)])
- = padding L y xas @ [Inl x, Inr (y, nat_to_enum (length_scanned xas))]"
+  "padding B y (xas @@@ [(x, as :: 'b list)])
+ = padding B y xas @ [Inl x, Inr (y, nat_to_enum (length_scanned xas))]"
 proof -
   { fix n x yas and as :: "'b list"
-    have "padding_rec L n y (yas @ [(x, as)]) = padding_rec L n y yas @ [Inl x, Inr (y, nat_to_enum (n + length yas))]"
+    have "padding_rec B n y (yas @ [(x, as)]) = padding_rec B n y yas @ [Inl x, Inr (y, nat_to_enum (n + length yas))]"
       by (induct yas arbitrary: n rule: pair_induct, simp_all)
   } note that = this
   then show ?thesis by (cases xas, simp add: that append_scanned_simp)
 qed
 
 lemma padding_append_scanned:
-  "padding L y (xas @@@ ys) = padding L y xas @ padding_rec L (length_scanned xas) y ys"
+  "padding B y (xas @@@ ys) = padding B y xas @ padding_rec B (length_scanned xas) y ys"
 proof (induct ys arbitrary: xas rule: pair_rev_induct)
   case Nil 
   then show ?case by (simp add: append_scanned_simp)
@@ -419,7 +423,7 @@ corollary nth_string_lt_length:
   using assms by (simp add: nth_string_append)
 
 
-definition flat_store :: "'i::enum scan_max \<Rightarrow> ('y, 'b) scanned \<Rightarrow> ('y + ('y, 'i) index) \<Rightarrow> ('y + 'b) list" where
+definition flat_store :: "'i::enum scan_max \<Rightarrow> ('y::enum, 'b) scanned \<Rightarrow> ('y + ('y, 'i) index) \<Rightarrow> ('y + 'b) list" where
   "flat_store L xas yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
     (Inr (x, i)) \<Rightarrow> map Inr (nth_string xas (enum_to_nat i)))"
@@ -427,9 +431,10 @@ definition flat_store :: "'i::enum scan_max \<Rightarrow> ('y, 'b) scanned \<Rig
 lemma [simp]: "flat_store L xas (Inl y) = [Inl y]" by (simp add: flat_store_def)
 
 lemma [simp]:
-  fixes L :: "'e::enum scan_max"
-  assumes "length_scanned sc < length (Enum.enum :: ('e::enum) list)"
-  shows  "flat_store L (sc @@@ [(x, as)]) (Inr (y, nat_to_enum (length_scanned sc) :: 'e)) = map Inr as"
+  fixes L :: "'k::enum boundedness"
+  assumes "length_scanned sc < length (Enum.enum :: ('y::enum, 'k) type_mult_suc list)"
+  shows  "flat_store L (sc @@@ [(x, as)]) (Inr (y, nat_to_enum (length_scanned sc) :: ('y, 'k) type_mult_suc)) 
+        = map Inr as"
 using assms proof (induct sc rule: scanned_induct)
   case (Nil w)
   then show ?case by (simp add: flat_store_def append_scanned_simp nat_enum_iso)
@@ -447,14 +452,12 @@ theorem scan_inverse: "flat (scan u) = u"
 subsection \<open>Resolve\<close>
 text \<open>\<pi> in the thesis\<close>
 
-text \<open>this is type of max-count of scanned length give variables 'y and bounded count 'i\<close>
-type_synonym ('y, 'k) type_mult_suc = "('y \<times> 'k) option"
 
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
 definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update 
-                          \<Rightarrow> ('y, ('y, 'k) type_mult_suc, 'b) store" where
+                          \<Rightarrow> ('y, 'k, 'b) store" where
   "resolve_store B \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string (scan (\<theta> x)) (enum_to_nat k))"
 
 
@@ -462,11 +465,11 @@ subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>
 
 definition synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle 
-                          \<Rightarrow> ('y, 'y + ('y, ('y, 'k) type_mult_suc) index, 'b) update'" where
-  "synthesize_shuffle B s y = map Inl (padding Type_Nat y (scan (map Inl (s y) :: ('y + 'y) list)))"
+                          \<Rightarrow> ('y, 'y + ('y, 'k) index, 'b) update'" where
+  "synthesize_shuffle B s y = map Inl (padding B y (scan (map Inl (s y) :: ('y + 'y) list)))"
 
-definition synthesize_store :: "'i::enum boundedness \<Rightarrow> ('y::enum, ('y, 'k) type_mult_suc, 'b) store 
-                          \<Rightarrow> ('y + ('y, ('y, 'k) type_mult_suc) index, 'y, 'b) update'" where
+definition synthesize_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store 
+                          \<Rightarrow> ('y + ('y, 'k) index, 'y, 'b) update'" where
   "synthesize_store B a yi = (case yi of
      (Inl y) \<Rightarrow> [Inl y] | 
      (Inr i) \<Rightarrow> map Inr (a i))"
@@ -475,7 +478,7 @@ lemma concat_map_synthesize_store_map_Inr:
   "concat (map (synthesize_store B a) (map Inr w)) = map Inr (concat (map a w))"
   by (induct w, simp_all add: synthesize_store_def)
 
-definition synthesize :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, ('y, 'k) type_mult_suc, 'b) store
+definition synthesize :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, 'k, 'b) store
                       \<Rightarrow> ('y, 'b) update" where
   "synthesize B sa = (case sa of (s, a) \<Rightarrow> synthesize_store B a \<bullet> synthesize_shuffle B s)"
 
@@ -522,11 +525,14 @@ lemma padding_scan_ignore_alphabet:
   "padding B x (scan (map Inl (extract_variables u))) = padding B x (scan u)"
   by (induct u rule: xw_induct, auto simp add: length_scanned_ignore_alphabet)
 
+
+declare [[show_types]]
 lemma synthesize_resolve_eq_flat:
-  fixes B :: "'k::enum type_nat"
-  assumes "yi = Inl y \<or> yi = Inr (x, k :: ('y::enum, 'k::enum) type_mult_suc)"
+  fixes B :: "'k::enum boundedness"
+  fixes m :: "('y::enum, 'b) update"
+  assumes "yi = Inl y \<or> yi = Inr (x, k)"
   shows "synthesize_store B (resolve_store B m) yi
-       = flat_store (Type_Nat :: ('y::enum, 'k::enum) type_mult_suc type_nat) (scan (m x)) yi"
+       = flat_store B (scan (m x)) yi"
 proof (cases "yi")
   case (Inl a)
   then show ?thesis by (simp add: resolve_store_def synthesize_store_def flat_store_def)
@@ -550,7 +556,7 @@ lemma concat_map_synthesize_resolve_flat:
   fixes B :: "'k::enum type_nat"
   assumes "list_all (z_equal_var x) xs"
   shows "concat (map (synthesize_store B (resolve_store B m)) xs) 
-       = concat (map (flat_store (Type_Nat :: ('y::enum, 'k) type_mult_suc type_nat) (scan (m x))) xs)"
+       = concat (map (flat_store B (scan (m x))) xs)"
 using assms proof (induct xs rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -564,8 +570,8 @@ qed
 
 lemma concat_map_padding:
   fixes B :: "'i::enum type_nat"
-  shows "concat (map (synthesize_store B (resolve_store B m)) (padding (Type_Nat :: ('y::enum, 'i::enum) type_mult_suc type_nat) x xas))
-       = concat (map (flat_store Type_Nat (scan (m x))) (padding (Type_Nat :: ('y::enum, 'i::enum) type_mult_suc type_nat) x xas))"
+  shows "concat (map (synthesize_store B (resolve_store B m)) (padding B x xas))
+       = concat (map (flat_store B (scan (m x))) (padding B x xas))"
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
 
 
@@ -602,44 +608,44 @@ next
 qed
 
 lemma padding_lt_length_scanned:
-  assumes "length_scanned sc \<le> length (Enum.enum :: 'i::enum list)"
-  shows "list_all (z_less_than (length_scanned sc)) (padding B x sc :: ('y, 'i::enum) pad)"
+  assumes "length_scanned sc \<le> length (Enum.enum :: ('y::enum, 'k::enum) type_mult_suc list)"
+  shows "list_all (z_less_than (length_scanned sc)) (padding B x sc :: ('y, 'k) pad)"
 using assms proof (induct sc rule: scanned_rev_induct)
   case (Nil w)
   then show ?case proof (simp)
-    assume "Suc 0 \<le> length (Enum.enum :: 'i list)"
-    then have "0 < length (Enum.enum :: 'i list)"
+    assume "Suc 0 \<le> length (Enum.enum :: ('y, 'k) type_mult_suc list)"
+    then have "0 < length (Enum.enum :: ('y, 'k) type_mult_suc list)"
       by (simp add: less_eq_Suc_le)
-    then show "enum_to_nat (nat_to_enum 0 :: 'i) = 0"
+    then show "enum_to_nat (nat_to_enum 0 :: ('y, 'k) type_mult_suc) = 0"
       by (simp add: nat_enum_iso)
   qed
 next
   case (PairSnoc x as sc)
   then show ?case proof (simp add: all_z_less_than_Suc)
-    assume "Suc (length_scanned sc) \<le> length (Enum.enum :: 'i list)"
-    then have "length_scanned sc < length (Enum.enum :: 'i list)" by simp
-    then show "enum_to_nat (nat_to_enum (length_scanned sc) :: 'i) < Suc (length_scanned sc)"
+    assume "Suc (length_scanned sc) \<le> length (Enum.enum :: ('y, 'k) type_mult_suc list)"
+    then have "length_scanned sc < length (Enum.enum :: ('y, 'k) type_mult_suc list)" by simp
+    then show "enum_to_nat (nat_to_enum (length_scanned sc) :: ('y, 'k) type_mult_suc) < Suc (length_scanned sc)"
       by (simp add: nat_enum_iso)
   qed
 qed
 
 
 lemma cm_flat_store_padding_ignore:
-  assumes "length_scanned sc \<le> length (Enum.enum :: ('i::enum) list)"
-  shows "concat (map (flat_store B (sc @@@ rest)) (padding B x sc :: ('y, 'i) pad)) 
-       = concat (map (flat_store B sc) (padding B x sc :: ('y, 'i) pad))"
+  assumes "length_scanned sc \<le> length (Enum.enum :: ('y::enum, 'k::enum) type_mult_suc list)"
+  shows "concat (map (flat_store B (sc @@@ rest)) (padding B x sc :: ('y, 'k) pad)) 
+       = concat (map (flat_store B sc) (padding B x sc :: ('y, 'k) pad))"
 proof -
-  have "list_all (z_less_than (length_scanned sc)) (padding B x sc :: ('y, 'i) pad)"
+  have "list_all (z_less_than (length_scanned sc)) (padding B x sc :: ('y, 'k) pad)"
     using assms by (simp add: padding_lt_length_scanned)
   then show ?thesis by (simp add: cm_flat_store_ignore_rest)
 qed
 
 lemma flat_store_flat:
-  assumes "length_scanned sc \<le> length (Enum.enum :: ('i::enum) list)"
-  shows "concat (map (flat_store B sc) (padding B x sc :: ('y, 'i) pad)) = flat sc"
+  assumes "length_scanned sc \<le> length (Enum.enum :: ('y::enum, 'k::enum) type_mult_suc list)"
+  shows "concat (map (flat_store B sc) (padding B x sc :: ('y, 'k) pad)) = flat sc"
 using assms proof (induct sc rule: scanned_rev_induct)
   case (Nil w)
-  then have "0 < length (Enum.enum :: 'i list)"
+  then have "0 < length (Enum.enum :: ('y, 'k) type_mult_suc list)"
     by auto
   then show ?case using assms by (simp add: flat_store_def nat_enum_iso)
 next

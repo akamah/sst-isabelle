@@ -450,8 +450,8 @@ text \<open>\<pi> in the thesis\<close>
 text \<open>this is type of max-count of scanned length give variables 'y and bounded count 'i\<close>
 type_synonym ('y, 'k) type_mult_suc = "('y \<times> 'k) option"
 
-definition resolve_shuffle :: "'k::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y shuffle" where
-  "resolve_shuffle B \<theta> y = extract_variables (\<theta> y)"
+definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
+  "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
 definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update 
                           \<Rightarrow> ('y, ('y, 'k) type_mult_suc, 'b) store" where
@@ -493,7 +493,7 @@ lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, co
   by (auto simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store synthesize_def)
 
 
-lemma resolve_idU_idS: "resolve_shuffle B idU = idS"
+lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
 lemma resolve_idU_empty: "resolve_store B idU (y, k) = (\<lambda>y'. []) (y, k)"
@@ -507,10 +507,10 @@ qed
 
 
 lemma resolve_shuffle_distrib_str: 
-  "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle B \<phi>) (extract_variables u))"
+  "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle \<phi>) (extract_variables u))"
   by (induct u rule: xa_induct, simp_all add: resolve_shuffle_def)
 
-lemma resolve_shuffle_distrib: "resolve_shuffle B (\<phi> \<bullet> \<psi>) = concat o map (resolve_shuffle B \<phi>) o resolve_shuffle B \<psi>"
+lemma resolve_shuffle_distrib: "resolve_shuffle (\<phi> \<bullet> \<psi>) = concat o map (resolve_shuffle \<phi>) o resolve_shuffle \<psi>"
   by (rule ext, simp add: comp_def resolve_shuffle_def resolve_shuffle_distrib_str)
 
 
@@ -656,7 +656,7 @@ definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
 lemma resolve_bounded:
   fixes m :: "('x::finite, 'b) update"
   assumes "bounded k m"
-  shows "bounded_shuffle k (resolve_shuffle B m)"
+  shows "bounded_shuffle k (resolve_shuffle m)"
 proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
   fix x
   { fix x' :: 'x and u :: "('x + 'b) list"
@@ -769,9 +769,9 @@ theorem resolve_inverse:
   fixes m :: "('y::enum, 'b) update"
   assumes "bounded k m"
   assumes "boundedness B k"
-  shows "synthesize B (resolve_shuffle B m, resolve_store B m) = m"
+  shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
 proof -
-  have x: "\<And>x. synthesize B (resolve_shuffle B m, resolve_store B m) x = flat (scan (m x))"
+  have x: "\<And>x. synthesize B (resolve_shuffle m, resolve_store B m) x = flat (scan (m x))"
     apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
     apply (simp add: resolve_shuffle_def)
     apply (simp add: hat_hom_left_concat_map padding_scan_ignore_alphabet)
@@ -803,7 +803,7 @@ next
 qed
 
 
-theorem synthesize_inverse_shuffle: "resolve_shuffle B (synthesize B (s, a)) = s"
+theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
   by (auto simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map
                      extract_variables_synthesize_store extract_variables_padding_scan)
 

@@ -200,10 +200,15 @@ lemma H'_embed: "H' B (\<alpha>, \<theta>) \<bullet> embed x = resolve_store B (
 lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> const [] = const []"
   by (auto simp add: comp_def)
 
-(* TODO: How to convey boundedness constraint to this lemma?  *)
+(* TODO: How to convey boundedness constraint to this lemma?  
+   THAT IS: hat_homU (\<iota> B \<alpha>) (\<theta> x) should be k bounded-copy update monoid.
+   
+   boundedness k B is easy, but we need to show property above.
+   maybe, we need to prove that using `type of MSST' ...
+*)
 lemma map_alpha_H'_iota_\<Delta>:
   fixes x :: "'x"
-  fixes \<alpha> :: "'x \<Rightarrow> 'y shuffle"
+  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
   fixes \<theta> :: "('x, ('y, 'b) update) update"
   shows "map_alpha (update2hom (H' B (\<alpha>, \<theta>))) o \<iota> B (\<Delta>' B (\<alpha>, \<theta>)) = hat_homU (\<iota> B \<alpha>) o \<theta>"
   apply (rule ext)

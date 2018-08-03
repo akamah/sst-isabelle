@@ -1,5 +1,5 @@
 theory Single_Use
-  imports Main "../Util/Setsum" "../Core/Update" "../Core/SST"
+  imports Main "../Util/Setsum" "../Core/Update" "../Core/SST" "../Util/Enum_Nat"
 begin
 
 lemma sum_cong: "\<And>x. x\<in>A \<Longrightarrow> f = g \<Longrightarrow> sum f A = sum g A" by auto
@@ -137,7 +137,7 @@ lemma bounded_copy_SST_simp:
   using assms unfolding bounded_copy_SST_def by simp
 
 text \<open>Phantom type used to state bounded-ness using size of UNIV :: 'i set\<close>
-datatype ('i::enum) boundedness = Boundedness
+type_synonym 'i boundedness = "'i type_nat"
 
 definition boundedness :: "'i::enum boundedness \<Rightarrow> nat \<Rightarrow> bool" where 
   "boundedness B k \<equiv> (k = length (Enum.enum :: 'i list))"

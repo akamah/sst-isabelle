@@ -69,4 +69,14 @@ lemma nat_enum_iso:
   by (rule nat_list_iso, rule assms(1), rule Enum.enum_distinct)
 
 
+text \<open>Type-level natural number\<close>
+datatype ('i::enum) type_nat = Type_Nat
+
+definition type_mult :: "'i::enum type_nat \<Rightarrow> 'j::enum type_nat \<Rightarrow> ('i \<times> 'j) type_nat" where
+  "type_mult A B = Type_Nat"
+
+definition type_suc :: "'i::enum type_nat \<Rightarrow> ('i option) type_nat" where
+  "type_suc A = Type_Nat"
+
+
 end

@@ -128,7 +128,7 @@ qed
 
 section \<open>Bounded-ness of SST\<close>
 
-definition bounded_copy_SST :: "[ nat, ('q::finite, 'x::finite, 'a, 'b) SST ] \<Rightarrow> bool" where
+definition bounded_copy_SST :: "[ nat, ('q::finite, 'x::finite, 'a, 'b, 'e) SST_scheme ] \<Rightarrow> bool" where
   "bounded_copy_SST k sst \<equiv> (\<forall>w q. reachable sst q \<longrightarrow> bounded k (SST.eta_hat sst (q, w)))"
 
 lemma bounded_copy_SST_simp:

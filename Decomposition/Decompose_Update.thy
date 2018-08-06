@@ -526,7 +526,6 @@ lemma padding_scan_ignore_alphabet:
   by (induct u rule: xw_induct, auto simp add: length_scanned_ignore_alphabet)
 
 
-declare [[show_types]]
 lemma synthesize_resolve_eq_flat:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"

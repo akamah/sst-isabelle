@@ -327,7 +327,6 @@ lemma hoge3:
 lemma length_scan_hat_alpha: "length_scanned (scan (hat_alpha t u)) = length_scanned (scan u)"
   by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
 
-declare[[show_types]]
 lemma map_alpha_resolve_store_aux: 
   "hat_hom t (nth_string (scan u) k)
  = nth_string (scan (hat_alpha (update2hom t) u)) k"

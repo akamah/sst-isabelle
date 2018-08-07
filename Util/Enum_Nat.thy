@@ -68,6 +68,47 @@ lemma nat_enum_iso:
   unfolding enum_to_nat_def nat_to_enum_def
   by (rule nat_list_iso, rule assms(1), rule Enum.enum_distinct)
 
+lemma enum_ex_zero:
+  assumes "0 < length (Enum.enum :: ('e::enum) list)"
+  shows "\<exists>k0::'e. (enum_to_nat k0 = 0)"
+proof
+  let ?k0 = "nat_to_enum 0 :: 'e"
+  show "enum_to_nat ?k0 = 0"
+    using assms by (simp add: nat_enum_iso)
+qed
+
+
+lemma list_nat_less:
+  assumes "e \<in> set xs"
+  shows "enum_to_nat' xs e < length xs"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case by (cases "e = a", simp_all)
+qed
+
+lemma enum_nat_less:
+  fixes k :: "'e::enum"
+  shows "enum_to_nat k < length (Enum.enum :: 'e list)"
+  unfolding enum_to_nat_def
+  by (rule list_nat_less, simp add: enum_UNIV)
+
+
+lemma inj_list_to_nat:
+  assumes "distinct xs"
+  shows "inj_on (enum_to_nat' xs) (set xs)"
+using assms unfolding inj_on_def by (induct xs, simp_all)
+
+lemma inj_enum_to_nat:
+  "inj enum_to_nat"
+  unfolding enum_to_nat_def
+  apply (simp add: UNIV_enum)
+  apply (rule inj_list_to_nat)
+  apply (rule enum_distinct)
+  done
+
 
 text \<open>Type-level natural number\<close>
 datatype ('i::enum) type_nat = Type_Nat

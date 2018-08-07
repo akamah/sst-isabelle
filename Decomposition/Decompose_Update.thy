@@ -368,6 +368,12 @@ next
   then show ?case by (simp add: append_scanned_simp nth_string_eq)
 qed
 
+lemma nth_string_ge_length:
+  assumes "length_scanned xas \<le> n"
+  shows "nth_string xas n = []"
+using assms by (induct xas n rule: nth_string.induct, simp_all)
+
+
 lemma nth_string_pos: "0 < n \<Longrightarrow> nth_string (w, (x, as) # xas) n = nth_string (as, xas) (n - 1)"
   by (auto simp add: Nat.gr0_conv_Suc)
 
@@ -745,7 +751,7 @@ qed
 lemma bounded_copy_length_scanned:
   fixes m :: "('x::finite, 'a) update"
   assumes "bounded k m"
-  shows "length_scanned (scan (m x)) \<le> card (UNIV::'x set) * k + 1"
+  shows "length_scanned (scan (m x)) \<le> Suc (card (UNIV::'x set) * k)"
 proof -
   have "length (extract_variables (m x)) \<le> card (UNIV::'x set) * k"
     using assms by (simp add: variable_count_in_bounded_update)
@@ -756,7 +762,7 @@ qed
 lemma type_mult_suc_length:
   fixes B :: "'k::enum boundedness"
   assumes "boundedness B k"
-  shows "length (Enum.enum::('y::enum, 'k) type_mult_suc list) = card (UNIV::'y set) * k + 1"
+  shows "length (Enum.enum::('y::enum, 'k) type_mult_suc list) = Suc (card (UNIV::'y set) * k)"
 proof -
   have "card (UNIV::('y, 'k) type_mult_suc set) = card (UNIV::('y \<times> 'k) set) + 1"
     apply (simp add: UNIV_option_conv)
@@ -770,6 +776,15 @@ proof -
     by (simp add: card_UNIV_length_enum)
 qed
 
+lemma length_scanned_boundedness:
+  fixes B :: "'k::enum boundedness"
+  fixes m :: "('y::enum, 'b) update"
+  assumes "boundedness B k"
+  assumes "bounded k m"
+  shows "length_scanned (scan (m x)) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)"
+  using assms by (simp add: type_mult_suc_length  bounded_copy_length_scanned)
+  
+
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"
@@ -777,22 +792,17 @@ theorem resolve_inverse:
   assumes "boundedness B k"
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
 proof -
-  have x: "\<And>x. synthesize B (resolve_shuffle m, resolve_store B m) x = flat (scan (m x))"
+  have "\<And>x. synthesize B (resolve_shuffle m, resolve_store B m) x = flat (scan (m x))"
     apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
     apply (simp add: resolve_shuffle_def)
     apply (simp add: hat_hom_left_concat_map padding_scan_ignore_alphabet)
     apply (simp add: concat_map_padding)
     apply (rule flat_store_flat)
-  proof -
-    fix x
-    have "length_scanned (scan (m x)) \<le> card (UNIV::'y set) * k + 1"
-      by (rule bounded_copy_length_scanned, rule assms(1))
-    also have "... = length (Enum.enum :: ('y, 'k) type_mult_suc list)"
-      by (rule type_mult_suc_length[symmetric], rule assms(2))
-    finally show "length_scanned (scan (m x)) \<le> length (Enum.enum :: ('y, 'k) type_mult_suc list)" .
-  qed
-  show ?thesis
-    by (auto simp add: x scan_inverse)
+    apply (rule length_scanned_boundedness)
+    apply (rule assms(2))
+    apply (rule assms(1))
+    done
+  then show ?thesis by (auto simp add: scan_inverse)
 qed
 
 

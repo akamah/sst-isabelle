@@ -13,14 +13,17 @@ begin
  * Store   (M\<^sup>2): stores strings which'll be concatenated to variables:
  *)
 
-text \<open>this is type of max-count of scanned length give variables 'y and bounded count 'i\<close>
+(* This is a type of max scanned length given variables 'y and bounded count 'k.
+ * if 'y and 'k are instance of enum class, this type represents type-level natural number
+ * |'y| \<times> |'k| + 1
+ *)
 type_synonym ('y, 'k) type_mult_suc = "('y \<times> 'k) option"
 
 
-(* an detailed index of string in Append. 
- * (x, k) means the position of a k-th variable used in the assignment to x.
+(* an index of string in Store.
+ * (y, k) means the position of a k-th variable used in the assignment to y.
  *)
-type_synonym ('y, 'i) index = "'y \<times> ('y, 'i) type_mult_suc"
+type_synonym ('y, 'k) index = "'y \<times> ('y, 'k) type_mult_suc"
 
 (* Shuffle *)
 type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
@@ -29,7 +32,7 @@ type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
 definition idS :: "'y shuffle" where
   "idS \<equiv> (\<lambda>y. [y])"
 
-(* Store *)
+(* Store object is an array of string indexed with ('y, 'i) index *)
 type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
 
@@ -70,8 +73,7 @@ qed
 
 subsubsection \<open>Scanned string\<close>
 
-text \<open>first string and pairs of a variable and a string\<close>
-
+text \<open>Scanned string, w_0 y_1 w_1 y_2 w_2 ... y_n w_n\<close>
 type_synonym ('y, 'b) scanned_tail = "('y \<times> 'b list) list"
 type_synonym ('y, 'b) scanned = "'b list \<times> ('y, 'b) scanned_tail"
 
@@ -254,7 +256,6 @@ subsubsection \<open>Padding\<close>
 
 text \<open>replace strings with a special meta-variable\<close>
 
-type_synonym ('i) scan_max = "'i type_nat"
 type_synonym ('y, 'k) pad = "('y + ('y, 'k) index) list"
 
 
@@ -331,7 +332,7 @@ lemma nth_string'_length: "nth_string' (xs @ ys) (length xs) = nth_string' ys 0"
   by (induct xs rule: pair_induct, simp_all)
 
 
-fun nth_string where
+fun nth_string :: "'a list \<times> ('x \<times> 'a list) list \<Rightarrow> nat \<Rightarrow> 'a list" where
   "nth_string (w, xas) 0 = w" |
   "nth_string (w, []) (Suc n) = []" |
   "nth_string (w, (x, as) # xas) (Suc n) = nth_string (as, xas) n"
@@ -423,7 +424,7 @@ corollary nth_string_lt_length:
   using assms by (simp add: nth_string_append)
 
 
-definition flat_store :: "'i::enum scan_max \<Rightarrow> ('y::enum, 'b) scanned \<Rightarrow> ('y + ('y, 'i) index) \<Rightarrow> ('y + 'b) list" where
+definition flat_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) scanned \<Rightarrow> ('y + ('y, 'k) index) \<Rightarrow> ('y + 'b) list" where
   "flat_store L xas yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
     (Inr (x, i)) \<Rightarrow> map Inr (nth_string xas (enum_to_nat i)))"

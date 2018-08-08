@@ -6,7 +6,7 @@ section \<open>Proof of convertion from a Monoid SST to a ordinary SST\<close>
 
 theory Convert_Monoid_SST
   imports Main Sum_Type "../Core/Update" "../Core/SST" "../Core/Monoid_SST" "../Decomposition/Decompose_Update"
-                        "Convert_Monoid_SST_Def"
+                         "../Type/Monoid_SST_Type" "Convert_Monoid_SST_Def" "Convert_Monoid_SST_Type_Misc"
 begin
 
 subsection \<open>Properties\<close>
@@ -87,23 +87,6 @@ lemma H'_embed: "H' B (\<alpha>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embe
 lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> const [] = const []"
   by (auto simp add: comp_def)
 
-(* TODO: How to convey boundedness constraint to this lemma?  
-   THAT IS: hat_homU (\<iota> B \<alpha>) (\<theta> x) should be k bounded-copy update monoid.
-   
-   boundedness k B is easy, but we need to show property above.
-   maybe, we need to prove that using `type of MSST' ...
-*)
-lemma map_alpha_H'_iota_\<Delta>:
-  fixes x :: "'x"
-  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
-  fixes \<theta> :: "('x, ('y, 'b) update) update"
-  shows "map_alpha (update2hom (H' B (\<alpha>, \<theta>))) o \<iota> B (\<Delta>' B (\<alpha>, \<theta>)) = hat_homU (\<iota> B \<alpha>) o \<theta>"
-  apply (rule ext)
-  apply (simp add: \<iota>_def)
-  apply (simp add: map_alpha_synthesize comp_def[symmetric] hat_hom_def[symmetric])
-  apply (simp add: H'_embed \<Delta>'_def) 
-  apply (simp add: resolve_inverse)
-  done
 
 
 fun ignore_left where
@@ -198,21 +181,12 @@ lemma iota_alpha0_remove:
  = valuate (hat_hom (concatU (valuate m)) u)"
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
-lemma hoge3:
-  fixes u :: "('y::enum + 'b) list"
-  fixes m :: "('x + ('y, 'b) update) list"
-  shows "valuate (hat_hom (H' B (\<alpha>0, \<theta>)) (valuate (hat_hom (hat_homU (\<iota> B (\<Delta>' B (\<alpha>0, \<theta>))) m) (hat_alpha inr_list u))))
-       = valuate (hat_hom (concatU (valuate (hat_hom \<theta> m))) u)"
-  apply (simp add: hat_hom_valuate_hat_hom)
-  apply (simp add: hat_homU_map_alpha)
-  apply (simp add: update2hom_hat_alpha)
-  apply (simp add: map_alpha_H'_iota_\<Delta>)
-  apply (simp add: hat_homU_lem)
-  apply (simp add: iota_alpha0_remove)
-  done
+
+
 
 lemma length_scan_hat_alpha: "length_scanned (scan (hat_alpha t u)) = length_scanned (scan u)"
   by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
+
 
 lemma map_alpha_resolve_store_aux: 
   "hat_hom t (nth_string (scan u) k)
@@ -231,26 +205,8 @@ lemma map_alpha_resolve_store:
   by (cases "enum_to_nat k", simp_all add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_aux)
 
 
-lemma hat_homU_iota:
-  "hat_homU (\<iota> B \<alpha>) (hat_hom \<phi> u)
- = update2hom (H' B (\<alpha>, \<phi>)) \<star> hat_homU (\<iota> B (\<Delta>' B (\<alpha>, \<phi>))) u"
-  apply (simp add: hat_homU_map_alpha map_alpha_H'_iota_\<Delta> hat_homU_lem)
-  done
-
-lemma H'_assoc_string:
-  "resolve_store B (hat_homU (\<iota> B \<alpha>) (hat_hom \<phi> u)) (y, k)
- = (H' B (\<alpha>, \<phi>) \<bullet> resolve_store B (hat_homU (\<iota> B (\<Delta>' B (\<alpha>, \<phi>))) u)) (y, k)"
-  apply (simp add: hat_homU_iota map_alpha_resolve_store H'_const_Nil)
-  done
-
-lemma H'_assoc: "H' B (\<alpha>, \<phi> \<bullet> \<psi>) = H' B (\<alpha>, \<phi>) \<bullet> H' B (\<Delta>' B (\<alpha>, \<phi>), \<psi>)"
-  apply (auto simp add: comp_def H'_assoc_string H'_simp2)
-  done
-
-
 lemma [simp]: "scan [Inl y] = ([], [(y, [])])"
   by (simp add: scan_def)
-
 
 
 lemma scan_valuate: "fst (scan (hat_alpha ignore_left u)) = valuate (fst (scan u))"
@@ -371,6 +327,51 @@ next
 qed
 
 
+thm hat_homU_iota_bounded_copy
+thm resolve_inverse
+lemma map_alpha_H'_iota_\<Delta>:
+  fixes x :: "'x"
+  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
+  fixes \<theta> :: "('x, ('y, 'b) update) update"
+  assumes "boundedness B k"
+  assumes "is_type msst \<gamma>"
+  assumes "bounded_copy_type k msst \<gamma>"
+  shows "map_alpha (update2hom (H' B (\<alpha>, \<theta>))) o \<iota> B (\<Delta>' B (\<alpha>, \<theta>)) = hat_homU (\<iota> B \<alpha>) o \<theta>"
+  apply (rule ext)
+  apply (simp add: \<iota>_def map_alpha_synthesize comp_def[symmetric] hat_hom_def[symmetric] H'_embed \<Delta>'_def)
+  apply (rule resolve_inverse)
+  done
+
+lemma hoge3:
+  fixes u :: "('y::enum + 'b) list"
+  fixes m :: "('x + ('y, 'b) update) list"
+  shows "valuate (hat_hom (H' B (\<alpha>0, \<theta>)) (valuate (hat_hom (hat_homU (\<iota> B (\<Delta>' B (\<alpha>0, \<theta>))) m) (hat_alpha inr_list u))))
+       = valuate (hat_hom (concatU (valuate (hat_hom \<theta> m))) u)"
+  apply (simp add: hat_hom_valuate_hat_hom)
+  apply (simp add: hat_homU_map_alpha)
+  apply (simp add: update2hom_hat_alpha)
+  apply (simp add: map_alpha_H'_iota_\<Delta>)
+  apply (simp add: hat_homU_lem)
+  apply (simp add: iota_alpha0_remove)
+  done
+
+
+lemma hat_homU_iota:
+  "hat_homU (\<iota> B \<alpha>) (hat_hom \<phi> u)
+ = update2hom (H' B (\<alpha>, \<phi>)) \<star> hat_homU (\<iota> B (\<Delta>' B (\<alpha>, \<phi>))) u"
+  apply (simp add: hat_homU_map_alpha map_alpha_H'_iota_\<Delta> hat_homU_lem)
+  done
+
+lemma H'_assoc_string:
+  "resolve_store B (hat_homU (\<iota> B \<alpha>) (hat_hom \<phi> u)) (y, k)
+ = (H' B (\<alpha>, \<phi>) \<bullet> resolve_store B (hat_homU (\<iota> B (\<Delta>' B (\<alpha>, \<phi>))) u)) (y, k)"
+  apply (simp add: hat_homU_iota map_alpha_resolve_store H'_const_Nil)
+  done
+
+lemma H'_assoc: "H' B (\<alpha>, \<phi> \<bullet> \<psi>) = H' B (\<alpha>, \<phi>) \<bullet> H' B (\<Delta>' B (\<alpha>, \<phi>), \<psi>)"
+  apply (auto simp add: comp_def H'_assoc_string H'_simp2)
+  done
+
 lemma convert_\<eta>_hat_valuate:
   "valuate (hat_hom (SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<alpha>), w)) u) =
    valuate (hat_hom (H' B (\<alpha>, eta_hat msst (q, w))) u)"
@@ -405,7 +406,11 @@ qed
 
 
 theorem MSST_can_convert:
-  "SST.run (convert_MSST B msst) w = Monoid_SST.run msst w"
+  assumes assm_k_bounded: "boundedness B k"
+  assumes assm_is_type: "is_type msst \<gamma>"
+  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<alpha>)"
+  shows "SST.run (convert_MSST B msst) w = Monoid_SST.run msst w"
 proof (cases "final_update msst (hat1 (delta msst) (initial msst, w))")
   case None
   then show ?thesis

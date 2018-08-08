@@ -83,5 +83,9 @@ lemma delta_append[simp]:
   "hat1 t (q, u @ v) = hat1 t (hat1 t (q, u), v)"
   by (induct u arbitrary: q, auto)
 
+lemma reachable_delta_hat:
+  assumes "reachable m q"
+  shows "reachable m (delta_hat m (q, w))"
+  by (metis assms delta_append reachable_def)
 
 end

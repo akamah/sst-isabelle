@@ -108,7 +108,7 @@ next
     done
 qed
 
-lemma
+lemma type_hom_hat_hom:
   assumes "is_type msst \<gamma>"
   shows "type_hom \<gamma> (q, hat_hom (eta_hat msst (q, w)) u)
       \<subseteq> type_hom \<gamma> (delta_hat msst (q, w), u)"
@@ -126,6 +126,12 @@ next
     finally show "type_hom \<gamma> (q, hat_hom ?e' ?uu) \<subseteq> type_hom \<gamma> (delta_hat msst (?q', w), u)" .
   qed    
 qed
+
+lemma type_hom_hat:
+  assumes "is_type msst \<gamma>"
+  shows "type_hom \<gamma> (q, eta_hat msst (q, w) x)
+      \<subseteq> \<gamma> (delta_hat msst (q, w), x)"
+  by (simp add: type_hom_hat_hom[where u="[Inl x]", simplified] assms)
 
 definition bounded_copy_type :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
   "bounded_copy_type k msst \<gamma> \<equiv> (\<forall>q x. \<forall>m \<in> \<gamma> (q, x). (reachable msst q \<longrightarrow> bounded_shuffle k m))"

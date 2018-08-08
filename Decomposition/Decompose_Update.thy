@@ -671,21 +671,31 @@ subsection \<open>boundedness of Shuffle\<close>
 definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
   "bounded_shuffle k f \<equiv> \<forall>x. (\<Sum>y\<in>UNIV. count_list (f y) x) \<le> k"
 
+
+lemma count_list_extract_variables: "count_list (extract_variables u) x = count_list u (Inl x)"
+  by (induct u rule: xa_induct, simp_all)
+
 lemma resolve_bounded:
   fixes m :: "('x::finite, 'b) update"
   assumes "bounded k m"
   shows "bounded_shuffle k (resolve_shuffle m)"
 proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
   fix x
-  { fix x' :: 'x and u :: "('x + 'b) list"
-    have "count_list (extract_variables u) x' = count_list u (Inl x')"
-      by (induct u rule: xa_induct, simp_all)
-  } note that = this
-  then show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
+  show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
     using assms unfolding bounded_def count_var_def
-    by simp
+    by (simp add: count_list_extract_variables)
 qed
 
+lemma resolve_bounded_inverse:
+  fixes m :: "('x::finite, 'b) update"
+  assumes "bounded_shuffle k (resolve_shuffle m)"
+  shows "bounded k m"
+  unfolding bounded_def count_var_def proof (auto)
+  fix x
+  show "(\<Sum>y\<in>UNIV. count_list (m y) (Inl x)) \<le> k"
+    using assms unfolding bounded_shuffle_def resolve_shuffle_def
+    by (simp add: count_list_extract_variables)
+qed
 
 lemma count_extract_variables:
   fixes m :: "('x::finite, 'a) update"

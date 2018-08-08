@@ -523,6 +523,12 @@ lemma resolve_shuffle_distrib_str:
 lemma resolve_shuffle_distrib: "resolve_shuffle (\<phi> \<bullet> \<psi>) = concat o map (resolve_shuffle \<phi>) o resolve_shuffle \<psi>"
   by (rule ext, simp add: comp_def resolve_shuffle_def resolve_shuffle_distrib_str)
 
+lemma resolve_shuffle_map_alpha: "resolve_shuffle (t \<star> m) = resolve_shuffle m"
+proof -
+  have *: "\<And>u. extract_variables (hat_alpha t u) = extract_variables u"
+    by (induct_tac u rule: xa_induct, simp_all)
+  show ?thesis by (rule ext, auto simp add: resolve_shuffle_def map_alpha_def *)
+qed
 
 lemma length_scanned_ignore_alphabet: 
   "length_scanned (scan (map Inl (extract_variables u))) = length_scanned (scan u)"

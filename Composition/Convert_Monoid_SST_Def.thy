@@ -92,4 +92,48 @@ definition convert_MSST :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum
   \<rparr>"
 
 
+lemma \<Delta>'_id: "\<Delta>' B (\<alpha>, idU) = \<alpha>"
+  apply (rule ext)
+  apply (simp add: \<Delta>'_def idU_def comp_right_neutral)
+  apply (simp add: resolve_shuffle_def \<iota>_def synthesize_inverse_shuffle)
+  done
+
+
+lemma \<Delta>'_assoc_string:
+  fixes B :: "'k::enum boundedness"
+  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
+  fixes \<theta> :: "('x, ('y, 'b) update) update"
+  fixes u :: "('x + ('y, 'b) update) list"
+  fixes y :: "'y"
+  shows "resolve_shuffle (hat_homU (\<iota> B \<alpha>) (hat_hom \<theta> u)) y
+       = resolve_shuffle (hat_homU (\<iota> B (\<lambda>y. resolve_shuffle (hat_homU (\<iota> B \<alpha>) (\<theta> y)))) u) y"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by (simp add: resolve_shuffle_def idU_def)
+next
+  case (Var x xs)
+  then show ?case
+    by (simp add: resolve_shuffle_distrib hat_homU_append \<iota>_def synthesize_inverse_shuffle)
+next
+  case (Alpha a xs)
+  then show ?case by (simp add: resolve_shuffle_distrib)
+qed
+
+
+lemma \<Delta>'_assoc: "\<Delta>' B (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>' B (\<Delta>' B (\<alpha>, \<phi>), \<psi>)"
+  by (intro ext, simp add: \<Delta>'_def comp_def \<Delta>'_assoc_string)
+
+
+lemma convert_\<delta>_hat:
+  "hat1 (convert_\<delta> B msst) ((q, \<alpha>), w) =
+   (delta_hat msst (q, w), \<Delta>' B (\<alpha>, eta_hat msst (q, w)))"
+proof (induct w arbitrary: q rule: rev_induct)
+  case Nil
+  then show ?case by (simp add: convert_\<delta>_def \<Delta>'_id)
+next
+  case (snoc a w)
+  then show ?case by (simp add: eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
+qed
+
+
 end

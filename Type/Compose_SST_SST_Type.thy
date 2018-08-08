@@ -22,11 +22,16 @@ lemma all_shuffles_mult:
   "mult_shuffles (all_shuffles sst2 q0 q1) (all_shuffles sst2 q1 q2)
  \<subseteq> all_shuffles sst2 q0 q2"
   unfolding mult_shuffles_def all_shuffles_def
-(* TODO: will not stop
-  apply (auto simp add: delta_append[symmetric] resolve_shuffle_distrib[symmetric])
-  by (metis SST.eta_append)
-*)
-  sorry
+proof (auto)
+  fix u v
+  assume "q1 = delta_hat sst2 (q0, u)"
+  assume "q2 = delta_hat sst2 (delta_hat sst2 (q0, u), v)"
+  show "\<exists>wb. delta_hat sst2 (q0, wb) = delta_hat sst2 (delta_hat sst2 (q0, u), v) \<and>
+                 concat \<circ> map (resolve_shuffle (SST.eta_hat sst2 (q0, u))) \<circ>
+                 resolve_shuffle (SST.eta_hat sst2 (delta_hat sst2 (q0, u), v)) =
+                 resolve_shuffle (SST.eta_hat sst2 (q0, wb))"
+    by (rule exI[where x="u@v"], auto simp add: eta_append resolve_shuffle_distrib)
+qed
 
 fun compose_\<gamma> ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'x2, 'b, 'c) SST \<Rightarrow>

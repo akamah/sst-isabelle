@@ -58,6 +58,19 @@ proof
   qed
 qed
 
+lemma mult_shuffles_member:
+  assumes "a \<in> A"
+  assumes "b \<in> B"
+  shows "(\<lambda>x. concat (map a (b x))) \<in> mult_shuffles A B"
+  unfolding mult_shuffles_def
+proof (simp, intro bexI)
+  show "(\<lambda>x. concat (map a (b x))) = concat o map a o b" by (rule ext, simp)
+next
+  show "b \<in> B" using assms by simp
+next
+  show "a \<in> A" using assms by simp
+qed
+
 
 fun type_hom :: "('q, 'x, 'y) msst_type \<Rightarrow> ('q \<times> (('x + ('y, 'b) update) list) \<Rightarrow> 'y shuffle set)" where
   "type_hom \<gamma> (q, []) = { idS }" |

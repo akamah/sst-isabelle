@@ -149,4 +149,15 @@ proof -
   finally show ?thesis .
 qed
 
+theorem convert_MSST_bounded:
+  fixes msst :: "('q::finite, 'x::finite, 'y::enum, 'a, 'b) MSST"
+  fixes B2 :: "'l::enum boundedness"
+  assumes "bounded_copy_SST k msst"
+  assumes "boundedness B2 l"
+  assumes "is_type msst \<gamma>"
+  assumes "bounded_copy_type l msst \<gamma>"
+  shows "bounded_copy_SST (k * l) (convert_MSST B2 msst)"
+
+
+
 end

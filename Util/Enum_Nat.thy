@@ -120,4 +120,15 @@ definition type_suc :: "'i::enum type_nat \<Rightarrow> ('i option) type_nat" wh
   "type_suc A = Type_Nat"
 
 
+section \<open>Utility\<close>
+
+lemma length_enum_gt_0: "0 < length (Enum.enum :: 'e::enum list)"
+proof -
+  have "0 < card (UNIV :: 'e set)"
+    by (simp add: finite_UNIV_card_ge_0)
+  then show ?thesis    
+    by (simp add: card_UNIV_length_enum)
+qed
+
+
 end

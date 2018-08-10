@@ -32,6 +32,9 @@ type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
 definition idS :: "'y shuffle" where
   "idS \<equiv> (\<lambda>y. [y])"
 
+definition emptyS :: "'y shuffle" where
+  "emptyS \<equiv> (\<lambda>y. [])"
+
 (* Store object is an array of string indexed with ('y, 'i) index *)
 type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 

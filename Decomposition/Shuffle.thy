@@ -34,9 +34,17 @@ lemma finite_list_length_set:
   "finite {xs::'a::finite list. length xs = k}"
   by (induct k, auto simp add: list_length_set_Suc)
 
-lemma finite_list_le_set:
+lemma finite_list_less_set:
   "finite {xs :: 'a::finite list. length xs < k}"
   by (induct k, auto simp add: list_length_le_Suc finite_list_length_set)
+
+lemma finite_list_le_set:
+  "finite {xs :: 'a::finite list. length xs \<le> k}"
+proof -
+  have "{xs :: 'a::finite list. length xs \<le> k} = {xs::'a list. length xs = k} \<union> {xs::'a list. length xs < k}"
+    by auto
+  then show ?thesis using finite_list_length_set finite_list_less_set by auto
+qed
 
 
 lemma sum_all_count_list:
@@ -67,6 +75,28 @@ next
 qed
 
 lemma
+  fixes f :: "'a \<Rightarrow> nat"
+  assumes "finite A"
+  assumes "y \<in> A"
+  shows "f y \<le> sum f A"
+  by (simp add: assms(1) assms(2) member_le_sum)
+thm member_le_sum
+
+
+lemma bounded_shuffle_count_list_le_k:
+  fixes m :: "'x::finite shuffle"
+  assumes "bounded_shuffle k m"
+  shows "\<forall>y. count_list (m x) y \<le> k"
+proof
+  fix y
+  have "count_list (m x) y \<le> (\<Sum>z\<in>UNIV. count_list (m z) y)"
+    by (rule member_le_sum) (simp_all)
+  also have "... \<le> k"
+    using assms unfolding bounded_shuffle_def by simp
+  finally show "count_list (m x) y \<le> k" .
+qed
+
+lemma count_list_le_k_length_card:
   fixes xs :: "'x::finite list"
   assumes "\<forall>x. count_list xs x \<le> k"
   shows "length xs \<le> card (UNIV :: 'x set) * k"
@@ -80,18 +110,38 @@ proof -
   finally show ?thesis .
 qed
 
+lemma bounded_shuffle_length_card:
+  fixes m :: "'x::finite shuffle"
+  assumes "bounded_shuffle k m"
+  shows "length (m x) \<le> card (UNIV :: 'x set) * k"
+  by (simp add: count_list_le_k_length_card bounded_shuffle_count_list_le_k assms)
 
-lemma 
-  fixes m :: "'x shuffle"
+lemma bounded_shuffle_in_length_set:
+  fixes m :: "'x::finite shuffle"
   assumes "bounded_shuffle k m"
   shows "m x \<in> {l::'x list. length l \<le> card (UNIV :: 'x set) * k}"
-  using assms unfolding bounded_shuffle_def proof (simp)
+  using assms by (simp add: bounded_shuffle_length_card)
 
-lemma "finite {l. \<exists>m x. bounded_shuffle k m \<and> l = m x}"
-  thm Rep_bc_shuffle
-  apply (auto simp add: sum_all_count_list)
-  oops
-
+lemma finite_range_bc_shuffle:
+  "finite {y::'x::finite list. \<exists>m::('e::enum, 'x) bc_shuffle. \<exists>x. y = Rep_bc_shuffle m x}" (is "finite ?bcs")
+proof -
+  have "?bcs \<subseteq> {l::'x list. length l \<le> card (UNIV :: 'x set) * length (Enum.enum :: 'e list)}" (is "_ \<subseteq> ?len")
+  proof
+    fix l
+    assume "l \<in> ?bcs"
+    then obtain m :: "('e, 'x) bc_shuffle" and x where l: "l = Rep_bc_shuffle m x" by blast
+    then have "bounded_shuffle (length (Enum.enum :: 'e list)) (Rep_bc_shuffle m)" using Rep_bc_shuffle[of "m"]
+      by simp
+    then show "l \<in> ?len"
+      apply (simp only: l)
+      apply (rule bounded_shuffle_in_length_set)
+      by simp
+  qed
+  moreover have "finite ?len"
+    by (rule finite_list_le_set)
+  ultimately show ?thesis
+    using infinite_super by auto
+qed
 
 (* This proof is heavily inspired by the proof of "instance fun :: finite" *)
 instance bc_shuffle :: (enum, finite) finite
@@ -100,14 +150,17 @@ proof
   proof (rule finite_imageD)
     let ?graph = "\<lambda>f :: ('e, 'x) bc_shuffle. {(x, y). y = Rep_bc_shuffle f x}"
     thm finite_imageD
-    have "range ?graph \<subseteq> Pow UNIV"
-      by simp
-    show "finite (range ?graph)" sorry thm finite_Pow_iff
+    have "range ?graph \<subseteq> Pow (UNIV \<times> {y::'x::finite list. \<exists>m::('e::enum, 'x) bc_shuffle. \<exists>x. y = Rep_bc_shuffle m x})"
+      by (auto)
+    moreover have "finite (Pow ((UNIV :: 'x set) \<times> {y::'x::finite list. \<exists>m::('e::enum, 'x) bc_shuffle. \<exists>x. y = Rep_bc_shuffle m x}))"
+      by (simp add: finite_range_bc_shuffle)
+    ultimately show "finite (range ?graph)"
+      by (rule finite_subset)
     show "inj ?graph" proof (rule inj_onI, auto simp add: set_eq_iff)
       fix x y :: "('e, 'x) bc_shuffle"
       assume "\<forall>a b. (b = Rep_bc_shuffle x a) = (b = Rep_bc_shuffle y a)"
       then have "Rep_bc_shuffle x = Rep_bc_shuffle y"
-        by blast
+        by auto
       then show "x = y" by (simp add: Rep_bc_shuffle_inject)
     qed
   qed

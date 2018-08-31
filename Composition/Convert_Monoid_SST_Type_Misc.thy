@@ -58,7 +58,7 @@ lemma condition_of_convert_MSST_state:
   fixes \<gamma> :: "('q, 'x, 'y) msst_type"
   assumes assm_is_type: "is_type msst \<gamma>"
   assumes assm_states:  "(q, \<alpha>) = delta_hat (convert_MSST B msst) (initial (convert_MSST B msst), w)"
-  shows "\<alpha> x \<in> \<gamma> (q, x)"
+  shows "Rep_alpha B \<alpha> x \<in> \<gamma> (q, x)"
 using assm_states proof (induct w arbitrary: q \<alpha> x rule: rev_induct)
 case Nil
   then show ?case

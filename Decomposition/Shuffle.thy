@@ -11,6 +11,38 @@ proof
     unfolding emptyS_def bounded_shuffle_def by simp
 qed
 
+thm Rep_bc_shuffle_inverse Abs_bc_shuffle_inverse
+
+
+lemma sum_specific_if:
+  assumes "x0 \<in> A"
+  shows "(\<Sum>x::'x::finite\<in>A. if x = x0 then f x else g x)
+        = (\<Sum>x\<in>A-{x0}. g x) + f x0" (is "?lhs = ?rhs")
+proof -
+  have "?lhs = (\<Sum>x\<in>A-{x0}. if x = x0 then f x else g x) + (\<Sum>x\<in>{x0}. if x = x0 then f x else g x)"
+    by (rule sum.subset_diff, simp_all add: assms)
+  moreover have "(\<Sum>x\<in>A-{x0}. if x = x0 then f x else g x) = (\<Sum>x\<in>A-{x0}. g x)"
+    by (rule sum.cong, auto)
+  moreover have "(\<Sum>x\<in>{x0}. if x = x0 then f x else g x) = f x0" by simp
+  ultimately show ?thesis by simp
+qed
+
+lemma idS_bounded:
+  assumes *: "0 < k"
+  shows "bounded_shuffle k (idS :: 'y::finite shuffle)"
+  unfolding idS_def bounded_shuffle_def
+proof (auto)
+  fix x :: "'y"
+  have "(\<Sum>y\<in>UNIV. if y = x then count_list [] x + 1 else count_list [] x)
+      = (count_list [] x + 1) + (\<Sum>y\<in>{x}. count_list [] x)" (is "?lhs = _")
+    by (simp add: sum_specific_if)
+  also have "... = 1" by simp
+  also have "... \<le> k" using * by simp
+  finally show "?lhs \<le> k" .
+qed
+
+lemma idS_bounded_enum: "bounded_shuffle (length (Enum.enum :: 'k::enum list)) (idS :: 'y::finite shuffle)"
+  by (rule idS_bounded) (rule length_enum_gt_0)
 
 lemma list_length_set_Suc:
   "{xs. length xs = Suc k} = (\<Union>x::'a\<in>UNIV. \<Union>xs\<in>{xs. length xs = k}. { x # xs })" (is "?lhs = ?rhs")

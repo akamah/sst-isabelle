@@ -83,6 +83,11 @@ lemma delta_append[simp]:
   "hat1 t (q, u @ v) = hat1 t (hat1 t (q, u), v)"
   by (induct u arbitrary: q, auto)
 
+lemma delta_append_1:
+  "hat1 t (q, u @ [a]) = t (hat1 t (q, u), a)"
+  by (induct u rule: rev_induct, simp_all)
+
+
 lemma reachable_delta_hat:
   assumes "reachable m q"
   shows "reachable m (delta_hat m (q, w))"

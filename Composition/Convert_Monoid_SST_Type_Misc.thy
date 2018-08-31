@@ -26,6 +26,33 @@ next
     by (simp add: resolve_shuffle_distrib resolve_shuffle_map_alpha  mult_shuffles_member)
 qed
 
+lemma initial_condition_of_convert_MSST_state:
+  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
+  fixes \<gamma> :: "('q, 'x, 'y) msst_type"
+  assumes assm_is_type: "is_type msst \<gamma>"
+  shows "\<alpha>0 x \<in> \<gamma> (initial msst, x)"
+  using assm_is_type unfolding is_type_def \<alpha>0_def by simp
+
+lemma step_condition_of_convert_MSST_state:
+  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
+  fixes \<gamma> :: "('q, 'x, 'y) msst_type"
+  assumes assm_is_type: "is_type msst \<gamma>"
+  assumes assm_prev:    "\<forall>x. \<alpha>' x \<in> \<gamma> (q', x)"
+  assumes assm_states:  "(q, \<alpha>) = delta (convert_MSST B msst) ((q', \<alpha>'), a)"
+  shows "\<alpha> x \<in> \<gamma> (q, x)"
+  using assm_states unfolding convert_MSST_def convert_\<delta>_def \<Delta>'_def
+proof (simp)
+  have q: "q = delta msst (q', a)"
+    using assm_states unfolding convert_MSST_def convert_\<delta>_def by simp
+  have "resolve_shuffle (hat_homU (\<iota> B \<alpha>') (SST.eta msst (q', a) x))
+      \<in> type_hom \<gamma> (q', SST.eta msst (q', a) x)"
+    by (simp add: iota_alpha_type_hom assm_prev)
+  also have "... \<subseteq> \<gamma> (delta msst (q', a), x)"
+    using assm_is_type unfolding is_type_def by simp
+  finally show "resolve_shuffle (hat_homU (\<iota> B \<alpha>') (SST.eta msst (q', a) x))
+              \<in> \<gamma> (delta msst (q', a), x)" .
+qed
+
 lemma condition_of_convert_MSST_state:
   fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
   fixes \<gamma> :: "('q, 'x, 'y) msst_type"
@@ -35,28 +62,17 @@ lemma condition_of_convert_MSST_state:
 using assm_states proof (induct w arbitrary: q \<alpha> x rule: rev_induct)
 case Nil
   then show ?case
-    using assm_is_type unfolding convert_MSST_def \<alpha>0_def is_type_def by simp
+    unfolding convert_MSST_def by (simp add: initial_condition_of_convert_MSST_state assms)
 next
   case (snoc a w)
-  let ?q'= "delta_hat msst (initial msst, w)"
-  let ?\<alpha>' = "\<Delta>' B (\<alpha>0, SST.eta_hat msst (initial msst, w))"
-  have IH_alpha: "\<forall>x'. ?\<alpha>' x' \<in> \<gamma> (?q', x')"
-    using snoc unfolding convert_MSST_def by (simp add: convert_\<delta>_hat)
-  have qa: "(q, \<alpha>) = delta (convert_MSST B msst) ((?q', ?\<alpha>'), a)"
-    using snoc.prems unfolding convert_MSST_def by (simp add: convert_\<delta>_hat)
-  have q: "q = delta msst (?q', a)" 
-    using qa unfolding convert_MSST_def convert_\<delta>_def by simp
-  then have \<alpha>: "\<alpha> = \<Delta>' B (?\<alpha>', SST.eta msst (?q', a)) "
-    using qa unfolding convert_MSST_def convert_\<delta>_def by simp
-  then have "\<alpha> x = \<Delta>' B (?\<alpha>', SST.eta msst (?q', a)) x"
-    unfolding convert_MSST_def convert_\<delta>_def by simp
-  also have "... = resolve_shuffle (hat_homU (\<iota> B ?\<alpha>') (SST.eta msst (?q', a) x))"
-    unfolding \<Delta>'_def by simp
-  also have "... \<in> type_hom \<gamma> (?q', SST.eta msst (?q', a) x)"
-    by (simp add: iota_alpha_type_hom IH_alpha)
-  also have "... \<subseteq> \<gamma> (q, x)"
-    using assm_is_type unfolding is_type_def by (simp add: q \<alpha>)
-  finally show ?case .
+  show ?case proof (rule step_condition_of_convert_MSST_state)
+    let ?st = "delta_hat (convert_MSST B msst) (initial (convert_MSST B msst), w)"
+    show "is_type msst \<gamma>" using assm_is_type by simp
+    show "\<forall>x. (snd ?st) x \<in> \<gamma> (fst ?st, x)"
+      by (rule allI, rule snoc(1), simp)
+    show "(q, \<alpha>) = delta (convert_MSST B msst) ((fst ?st, snd ?st), a)"
+      by (simp add: snoc.prems)
+  qed
 qed
 
 lemma condition_of_convert_MSST_reachable_state:

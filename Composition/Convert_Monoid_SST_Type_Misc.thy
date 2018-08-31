@@ -85,6 +85,19 @@ lemma condition_of_convert_MSST_reachable_state:
   shows "\<alpha> x \<in> \<gamma> (q, x)"
   by (meson assm_is_type assm_states condition_of_convert_MSST_state)
 
+lemma convert_\<delta>_state:
+  assumes "(q', \<alpha>') = delta_hat (convert_MSST B msst) ((q, \<alpha>), w)"
+  shows "q' = delta_hat msst (q, w)"
+using assms proof (induct w)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a w)
+  then show ?case
+    by (metis convert_MSST_def convert_\<delta>_hat fst_conv state_machine.simps(3))
+qed
+
+
 lemma hat_homU_iota_bounded_copy:
   fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
   fixes \<gamma> :: "('q, 'x, 'y) msst_type"
@@ -100,7 +113,8 @@ proof -
   also have "... \<subseteq> \<gamma> (delta_hat msst (q, w), x)" by (simp add: type_hom_hat assm_is_type)
   finally have in_type: "resolve_shuffle (hat_homU (\<iota> B \<alpha>) (SST.eta_hat msst (q, w) x)) \<in> \<gamma> (delta_hat msst (q, w), x)" .
   have "reachable msst (delta_hat msst (q, w))" proof (rule reachable_delta_hat)
-    show "reachable msst q" using assm_reachable unfolding convert_MSST_def reachable_def by (auto simp add: convert_\<delta>_hat)
+    show "reachable msst q" using assm_reachable unfolding convert_MSST_def reachable_def
+      by (metis convert_MSST_def convert_\<delta>_state state_machine.select_convs(2))
   qed
   then have "bounded_shuffle k (resolve_shuffle (hat_homU (\<iota> B \<alpha>) (SST.eta_hat msst (q, w) x)))"
     using assm_bounded_type in_type unfolding bounded_copy_type_def by auto

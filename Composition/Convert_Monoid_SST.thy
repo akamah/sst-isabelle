@@ -41,7 +41,7 @@ qed
 
 lemma \<Delta>'_assoc: "\<Delta>' B (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>' B (\<Delta>' B (\<alpha>, \<phi>), \<psi>)"
   apply (intro ext, simp add: \<Delta>'_def comp_def \<Delta>'_assoc_string)
-  done
+  sorry
 
 lemma convert_\<delta>_hat:
   "hat1 (convert_\<delta> B msst) ((q, \<alpha>), w) =
@@ -124,7 +124,7 @@ qed
 
 
 
-lemma H'_embed: "H' B (\<alpha>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = resolve_store B (hat_homU (\<iota> B \<alpha>) (\<theta> x))"
+lemma H'_embed: "H' B (\<beta>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))"
   by (auto simp add: comp_def H'_def)
 
 lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> const [] = const []"
@@ -379,11 +379,12 @@ lemma map_alpha_H'_iota_\<Delta>:
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"
   assumes "bounded_copy_type k msst \<gamma>"
-  assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
-  shows "map_alpha (update2hom (H' B (\<alpha>, SST.eta_hat msst (q, w)))) o \<iota> B (\<Delta>' B (\<alpha>, SST.eta_hat msst (q, w))) 
-       = hat_homU (\<iota> B \<alpha>) o SST.eta_hat msst (q, w)"
+  assumes "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "map_alpha (update2hom (H' B (\<beta>, SST.eta_hat msst (q, w)))) o \<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)))) 
+       = hat_homU (\<iota> B (Rep_alpha B \<beta>)) o SST.eta_hat msst (q, w)"
   apply (rule ext)
   apply (simp add: \<iota>_def map_alpha_synthesize comp_def[symmetric] hat_hom_def[symmetric] H'_embed \<Delta>'_def)
+  apply (simp only: resolve_shuffle_hat_homU_inverse[OF assms])
   apply (rule resolve_inverse)
   apply (rule hat_homU_iota_bounded_copy)
   apply (rule assms)+
@@ -391,38 +392,37 @@ lemma map_alpha_H'_iota_\<Delta>:
 
 
 lemma hat_homU_iota:
-  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"
   assumes "bounded_copy_type k msst \<gamma>"
-  assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
-  shows "hat_homU (\<iota> B \<alpha>) (hat_hom (SST.eta_hat msst (q, w)) u)
-       = update2hom (H' B (\<alpha>, SST.eta_hat msst (q, w))) \<star> hat_homU (\<iota> B (\<Delta>' B (\<alpha>, SST.eta_hat msst (q, w)))) u"
+  assumes "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)
+       = update2hom (H' B (\<beta>, SST.eta_hat msst (q, w))) \<star> hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u"
   apply (simp add: hat_homU_map_alpha hat_homU_lem map_alpha_H'_iota_\<Delta>[OF assms])
   done
 
 lemma H'_assoc_string:
-  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"
   assumes "bounded_copy_type k msst \<gamma>"
-  assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
-  shows "resolve_store B (hat_homU (\<iota> B \<alpha>) (hat_hom (SST.eta_hat msst (q, w)) u)) (y, e)
-       = (H' B (\<alpha>, SST.eta_hat msst (q, w)) \<bullet> resolve_store B (hat_homU (\<iota> B (\<Delta>' B (\<alpha>, SST.eta_hat msst (q, w)))) u)) (y, e)"
+  assumes "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)) (y, e)
+       = (H' B (\<beta>, SST.eta_hat msst (q, w)) 
+         \<bullet> resolve_store B (hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u)) (y, e)"
   apply (simp add: hat_homU_iota[OF assms] map_alpha_resolve_store H'_const_Nil)
   done
 
 lemma H'_assoc:
-  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
+  fixes \<beta> :: "'x \<Rightarrow> ('k::enum, 'y::enum) bc_shuffle"
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"
   assumes "bounded_copy_type k msst \<gamma>"
-  assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
-  shows "H' B (\<alpha>, SST.eta_hat msst (q, w) \<bullet> \<psi>)
-       = H' B (\<alpha>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<alpha>, SST.eta_hat msst (q, w)), \<psi>)"
+  assumes "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>)
+       = H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)"
 proof -
-  have "\<And>x y e. H' B (\<alpha>, SST.eta_hat msst (q, w) \<bullet> \<psi>) (x, y, e) 
-              = (H' B (\<alpha>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<alpha>, SST.eta_hat msst (q, w)), \<psi>)) (x, y, e)"
+  have "\<And>x y e. H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) (x, y, e) 
+              = (H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)) (x, y, e)"
     by (simp add: comp_def H'_assoc_string[OF assms] H'_simp2)
   then show ?thesis by auto
 qed
@@ -471,12 +471,13 @@ lemma the_last_step:
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"
   assumes "bounded_copy_type k msst \<gamma>"
-  shows "valuate (hat_hom (H' B (\<alpha>0, SST.eta_hat msst (initial msst, w)))
-          (valuate (hat_hom (hat_homU (\<iota> B (\<Delta>' B (\<alpha>0, SST.eta_hat msst (initial msst, w)))) m) (hat_alpha inr_list u))))
+  shows "valuate (hat_hom (H' B (Abs_alpha B \<alpha>0, SST.eta_hat msst (initial msst, w)))
+          (valuate (hat_hom (hat_homU (\<iota> B 
+            (Rep_alpha B (\<Delta>' B (Abs_alpha B \<alpha>0, SST.eta_hat msst (initial msst, w))))) m) (hat_alpha inr_list u))))
        = valuate (hat_hom (concatU (valuate (hat_hom (SST.eta_hat msst (initial msst, w)) m))) u)"
 proof -
-  have *: "reachable (convert_MSST B msst) (initial msst, \<alpha>0)"
-    unfolding reachable_def convert_MSST_def by (rule exI[where x="[]"], simp)
+  have *: "reachable (convert_MSST B msst) (initial msst, Abs_alpha B \<alpha>0)"
+    unfolding reachable_def convert_MSST_def by (rule exI[where x="[]"], auto)
   show ?thesis
     apply (simp add: hat_hom_valuate_hat_hom)
     apply (simp add: hat_homU_map_alpha)
@@ -484,6 +485,7 @@ proof -
     apply (simp add: map_alpha_H'_iota_\<Delta>[OF assms *])
     apply (simp add: hat_homU_lem)
     apply (simp add: iota_alpha0_remove)
+    thm iota_alpha0_remove
   done
 qed
 
@@ -505,7 +507,7 @@ next
       by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat Some1)
   next
     case Some2: (Some u)
-    have reach0: "reachable (convert_MSST B msst) (initial msst, \<alpha>0)"
+    have reach0: "reachable (convert_MSST B msst) (initial msst, Abs_alpha B \<alpha>0)"
       unfolding reachable_def convert_MSST_def by (rule exI[where x="[]"], simp)
     show ?thesis using Some2
       apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat Some1)

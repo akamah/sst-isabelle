@@ -108,4 +108,38 @@ definition convert_MSST :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum
   \<rparr>"
 
 
+lemma convert_\<delta>_state:
+  assumes "(q', \<beta>') = delta_hat (convert_MSST B msst) ((q, \<beta>), w)"
+  shows "q' = delta_hat msst (q, w)"
+proof -
+  { fix qa
+    have "fst (delta_hat (convert_MSST B msst) (qa, w)) = delta_hat msst (fst qa, w)"
+    proof (induct w arbitrary: qa)
+      case Nil
+      then show ?case by simp
+    next
+      case (Cons a w)
+      then show ?case 
+        by (simp add: convert_MSST_def convert_\<delta>_def prod.case_eq_if)
+    qed
+  }
+  then show ?thesis using assms
+    unfolding convert_MSST_def convert_\<delta>_def by (metis (no_types, lifting) fst_conv)
+qed
+
+lemma reachable_convert:
+  assumes "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "reachable msst q"
+proof -
+  obtain w where w: "(q, \<beta>) = delta_hat (convert_MSST B msst) (initial (convert_MSST B msst), w)"
+    using assms unfolding reachable_def by auto
+  have "q = delta_hat msst (initial msst, w)"
+    apply (rule convert_\<delta>_state)
+    using w unfolding convert_MSST_def
+    by simp
+  then show ?thesis
+    unfolding reachable_def by auto
+qed
+
+
 end

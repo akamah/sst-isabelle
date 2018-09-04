@@ -47,6 +47,7 @@ lemma Rep_alpha_inverse:
   shows "Abs_alpha B (Rep_alpha B \<beta>) = \<beta>"
   by (auto simp add: Rep_bc_shuffle_inverse)
 
+
 fun embed :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y + 'b) list" where
   "embed x y = [Inl (x, y)]"
 
@@ -100,7 +101,7 @@ definition convert_MSST :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum
                             ('q \<times> ('x \<Rightarrow> ('i, 'y) bc_shuffle), 'x \<times> ('y, 'i) index, 'a, 'b) SST" where
   "convert_MSST B msst = \<lparr>
     states = states msst \<times> {m1. True},
-    initial = (initial msst, \<lambda>x. Abs_bc_shuffle (\<alpha>0 x)),
+    initial = (initial msst, Abs_alpha B \<alpha>0),
     delta       = convert_\<delta> B msst,
     variables = undefined,
     eta         = convert_\<eta> B msst,
@@ -141,5 +142,16 @@ proof -
     unfolding reachable_def by auto
 qed
 
+lemma [simp]:
+  fixes B :: "'k::enum boundedness"
+  shows "Rep_alpha B (Abs_alpha B \<alpha>0 :: 'x \<Rightarrow> ('k, 'y::enum) bc_shuffle) = \<alpha>0"
+proof (rule Abs_alpha_inverse)
+  show "boundedness B (length (Enum.enum :: 'k list))"
+    unfolding boundedness_def by simp
+next
+  show "\<forall>x. bounded_shuffle (length (Enum.enum :: 'k list)) (\<alpha>0 x :: 'y shuffle)"
+    unfolding \<alpha>0_def apply simp
+    by (rule idS_bounded_enum)
+qed
 
 end

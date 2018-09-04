@@ -88,11 +88,9 @@ using assm_states proof (induct w arbitrary: q \<beta> x rule: rev_induct)
 case Nil
   then show ?case
     using assms unfolding convert_MSST_def bounded_copy_type_def reachable_def
-  proof (simp add: initial_condition_of_convert_MSST_state assms \<alpha>0_def idS_bounded)
-    have "Rep_bc_shuffle (Abs_bc_shuffle idS :: ('k, 'y) bc_shuffle) = idS" (is "?s = _")
-      by (simp add: Abs_bc_shuffle_inverse idS_bounded_enum)
-    then show "?s  \<in> \<gamma> (initial msst, x)"
-      using assm_is_type unfolding is_type_def by simp
+  proof (simp add: assms idS_bounded del: Rep_alpha.simps Abs_alpha.simps)
+    show "\<alpha>0 x \<in> \<gamma> (initial msst, x)"
+      using assm_is_type unfolding is_type_def \<alpha>0_def by simp
   qed
 next
   case (snoc a w)
@@ -145,4 +143,21 @@ proof -
 qed
 
 
+lemma resolve_shuffle_hat_homU_inverse:
+  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
+  fixes \<gamma> :: "('q, 'x, 'y) msst_type"
+  fixes B :: "'k::enum boundedness"
+  assumes assm_k_bounded: "boundedness B k"
+  assumes assm_is_type: "is_type msst \<gamma>"
+  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "Rep_bc_shuffle (Abs_bc_shuffle
+          (resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))) :: ('k, 'y) bc_shuffle)
+       = resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))"
+  apply (rule Abs_bc_shuffle_inverse, simp)
+  apply (subst assm_k_bounded[simplified boundedness_def, symmetric])
+  apply (rule resolve_bounded)
+  apply (rule hat_homU_iota_bounded_copy)
+     apply (rule assms)+
+  done
 end

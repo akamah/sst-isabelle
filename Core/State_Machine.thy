@@ -87,6 +87,10 @@ lemma delta_append_1:
   "hat1 t (q, u @ [a]) = t (hat1 t (q, u), a)"
   by (induct u rule: rev_induct, simp_all)
 
+lemma reachable_delta:
+  assumes "reachable m q"
+  shows "reachable m (delta m (q, a))"
+  by (metis assms delta_append_1 reachable_def)
 
 lemma reachable_delta_hat:
   assumes "reachable m q"

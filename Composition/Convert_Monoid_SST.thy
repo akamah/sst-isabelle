@@ -39,19 +39,42 @@ next
   then show ?case by (simp add: resolve_shuffle_distrib)
 qed
 
-lemma \<Delta>'_assoc: "\<Delta>' B (\<alpha>, \<phi> \<bullet> \<psi>) = \<Delta>' B (\<Delta>' B (\<alpha>, \<phi>), \<psi>)"
-  apply (intro ext, simp add: \<Delta>'_def comp_def \<Delta>'_assoc_string)
-  sorry
+lemma \<Delta>'_assoc:
+  fixes B :: "'k::enum boundedness"
+  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
+  assumes assm_k_bounded: "boundedness B k"
+  assumes assm_is_type: "is_type msst \<gamma>"
+  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows  "\<Delta>' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) = \<Delta>' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)"
+proof -
+  let ?inner = "(\<lambda>x. resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x)))"
+  have *: "\<forall>x. bounded_shuffle k (?inner x)"
+    apply (rule allI)
+    apply (rule resolve_bounded)
+    apply (rule hat_homU_iota_bounded_copy[OF assms])
+    done
+  then show ?thesis
+    by (intro ext, simp add: \<Delta>'_def comp_def \<Delta>'_assoc_string Abs_alpha_inverse[OF assms(1) *])
+qed
+
 
 lemma convert_\<delta>_hat:
-  "hat1 (convert_\<delta> B msst) ((q, \<alpha>), w) =
-   (delta_hat msst (q, w), \<Delta>' B (\<alpha>, eta_hat msst (q, w)))"
-proof (induct w arbitrary: q rule: rev_induct)
+  fixes B :: "'k::enum boundedness"
+  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
+  assumes assm_k_bounded: "boundedness B k"
+  assumes assm_is_type: "is_type msst \<gamma>"
+  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "hat1 (convert_\<delta> B msst) ((q, \<beta>), w)
+       = (delta_hat msst (q, w), \<Delta>' B (\<beta>, eta_hat msst (q, w)))"
+using assm_reachable proof (induct w arbitrary: q rule: rev_induct)
   case Nil
   then show ?case by (simp add: convert_\<delta>_def \<Delta>'_id)
 next
   case (snoc a w)
-  then show ?case by (simp add: eta_append comp_right_neutral  \<Delta>'_assoc convert_\<delta>_def)
+  then show ?case 
+    by (simp add: eta_append comp_right_neutral convert_\<delta>_def \<Delta>'_assoc[OF assms(1-3) snoc.prems])
 qed
 
 
@@ -453,7 +476,7 @@ next
     also have "... = valuate (hat_hom (H' B (\<alpha>, eta_hat msst (q, w)))
                                     (hat_hom (H' B (\<Delta>' B (\<alpha>, eta_hat msst (q, w)),
                                                   SST.eta msst (delta_hat msst (q, w), a))) u))"
-      by (simp add: convert_\<delta>_hat convert_\<eta>_def)
+      by (simp add: convert_\<delta>_hat[OF assms(1) assms(2) assms(3) reach] convert_\<eta>_def)
     also have "... = ?rhs"
       apply (simp add: eta_append comp_right_neutral)
       apply (simp add: H'_assoc[OF assms(1) assms(2) assms(3) reach])
@@ -490,6 +513,9 @@ proof -
 qed
 
 
+lemma reach0: "reachable (convert_MSST B msst) (initial msst, Abs_alpha B \<alpha>0)"
+  unfolding reachable_def convert_MSST_def by (rule exI[where x="[]"], simp)
+
 theorem MSST_can_convert:
   assumes assm_k_bounded: "boundedness B k"
   assumes assm_is_type: "is_type msst \<gamma>"
@@ -497,20 +523,18 @@ theorem MSST_can_convert:
   shows "SST.run (convert_MSST B msst) w = Monoid_SST.run msst w"
 proof (cases "final_update msst (hat1 (delta msst) (initial msst, w))")
   case None
-  then show ?thesis
-    by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat)
+  show ?thesis
+    by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] None)    
 next
   case Some1: (Some m)
   show ?thesis proof (cases "final_string msst (hat1 (delta msst) (initial msst, w))")
     case None
     then show ?thesis
-      by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat Some1)
+      by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] Some1)
   next
     case Some2: (Some u)
-    have reach0: "reachable (convert_MSST B msst) (initial msst, Abs_alpha B \<alpha>0)"
-      unfolding reachable_def convert_MSST_def by (rule exI[where x="[]"], simp)
     show ?thesis using Some2
-      apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat Some1)
+      apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] Some1)
       apply (simp add: convert_\<eta>_hat_valuate[OF assms reach0] comp_def)
       apply (simp add: comp_def the_last_step[OF assms])
       done

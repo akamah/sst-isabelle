@@ -47,6 +47,11 @@ lemma Rep_alpha_inverse:
   shows "Abs_alpha B (Rep_alpha B \<beta>) = \<beta>"
   by (auto simp add: Rep_bc_shuffle_inverse)
 
+lemma Rep_alpha:
+  fixes B :: "'k::enum boundedness"
+  shows "\<And>x. bounded_shuffle (length (Enum.enum :: 'k list)) (Rep_alpha B \<beta> x)"
+  using Rep_bc_shuffle
+  by simp
 
 fun embed :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y + 'b) list" where
   "embed x y = [Inl (x, y)]"

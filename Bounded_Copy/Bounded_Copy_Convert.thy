@@ -1,7 +1,7 @@
 theory Bounded_Copy_Convert
   imports Main Finite_Set
           "../Util/Enum_Nat" "../Core/Update" "../Single_Use/Single_Use" "../Decomposition/Decompose_Update"
-          "../Composition/Convert_Monoid_SST_Def" "../Composition/Convert_Monoid_SST_Type_Misc" "../Type/Monoid_SST_Type"
+          "../Composition/Convert_Monoid_SST" "../Type/Monoid_SST_Type"
 begin
 
 
@@ -19,6 +19,22 @@ qed
 lemma count_list_Inr:
   "count_list (map Inr w) (Inr a) = count_list w a"
   by (simp add: count_list_map_inj)
+
+
+lemma sum_count_list_inj:
+  fixes f :: "'y::finite \<Rightarrow> 'z"
+  assumes "inj f"
+  shows "(\<Sum>ya\<in>UNIV. count_list [f ya] (f y)) = 1"
+proof -
+  have f_ya: "\<forall>ya. [f ya] = map f [ya]" by simp
+  show ?thesis
+    apply (simp only: f_ya count_list_map_inj[OF assms])
+    apply simp
+    apply (simp only: count_list.simps(1))
+    apply simp
+    done
+qed
+
 
 lemma count_list_flat:
   fixes a :: "'a"
@@ -152,12 +168,51 @@ qed
 theorem convert_MSST_bounded:
   fixes msst :: "('q::finite, 'x::finite, 'y::enum, 'a, 'b) MSST"
   fixes B2 :: "'l::enum boundedness"
-  assumes "bounded_copy_SST k msst"
-  assumes "boundedness B2 l"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type l msst \<gamma>"
+  assumes k0: "0 < k"
+  assumes bc_msst: "bounded_copy_SST k msst"
+  assumes boundedness: "boundedness B2 l"
+  assumes typed: "is_type msst \<gamma>"
+  assumes bc_type: "bounded_copy_type l msst \<gamma>"
   shows "bounded_copy_SST (k * l) (convert_MSST B2 msst)"
+  unfolding bounded_copy_SST_def bounded_def
+proof (intro allI, rule impI)
+  fix w qb
+  assume "reachable (convert_MSST B2 msst) qb"
+  then have r_pair: "reachable (convert_MSST B2 msst) (fst qb, snd qb)" by simp
+  have l0: "0 < l" using assms length_enum_gt_0 unfolding boundedness_def by simp
 
+  show "\<forall>y. count_var (SST.eta_hat (convert_MSST B2 msst) (qb, w)) y \<le> k * l"
+  proof (cases "length w")
+    case 0
+    then show ?thesis
+      apply simp unfolding count_var_def idU_def 
+      apply (simp only: sum_count_list_inj[OF inj_Inl])
+      apply (simp add: k0 l0 Suc_leI)
+      done
+  next
+    case (Suc nat)
+    then have w_gt_0: "0 < length w" by simp
+    note mado = convert_\<eta>_hat_gt_0[OF assms(3-5) r_pair w_gt_0, simplified]
+    then show ?thesis proof (auto simp add: mado count_var_def H'_def prod.case_eq_if)
+      fix x0 y0 z0
+      have "(\<Sum>xyz\<in>UNIV. count_list (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb)))
+                                                                (SST.eta_hat msst (fst qb, w) (fst xyz))) (snd xyz))
+           (Inl (x0, y0, z0)))
+          = (\<Sum>(x, yk)\<in>UNIV. count_list (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk)
+           (Inl (x0, y0, z0)))"
+        by (simp add: prod.case_eq_if)
+      also have "... = (\<Sum>x\<in>UNIV. \<Sum>yk\<in>UNIV. count_list (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk)
+           (Inl (x0, y0, z0)))"
+        apply (simp only: UNIV_Times_UNIV[symmetric])
+        apply (rule sum.Sigma[symmetric], simp_all)
+        done
+      also have "... = (\<Sum>x\<in>UNIV. \<Sum>y\<in>UNIV. count_list (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x) y)
+           (Inr (Inl (x0, y0, z0))))"
+        by (simp add: sum_decompose[OF boundedness hat_homU_iota_bounded_copy[OF boundedness typed bc_type r_pair]])
+
+  qed
+
+  apply auto
 
 
 end

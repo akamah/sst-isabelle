@@ -450,6 +450,41 @@ proof -
   then show ?thesis by auto
 qed
 
+lemma convert_\<eta>_hat_gt_0:
+  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
+  fixes \<beta> :: "'x \<Rightarrow> ('k::enum, 'y::enum) bc_shuffle"
+  assumes "boundedness B k"
+  assumes "is_type msst \<gamma>"
+  assumes "bounded_copy_type k msst \<gamma>"
+  assumes reach: "reachable (convert_MSST B msst) (q, \<beta>)"
+  assumes len: "0 < length w"
+  shows   "SST.eta_hat (convert_MSST B msst) ((q, \<beta>), w)
+         = H' B (\<beta>, eta_hat msst (q, w))"
+using reach len proof (induct w arbitrary: q \<beta>)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a w)
+  then show ?case proof (cases "length w")
+    case 0 then show ?thesis by (simp add: convert_MSST_def convert_\<eta>_def comp_right_neutral)
+  next
+    case (Suc nat) then show ?thesis proof -
+      let ?qb' = "delta (convert_MSST B msst) ((q, \<beta>), a)"
+      have l: "0 < length w" by (simp add: Suc)
+      have r: "reachable (convert_MSST B msst) (fst ?qb', snd ?qb')"
+        by (simp, rule reachable_delta, rule Cons.prems(1))
+      have hat: "SST.eta msst (q, a) = SST.eta_hat msst (q, [a])" by (simp add: comp_right_neutral)
+      show ?thesis
+        apply (simp add: Cons.hyps[OF r l, simplified])
+        apply (simp add: convert_MSST_def convert_\<eta>_simp convert_\<delta>_simp)
+        apply (subst hat)+
+        apply (rule H'_assoc[symmetric, OF assms(1-3) Cons.prems(1)])
+        done
+    qed
+  qed
+qed
+
+
 lemma convert_\<eta>_hat_valuate:
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"

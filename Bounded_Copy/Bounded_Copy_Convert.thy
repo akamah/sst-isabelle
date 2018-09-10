@@ -165,12 +165,66 @@ proof -
   finally show ?thesis .
 qed
 
+fun replace_index_aux :: "'e::enum boundedness \<Rightarrow> nat => 'x => ('x + 'a) list => ('e::enum + 'x + 'a) list" where
+  "replace_index_aux B i x [] = []" |
+  "replace_index_aux B i x (Inl x'#xs) =
+     (if x = x' then Inl (nat_to_enum i) # replace_index_aux B (Suc i) x xs
+                else Inr (Inl x') # replace_index_aux B i x xs)" |
+  "replace_index_aux B i x (Inr a#xs) = Inr (Inr a) # replace_index_aux B i x xs"
+
+abbreviation replace_index :: "'e::enum boundedness \<Rightarrow> 'x => ('x + 'a) list => ('e::enum + 'x + 'a) list" where
+  "replace_index B x xs == replace_index_aux B 0 x xs"
+
+lemma replace_index_aux_Inr[simp]: "replace_index_aux B i x (u @ [Inr a]) = replace_index_aux B i x u @ [Inr (Inr a)]"
+  by (induct u arbitrary: i rule: xa_induct, auto)
+
+lemma replace_index_aux_Inl_eq[simp]:
+  fixes B :: "'k::enum boundedness"
+  shows "replace_index_aux B i x (u @ [Inl x]) 
+       = replace_index_aux B i x u @ [Inl (nat_to_enum (i + count_list u (Inl x)))]"
+  by (induct u arbitrary: i rule: xa_induct, auto)
+
+lemma replace_index_aux_Inl_neq[simp]:
+  fixes B :: "'k::enum boundedness"
+  assumes "x \<noteq> y"
+  shows "replace_index_aux B i y (u @ [Inl x]) 
+       = replace_index_aux B i y u @ [Inr (Inl x)]"
+  using assms by (induct u arbitrary: i rule: xa_induct, auto)
+
+lemma sum_count_list_replace_index:
+  fixes u :: "('x + 'a) list"
+  fixes B :: "'k::enum boundedness"
+  shows "count_list u (Inl y) = (\<Sum>i\<in>UNIV. count_list (replace_index B y u) (Inl (i::'k)))"
+proof (induct u rule: xa_rev_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case proof (cases "x = y")
+    case True
+    then show ?thesis using Var by (simp add: sum.distrib, simp only: count_list.simps, simp)
+  next
+    case False
+    then show ?thesis using Var by simp
+  qed
+next
+  case (Alpha a xs)
+  then show ?case by simp
+qed
+
+
+lemma
+  shows "count_list (hat_homU (\<iota> B2 \<beta>) u y) (Inr (Inl (x0, y0, z0)))
+      = (\<Sum>k\<in>UNIV. count_list (hat_homU (\<iota> B2 \<beta>) (replace_index B1 x0 u) y) (Inr (Inl (k, y0, z0))))"
+
+
 theorem convert_MSST_bounded:
   fixes msst :: "('q::finite, 'x::finite, 'y::enum, 'a, 'b) MSST"
+  fixes B1 :: "'k::enum boundedness"
   fixes B2 :: "'l::enum boundedness"
-  assumes k0: "0 < k"
   assumes bc_msst: "bounded_copy_SST k msst"
-  assumes boundedness: "boundedness B2 l"
+  assumes boundedness_k: "boundedness B1 k"
+  assumes boundedness_l: "boundedness B2 l"
   assumes typed: "is_type msst \<gamma>"
   assumes bc_type: "bounded_copy_type l msst \<gamma>"
   shows "bounded_copy_SST (k * l) (convert_MSST B2 msst)"
@@ -180,6 +234,7 @@ proof (intro allI, rule impI)
   assume "reachable (convert_MSST B2 msst) qb"
   then have r_pair: "reachable (convert_MSST B2 msst) (fst qb, snd qb)" by simp
   have l0: "0 < l" using assms length_enum_gt_0 unfolding boundedness_def by simp
+  have k0: "0 < k" using assms length_enum_gt_0 unfolding boundedness_def by simp
 
   show "\<forall>y. count_var (SST.eta_hat (convert_MSST B2 msst) (qb, w)) y \<le> k * l"
   proof (cases "length w")
@@ -208,7 +263,7 @@ proof (intro allI, rule impI)
         done
       also have "... = (\<Sum>x\<in>UNIV. \<Sum>y\<in>UNIV. count_list (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x) y)
            (Inr (Inl (x0, y0, z0))))"
-        by (simp add: sum_decompose[OF boundedness hat_homU_iota_bounded_copy[OF boundedness typed bc_type r_pair]])
+        by (simp add: sum_decompose[OF boundedness_l hat_homU_iota_bounded_copy[OF boundedness_l typed bc_type r_pair]])
 
   qed
 

@@ -165,36 +165,36 @@ proof -
   finally show ?thesis .
 qed
 
-fun replace_index_aux :: "'e::enum boundedness \<Rightarrow> nat => 'x => ('x + 'a) list => ('e::enum + 'x + 'a) list" where
+fun replace_index_aux :: "'e::enum boundedness \<Rightarrow> nat => 'x => ('x + 'a) list => (('e::enum + 'x) + 'a) list" where
   "replace_index_aux B i x [] = []" |
   "replace_index_aux B i x (Inl x'#xs) =
-     (if x = x' then Inl (nat_to_enum i) # replace_index_aux B (Suc i) x xs
-                else Inr (Inl x') # replace_index_aux B i x xs)" |
-  "replace_index_aux B i x (Inr a#xs) = Inr (Inr a) # replace_index_aux B i x xs"
+     (if x = x' then Inl (Inl (nat_to_enum i)) # replace_index_aux B (Suc i) x xs
+                else Inl (Inr x') # replace_index_aux B i x xs)" |
+  "replace_index_aux B i x (Inr a#xs) = Inr a # replace_index_aux B i x xs"
 
-abbreviation replace_index :: "'e::enum boundedness \<Rightarrow> 'x => ('x + 'a) list => ('e::enum + 'x + 'a) list" where
+abbreviation replace_index :: "'e::enum boundedness \<Rightarrow> 'x => ('x + 'a) list => (('e::enum + 'x) + 'a) list" where
   "replace_index B x xs == replace_index_aux B 0 x xs"
 
-lemma replace_index_aux_Inr[simp]: "replace_index_aux B i x (u @ [Inr a]) = replace_index_aux B i x u @ [Inr (Inr a)]"
+lemma replace_index_aux_Inr[simp]: "replace_index_aux B i x (u @ [Inr a]) = replace_index_aux B i x u @ [Inr a]"
   by (induct u arbitrary: i rule: xa_induct, auto)
 
 lemma replace_index_aux_Inl_eq[simp]:
   fixes B :: "'k::enum boundedness"
   shows "replace_index_aux B i x (u @ [Inl x]) 
-       = replace_index_aux B i x u @ [Inl (nat_to_enum (i + count_list u (Inl x)))]"
+       = replace_index_aux B i x u @ [Inl (Inl (nat_to_enum (i + count_list u (Inl x))))]"
   by (induct u arbitrary: i rule: xa_induct, auto)
 
 lemma replace_index_aux_Inl_neq[simp]:
   fixes B :: "'k::enum boundedness"
   assumes "x \<noteq> y"
   shows "replace_index_aux B i y (u @ [Inl x]) 
-       = replace_index_aux B i y u @ [Inr (Inl x)]"
+       = replace_index_aux B i y u @ [Inl (Inr x)]"
   using assms by (induct u arbitrary: i rule: xa_induct, auto)
 
 lemma sum_count_list_replace_index:
   fixes u :: "('x + 'a) list"
   fixes B :: "'k::enum boundedness"
-  shows "count_list u (Inl y) = (\<Sum>i\<in>UNIV. count_list (replace_index B y u) (Inl (i::'k)))"
+  shows "count_list u (Inl y) = (\<Sum>i\<in>UNIV. count_list (replace_index B y u) (Inl (Inl i)))"
 proof (induct u rule: xa_rev_induct)
   case Nil
   then show ?case by simp
@@ -212,6 +212,10 @@ next
   then show ?case by simp
 qed
 
+
+declare[[show_types]]
+term "count_list (hat_homU (\<iota> B2 \<beta>) u y) (Inr (Inl (x0, y0, z0)))"
+term "(\<Sum>k\<in>UNIV. count_list (hat_homU (\<iota> B2 \<beta>) (replace_index B1 x0 u) y) (Inr (Inl (k, y0, z0))))"
 
 lemma
   shows "count_list (hat_homU (\<iota> B2 \<beta>) u y) (Inr (Inl (x0, y0, z0)))

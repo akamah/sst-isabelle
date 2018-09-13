@@ -112,6 +112,30 @@ qed
 
 subsection \<open>Property of valuation\<close>
 
+fun list_valuation :: "('x \<Rightarrow> 'a list) \<Rightarrow> ('x + 'a) list \<Rightarrow> 'a list" where
+  "list_valuation \<mu> [] = []" |
+  "list_valuation \<mu> (Inl x # w) = \<mu> x @ list_valuation \<mu> w" |
+  "list_valuation \<mu> (Inr a # w) = a # list_valuation \<mu> w"
+  
+lemma valuation_delta_hat:
+  assumes "\<forall>q x. hat1 tr (q, \<mu> x) = f (q, x)"
+  shows "hat1 tr (q, list_valuation \<mu> (\<theta> x)) = \<Delta> tr (f, \<theta>) (q, x)"
+proof -
+  { fix u
+    have "hat1 tr (q, list_valuation \<mu> u) = hat1 (delta2f f tr) (q, u)"
+    proof (induct u arbitrary: q rule: xa_induct)
+      case Nil
+      then show ?case by simp
+    next
+      case (Var x xs)
+      then show ?case using assms by simp
+    next
+      case (Alpha a xs)
+      then show ?case using assms by simp
+    qed
+  }
+  then show ?thesis by (simp add: \<Delta>_def)
+qed
 
 lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
   by (induction w arbitrary: q rule: xa_induct, simp_all add: empty_def)

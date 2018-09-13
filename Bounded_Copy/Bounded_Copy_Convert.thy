@@ -213,13 +213,83 @@ next
 qed
 
 
-declare[[show_types]]
-term "count_list (hat_homU (\<iota> B2 \<beta>) u y) (Inr (Inl (x0, y0, z0)))"
-term "(\<Sum>k\<in>UNIV. count_list (hat_homU (\<iota> B2 \<beta>) (replace_index B1 x0 u) y) (Inr (Inl (k, y0, z0))))"
+fun replace_index_shuffle where
+  "replace_index_shuffle x0 \<alpha> (Inl k) = \<alpha> x0" |
+  "replace_index_shuffle x0 \<alpha> (Inr x) = \<alpha> x"
+
+term "(\<iota> B2 (\<alpha> :: 'x \<Rightarrow> 'y::enum shuffle), \<iota> B2 (replace_index_shuffle x0 \<alpha>))"
+
+
+lemma exist_only_list:
+  assumes "count_list w x = 1"
+  shows "\<exists>u v. (w = u @ x # v) \<and> (count_list u x = 0) \<and> (count_list v x = 0)"
+using assms proof (induct w)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a w)
+  then show ?case proof (cases "x = a")
+    case True
+    then show ?thesis using Cons.prems by (intro exI, auto)
+  next
+    case False
+    then show ?thesis proof -
+      have "count_list w x = 1" using Cons.prems False by simp
+      then obtain u v where uv: "(w = u @ x # v) \<and> (count_list u x = 0) \<and> (count_list v x = 0)"
+        using Cons.hyps by auto
+      have "a # w = (a # u) @ x # v \<and> (count_list u x = 0) \<and> (count_list v x = 0)" using uv by simp
+      then show ?thesis using False by fastforce
+    qed
+  qed
+qed
+
+thm padding_x
+
+lemma "set (concat (map f u)) = (\<Union>x\<in>set u. set (f x))"
+  by simp
+
+lemma synthesize_shuffle_variable:
+  assumes "Inr (y0, z0) \<in> set (synthesize_store B (embed x) )"
+  shows "y0 = y"
+  using assms by (induct scanned rule: scanned_rev_induct, auto)
 
 lemma
-  shows "count_list (hat_homU (\<iota> B2 \<beta>) u y) (Inr (Inl (x0, y0, z0)))
-      = (\<Sum>k\<in>UNIV. count_list (hat_homU (\<iota> B2 \<beta>) (replace_index B1 x0 u) y) (Inr (Inl (k, y0, z0))))"
+  assumes "Inr (Inl (x0, y0, z0)) \<in> set (\<iota> B \<alpha> x y)"
+  shows "x0 = x \<and> y0 = y"
+  using assms apply (simp add: \<iota>_def synthesize_def comp_def)
+  
+
+
+lemma
+  assumes "is_type msst \<gamma>"
+  assumes "bounded_copy_type k msst \<gamma>"
+  assumes "count_list (SST.eta_hat msst (q, w) x0) (Inl x0) = 1"
+  shows "count_list (hat_homU (\<iota> B \<alpha>) (SST.eta_hat msst (q, w) x0) y0) (Inr (Inl (x0, y0, z0))) \<le> k"
+proof -
+  thm is_type_def
+
+lemma
+  shows "count_list (hat_homU (\<iota> B2 \<alpha>) u y) (Inr (Inl (x0, y0, z0))) 
+      = (\<Sum>k\<in>UNIV. count_list (hat_homU (\<iota> B2 (replace_index_shuffle x0 \<alpha>)) (replace_index B1 x0 u) y)
+                              (Inr (Inl (Inl k, y0, z0))))"
+proof (induct u rule: xa_induct)
+case Nil
+then show ?case by (simp add: idU_def)
+next
+  case (Var x xs)
+  then show ?case proof (cases "x0 = x")
+    case True
+    then show ?thesis using Var apply simp
+  next
+    case False
+    then show ?thesis sorry
+  qed
+
+    sorry
+next
+  case (Alpha a xs)
+  then show ?case apply simp
+qed
 
 
 theorem convert_MSST_bounded:

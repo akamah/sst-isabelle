@@ -130,6 +130,65 @@ next
     done
 qed
 
+lemma eta2f_length:
+  "length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q, w)) = length w"
+  by (induct w arbitrary: q rule: xa_induct, simp_all)
+
+thm append_eq_append_conv
+
+lemma eta2f_append_ex:
+  assumes "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                                     (q2, v)"
+  shows "\<exists>v1 v2. v = v1 @ v2 \<and>
+                 u0 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v1) \<and>
+                 u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (hat1 (delta2f f (delta sst2)) (q2, v1), v2)"
+proof (intro exI)
+  let ?v1 = "take (length u0) v"
+  let ?v2 = "drop (length u0) v"
+  have v: "v = ?v1 @ ?v2" by simp
+  have len: "length (u0 @ u1) = length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                                     (q2, v))"
+    using assms by (simp only: eta2f_length)
+  have "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                                     (q2, ?v1 @ ?v2)"
+    using assms v by simp
+  then have "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, ?v1)
+                @ Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (hat1 (delta2f f (delta sst2)) (q2, ?v1), ?v2)"
+    by (simp only: Transducer.eta_append)
+  moreover have "length u0 = length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, ?v1))"
+    using len by (simp add: eta2f_length)
+  moreover have "length u1 = length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (hat1 (delta2f f (delta sst2)) (q2, ?v1), ?v2))"
+    using len by (simp add: eta2f_length)
+  ultimately show "v = ?v1 @ ?v2 \<and>
+                  u0 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, ?v1) \<and>
+                  u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (hat1 (delta2f f (delta sst2)) (q2, ?v1), ?v2)"
+    by simp
+qed
+
+lemma tail_substring_ex:
+  fixes sst1 :: "('q1, 'x, 'a, 'b) SST"
+  fixes sst2 :: "('q2, 'y, 'b, 'c) SST"
+  assumes "u \<in> tails (SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x))"
+  shows "\<exists>v1 v2. SST.eta_hat sst1 (q1, w) x = v1 @ v2 \<and>
+                 u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                               (hat1 (delta2f f (delta sst2)) (q2, v1), v2)"
+proof -
+  obtain u0 where "u0 @ u = eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
+    using assms unfolding tails_def by auto
+  then have u0: "u0 @ u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, SST.eta_hat sst1 (q1, w) x)"
+    by (simp add: compose_\<eta>_hat H_def Transducer.eta_append assms compose_SST_SST_def)
+  obtain v1 v2 where "v1 @ v2 = SST.eta_hat sst1 (q1, w) x \<and>
+                       u0 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v1) \<and>
+                       u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2))
+                                                           (hat1 (delta2f f (delta sst2)) (q2, v1), v2)"
+    using eta2f_append_ex[OF u0] by auto
+  then have "SST.eta_hat sst1 (q1, w) x = v1 @ v2 \<and>
+                 u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                               (hat1 (delta2f f (delta sst2)) (q2, v1), v2)"
+    by simp
+qed
+
+
 theorem compose_\<gamma>_bounded:
   fixes sst2 :: "('q2::finite, 'x2::finite, 'b, 'c) SST"
   assumes "bounded_copy_SST k sst2"

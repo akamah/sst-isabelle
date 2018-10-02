@@ -71,6 +71,16 @@ next
   show "a \<in> A" using assms by simp
 qed
 
+fun tails_fun :: "'a list \<Rightarrow> 'a list set" where
+  "tails_fun [] = {[]}" |
+  "tails_fun (a#as) = {a#as} \<union> tails_fun as"
+
+definition tails where
+  "tails xs = {ys. \<exists>zs. xs = zs @ ys}"
+
+lemma "tails_fun xs = tails xs" 
+  unfolding tails_def by (induct xs, auto simp add: Cons_eq_append_conv)
+
 
 fun type_hom :: "('q, 'x, 'y) msst_type \<Rightarrow> ('q \<times> (('x + ('y, 'b) update) list) \<Rightarrow> 'y shuffle set)" where
   "type_hom \<gamma> (q, []) = { idS }" |
@@ -133,7 +143,15 @@ lemma type_hom_hat:
       \<subseteq> \<gamma> (delta_hat msst (q, w), x)"
   by (simp add: type_hom_hat_hom[where u="[Inl x]", simplified] assms)
 
+
+abbreviation is_type_tails :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
+  "is_type_tails k msst \<gamma> \<equiv> (\<forall>q x a. \<forall>u \<in> tails (SST.eta msst (q, a) x). 
+                                     \<forall>m \<in> type_hom \<gamma> (q, u). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
+
+abbreviation is_type_bounded :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
+  "is_type_bounded k msst \<gamma> \<equiv> (\<forall>q x. \<forall>m \<in> \<gamma> (q, x). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
+
 definition bounded_copy_type :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
-  "bounded_copy_type k msst \<gamma> \<equiv> (\<forall>q x. \<forall>m \<in> \<gamma> (q, x). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
+  "bounded_copy_type k msst \<gamma> \<equiv> is_type_bounded k msst \<gamma> \<and> is_type_tails k msst \<gamma>"
 
 end

@@ -116,32 +116,44 @@ fun list_valuation :: "('x \<Rightarrow> 'a list) \<Rightarrow> ('x + 'a) list \
   "list_valuation \<mu> [] = []" |
   "list_valuation \<mu> (Inl x # w) = \<mu> x @ list_valuation \<mu> w" |
   "list_valuation \<mu> (Inr a # w) = a # list_valuation \<mu> w"
-  
+
+
+lemma valuation_delta_hat_string:
+  assumes "\<forall>q x. hat1 tr (q, \<mu> x) = f (q, x)"
+  shows "hat1 tr (q, list_valuation \<mu> u) = hat1 (delta2f f tr) (q, u)"
+  using assms by (induct u arbitrary: q rule: xa_induct, simp_all) 
+
 lemma valuation_delta_hat:
   assumes "\<forall>q x. hat1 tr (q, \<mu> x) = f (q, x)"
   shows "hat1 tr (q, list_valuation \<mu> (\<theta> x)) = \<Delta> tr (f, \<theta>) (q, x)"
-proof -
-  { fix u
-    have "hat1 tr (q, list_valuation \<mu> u) = hat1 (delta2f f tr) (q, u)"
-    proof (induct u arbitrary: q rule: xa_induct)
-      case Nil
-      then show ?case by simp
-    next
-      case (Var x xs)
-      then show ?case using assms by simp
-    next
-      case (Alpha a xs)
-      then show ?case using assms by simp
-    qed
-  }
-  then show ?thesis by (simp add: \<Delta>_def)
-qed
+  by (simp add: \<Delta>_def valuation_delta_hat_string[OF assms])
 
 lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
   by (induction w arbitrary: q rule: xa_induct, simp_all add: empty_def)
 
 lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
+
+
+fun valuation_eta_hat ::  "('q, 'y, 'b, 'c, 'e) SST_scheme \<Rightarrow> ('x \<Rightarrow> 'b list) \<Rightarrow> 'q \<times> 'x \<Rightarrow> ('y, 'c) update list" where
+  "valuation_eta_hat sst2 \<mu> (q, x) = [SST.eta_hat sst2 (q, \<mu> x)]"
+
+lemma valuation_eta_hat_string:
+  assumes "\<forall>q x. hat1  (q, \<mu> x) = f (q, x)"
+  shows "SST.eta_hat sst2 (q, list_valuation \<mu> u)
+       = concatU (list_valuation (valuation_eta_hat sst2 \<mu>)
+           (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (q, u)))"
+proof (induct u arbitrary: q rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case using assms apply (simp add: eta_append)
+next
+  case (Alpha a xs)
+  then show ?case sorry
+qed  
+
 
 lemma valuate_eta_hat_string:
   "concatU (valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)))

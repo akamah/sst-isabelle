@@ -119,13 +119,13 @@ fun list_valuation :: "('x \<Rightarrow> 'a list) \<Rightarrow> ('x + 'a) list \
 
 
 lemma valuation_delta_hat_string:
-  assumes "\<forall>q x. hat1 tr (q, \<mu> x) = f (q, x)"
-  shows "hat1 tr (q, list_valuation \<mu> u) = hat1 (delta2f f tr) (q, u)"
+  assumes "\<forall>q x. delta_hat sst (q, \<mu> x) = f (q, x)"
+  shows "delta_hat sst (q, list_valuation \<mu> u) = hat1 (delta2f f (delta sst)) (q, u)"
   using assms by (induct u arbitrary: q rule: xa_induct, simp_all) 
 
 lemma valuation_delta_hat:
-  assumes "\<forall>q x. hat1 tr (q, \<mu> x) = f (q, x)"
-  shows "hat1 tr (q, list_valuation \<mu> (\<theta> x)) = \<Delta> tr (f, \<theta>) (q, x)"
+  assumes "\<forall>q x. hat1 (delta sst) (q, \<mu> x) = f (q, x)"
+  shows "delta_hat sst (q, list_valuation \<mu> (\<theta> x)) = \<Delta> (delta sst) (f, \<theta>) (q, x)"
   by (simp add: \<Delta>_def valuation_delta_hat_string[OF assms])
 
 lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
@@ -136,23 +136,14 @@ lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q,
 
 
 fun valuation_eta_hat ::  "('q, 'y, 'b, 'c, 'e) SST_scheme \<Rightarrow> ('x \<Rightarrow> 'b list) \<Rightarrow> 'q \<times> 'x \<Rightarrow> ('y, 'c) update list" where
-  "valuation_eta_hat sst2 \<mu> (q, x) = [SST.eta_hat sst2 (q, \<mu> x)]"
+  "valuation_eta_hat sst \<mu> (q, x) = [SST.eta_hat sst (q, \<mu> x)]"
 
 lemma valuation_eta_hat_string:
-  assumes "\<forall>q x. hat1  (q, \<mu> x) = f (q, x)"
-  shows "SST.eta_hat sst2 (q, list_valuation \<mu> u)
-       = concatU (list_valuation (valuation_eta_hat sst2 \<mu>)
-           (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (q, u)))"
-proof (induct u arbitrary: q rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case using assms apply (simp add: eta_append)
-next
-  case (Alpha a xs)
-  then show ?case sorry
-qed  
+  assumes "\<forall>q x. delta_hat sst (q, \<mu> x) = f (q, x)"
+  shows "SST.eta_hat sst (q, list_valuation \<mu> u)
+       = concatU (list_valuation (valuation_eta_hat sst \<mu>)
+                                 (Transducer.hat2 (delta2f f (delta sst)) (eta2f (SST.eta sst)) (q, u)))"
+ by (induct u arbitrary: q rule: xa_induct, simp_all add: eta_append assms)
 
 
 lemma valuate_eta_hat_string:
@@ -164,6 +155,44 @@ lemma valuate_eta_hat: "SST.hat2 tr td (q, valuate (u x)) = concatU (valuate (H 
   by (simp add: H_def valuate_eta_hat_string)
 
 lemmas valuate = valuate_delta_hat valuate_eta_hat
+
+
+lemma reachable_then_exist_valuation:
+  fixes sst1 :: "('q1, 'x1, 'a, 'b) SST"
+  fixes sst2 :: "('q2, 'x2, 'b, 'c) SST"
+  assumes "reachable (compose_SST_SST sst1 sst2) (q1, f)"
+  shows "\<exists>\<mu>. \<forall>q2 x. delta_hat sst2 (q2, \<mu> x) = f (q2, x)"
+proof -
+  obtain w where w: "(q1, f) = delta_hat (compose_SST_SST sst1 sst2) (initial (compose_SST_SST sst1 sst2), w)"
+    by (meson assms reachable_def)
+  then show ?thesis proof (induct w arbitrary: q1 f rule: rev_induct)
+    case Nil
+    show ?case proof (rule exI, intro allI)
+      fix q2 x
+      let ?mu = "\<lambda>x1. []"
+      show "delta_hat sst2 (q2, ?mu x) = f (q2, x)"
+        using Nil unfolding compose_SST_SST_def by simp
+    qed
+  next
+    case (snoc a w)
+    show ?case proof -
+      let ?q1f' = "delta_hat (compose_SST_SST sst1 sst2) (initial (compose_SST_SST sst1 sst2), w)"
+      let ?q1' = "fst ?q1f'"
+      let ?f' = "snd ?q1f'"
+      have "(?q1', ?f') = delta_hat (compose_SST_SST sst1 sst2) (initial (compose_SST_SST sst1 sst2), w)" by simp
+      then have "\<exists>\<mu>. \<forall>q2 x. delta_hat sst2 (q2, \<mu> x) = ?f' (q2, x)" by (rule snoc(1))
+      then obtain \<mu>' where mu: "\<forall>q2 x. delta_hat sst2 (q2, \<mu>' x) = ?f' (q2, x)" by auto
+      let ?mu = "\<lambda>x1. list_valuation \<mu>' (SST.eta sst1 (?q1', a) x1)"
+      have body: "\<forall>q2 x1. delta_hat sst2 (q2, ?mu x1) = f (q2, x1)"
+        thm valuation_delta_hat[OF mu]
+        using snoc(2) 
+        apply (simp add: valuation_delta_hat[OF mu] compose_SST_SST_def compose_\<delta>_hat)
+        apply (simp add: compose_\<delta>_def)
+        done
+      show ?thesis by (rule exI, rule body)
+    qed
+  qed
+qed
 
 subsection \<open>Main result\<close>
 

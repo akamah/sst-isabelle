@@ -186,6 +186,7 @@ proof -
                  u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
                                (hat1 (delta2f f (delta sst2)) (q2, v1), v2)"
     by simp
+  then show ?thesis by auto
 qed
 
 

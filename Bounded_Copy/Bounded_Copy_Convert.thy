@@ -248,10 +248,28 @@ thm padding_x
 lemma "set (concat (map f u)) = (\<Union>x\<in>set u. set (f x))"
   by simp
 
-lemma synthesize_shuffle_variable:
-  assumes "Inr (y0, z0) \<in> set (synthesize_store B (embed x) )"
+lemma
+  assumes "(Inr (Inl (x0, y0, z0))) \<in> set (hat_homU (\<iota> B \<alpha>) u y)"
   shows "y0 = y"
-  using assms by (induct scanned rule: scanned_rev_induct, auto)
+using assms proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by (simp add: idU_def)
+next
+  case (Var x xs)
+  then show ?case apply simp
+next
+  case (Alpha a xs)
+  then show ?case sorry
+qed
+
+
+lemma synthesize_shuffle_variable:
+  assumes "Inr (Inr (y0, z0)) \<in> set (synthesize_store B (embed x) (Inr (y, z)))"
+  shows "y = y0"
+  using assms 
+  unfolding synthesize_store_def apply simp
+
+term "synthesize_store B (embed x) (Inr (y, z))"
 
 lemma
   assumes "Inr (Inl (x0, y0, z0)) \<in> set (\<iota> B \<alpha> x y)"
@@ -279,19 +297,17 @@ next
   case (Var x xs)
   then show ?case proof (cases "x0 = x")
     case True
-    then show ?thesis using Var apply simp
+    then show ?thesis using Var sorry
   next
     case False
     then show ?thesis sorry
   qed
-
-    sorry
 next
   case (Alpha a xs)
   then show ?case apply simp
 qed
 
-
+*)
 theorem convert_MSST_bounded:
   fixes msst :: "('q::finite, 'x::finite, 'y::enum, 'a, 'b) MSST"
   fixes B1 :: "'k::enum boundedness"
@@ -328,7 +344,7 @@ proof (intro allI, rule impI)
                                                                 (SST.eta_hat msst (fst qb, w) (fst xyz))) (snd xyz))
            (Inl (x0, y0, z0)))
           = (\<Sum>(x, yk)\<in>UNIV. count_list (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk)
-           (Inl (x0, y0, z0)))"
+           (Inl (x0, y0, z0)))" (is "?lhs = _")
         by (simp add: prod.case_eq_if)
       also have "... = (\<Sum>x\<in>UNIV. \<Sum>yk\<in>UNIV. count_list (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk)
            (Inl (x0, y0, z0)))"
@@ -338,10 +354,11 @@ proof (intro allI, rule impI)
       also have "... = (\<Sum>x\<in>UNIV. \<Sum>y\<in>UNIV. count_list (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x) y)
            (Inr (Inl (x0, y0, z0))))"
         by (simp add: sum_decompose[OF boundedness_l hat_homU_iota_bounded_copy[OF boundedness_l typed bc_type r_pair]])
-
+      also have "... \<le> k * l"
+        sorry
+      finally show "?lhs \<le> k * l" .
+    qed
   qed
-
-  apply auto
-
+qed
 
 end

@@ -39,6 +39,14 @@ fun compose_\<gamma> ::
    "compose_\<gamma> sst1 sst2 ((_, f), (q2, x)) =
       all_shuffles sst2 q2 (f (q2, x))"
 
+
+lemma compose_\<gamma>_ex:
+  assumes "m \<in> compose_\<gamma> sst1 sst2 ((q1, f), (q2, x))"
+  shows "\<exists>w. delta_hat sst2 (q2, w) = f (q2, x) \<and>
+             m = resolve_shuffle (SST.eta_hat sst2 (q2, w))"
+  using assms by (simp add: all_shuffles_def)
+
+
 lemma idS_in_all_shuffles: 
   "idS \<in> all_shuffles sst q2 q2"
   unfolding all_shuffles_def
@@ -128,15 +136,27 @@ theorem compose_\<gamma>_bounded:
   assumes "trim sst2"
   shows "bounded_copy_type k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
 proof (auto simp add: bounded_copy_type_def all_shuffles_def)
-  fix q1 f q2 w x
-  assume "reachable (compose_SST_SST sst1 sst2) (q1, f)"
-  assume "delta_hat sst2 (q2, w) = f (q2, x)"
+  fix q2 w
   have q2_reach: "reachable sst2 q2"
     using assms(2) unfolding trim_def by simp
   have "bounded k (SST.eta_hat sst2 (q2, w))"
     by (rule bounded_copy_SST_simp, simp_all add: assms q2_reach)
   then show "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (q2, w)))"
     by (rule resolve_bounded)
+next
+  fix q1 f q2 a x u m 
+  assume "reachable (compose_SST_SST sst1 sst2) (q1, f)"
+  let ?eta = "SST.eta (compose_SST_SST sst1 sst2) ((q1, f), a) (q2, x)"
+  assume u: "u \<in> tails ?eta"
+  assume m: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
+  obtain v where "?eta = v @ u" using u tails_def by auto
+  
+
+  have q2_reach: "reachable sst2 q2"
+    using assms(2) unfolding trim_def by simp
+  have "bounded_shuffle k m"
+    sorry
+  
 qed
 
 end

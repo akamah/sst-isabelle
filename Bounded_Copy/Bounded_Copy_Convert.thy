@@ -248,9 +248,40 @@ thm padding_x
 lemma "set (concat (map f u)) = (\<Union>x\<in>set u. set (f x))"
   by simp
 
+declare [[show_consts]]
+lemma synthesize_store_padding_x_y:
+  "list_all (\<lambda>yi. \<exists>x y k. (yi = Inr (Inl (x, y, k))) \<longrightarrow> x = x0 \<and> y = y0)
+     (concat
+       (map (synthesize_store B (Convert_Monoid_SST_Def.embed x0 :: ('y::enum, 'k::enum) index \<Rightarrow> ('x \<times> ('y, 'k) index + 'b) list))
+            (padding B y0 (scan (map Inl w)))))"
+  unfolding synthesize_store_def 
+  by (induct w rule: rev_induct, simp_all)
+
+declare [[]]
+lemma "list_all (\<lambda>yi::'y + 'x \<times> 'y \<times> ('y \<times> 'k) option + 'b. \<exists>x y k. (yi = Inr (Inl (x, y, k))) \<longrightarrow> x = x0 \<and> y = y0)
+        (\<iota> B \<alpha> x0 y0 :: ('y::enum + 'x \<times> ('y, 'k::enum) index + 'b) list)"
+proof -
+  { fix w :: "'y list"
+    have "list_all (\<lambda>yi::'y + 'x \<times> 'y \<times> ('y \<times> 'k) option + 'b. \<exists>x y k. (yi = Inr (Inl (x, y, k))) \<longrightarrow> x = x0 \<and> y = y0)
+     (concat
+       (map (synthesize_store B (Convert_Monoid_SST_Def.embed x0 :: ('y::enum, 'k::enum) index \<Rightarrow> ('x \<times> ('y, 'k) index + 'b) list))
+            (padding B y0 (scan (map Inl w)))))"
+      unfolding synthesize_store_def 
+      by (induct w rule: rev_induct, simp_all)
+  } note that = this
+  then show ?thesis 
+    apply (simp add: hat_hom_left_concat_map \<iota>_def synthesize_def synthesize_shuffle_def comp_def)
+    apply (simp add: synthesize_store_padding_x_y)
+
+
+
 lemma
-  assumes "(Inr (Inl (x0, y0, z0))) \<in> set (hat_homU (\<iota> B \<alpha>) u y)"
-  shows "y0 = y"
+  assumes "(Inr (Inl (x0, y0, z0))) \<in> set (\<iota> B \<alpha> x y)"
+  shows "x0 = x \<and> y0 = y"
+  using assms
+  unfolding count_alpha_def \<iota>_def
+  synthesize_def synthesize_shuffle_def comp_def
+  apply (simp add: hat_hom_left_concat_map)
 using assms proof (induct u rule: xa_induct)
   case Nil
   then show ?case by (simp add: idU_def)
@@ -263,20 +294,12 @@ next
 qed
 
 
-lemma synthesize_shuffle_variable:
-  assumes "Inr (Inr (y0, z0)) \<in> set (synthesize_store B (embed x) (Inr (y, z)))"
-  shows "y = y0"
-  using assms 
-  unfolding synthesize_store_def apply simp
 
-term "synthesize_store B (embed x) (Inr (y, z))"
 
-lemma
-  assumes "Inr (Inl (x0, y0, z0)) \<in> set (\<iota> B \<alpha> x y)"
-  shows "x0 = x \<and> y0 = y"
-  using assms apply (simp add: \<iota>_def synthesize_def comp_def)
-  
-
+lemma "count_alpha (\<iota> B \<beta> x) (Inl (x0, y0, z0)) \<le> 1"
+  unfolding count_alpha_def \<iota>_def
+  synthesize_def synthesize_shuffle_def synthesize_store_def comp_def
+  apply (simp add: hat_hom_left_concat_map)
 
 lemma
   assumes "is_type msst \<gamma>"

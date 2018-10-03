@@ -25,7 +25,7 @@ proof -
   show ?thesis by (rule ext, simp add: that)
 qed
 
-definition mult_shuffles where
+definition mult_shuffles :: "'x shuffle set \<Rightarrow> 'x shuffle set \<Rightarrow> 'x shuffle set" where
   "mult_shuffles A B = (\<Union>a\<in>A. \<Union>b\<in>B. { concat \<circ> map a \<circ> b })"
 
 lemma mult_shuffles_right_unit [simp]: "mult_shuffles A { idS } = A"

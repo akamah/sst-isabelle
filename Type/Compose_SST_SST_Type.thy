@@ -134,8 +134,6 @@ lemma eta2f_length:
   "length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q, w)) = length w"
   by (induct w arbitrary: q rule: xa_induct, simp_all)
 
-thm append_eq_append_conv
-
 lemma eta2f_append_ex:
   assumes "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
                                      (q2, v)"
@@ -190,7 +188,7 @@ proof -
 qed
 
 
-lemma type_hom_eta2f_hat_ex_string:
+lemma type_hom_eta2f_hat_ex_string':
   fixes sst1 :: "('q1, 'x, 'a, 'b) SST"
   fixes sst2 :: "('q2, 'y, 'b, 'c) SST"
   shows "\<forall>m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v)).
@@ -256,6 +254,14 @@ next
   qed
 qed
 
+lemma type_hom_eta2f_hat_ex_string:
+  fixes sst1 :: "('q1, 'x, 'a, 'b) SST"
+  fixes sst2 :: "('q2, 'y, 'b, 'c) SST"
+  assumes "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v))"
+  shows "\<exists>w. delta_hat sst2 (q2, w) = hat1 (delta2f f (delta sst2)) (q2, v) \<and>
+             resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
+  by (meson assms type_hom_eta2f_hat_ex_string')
+
 
 theorem compose_\<gamma>_bounded:
   fixes sst2 :: "('q2::finite, 'x2::finite, 'b, 'c) SST"
@@ -274,16 +280,26 @@ next
   fix q1 f q2 a x u m 
   assume "reachable (compose_SST_SST sst1 sst2) (q1, f)"
   let ?eta = "SST.eta (compose_SST_SST sst1 sst2) ((q1, f), a) (q2, x)"
-  assume u: "u \<in> tails ?eta"
-  assume m: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
-  obtain v where "?eta = v @ u" using u tails_def by auto
-  
-
-  have q2_reach: "reachable sst2 q2"
+  let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), [a]) (q2, x)"
+  assume "u \<in> tails ?eta"
+  thm allI
+  then have u: "u \<in> tails ?eta_hat" by (simp add: comp_right_neutral)
+  assume m0: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
+  obtain v1 v2 where v: "u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                                 (hat1 (delta2f f (delta sst2)) (q2, v1), v2)" using tail_substring_ex[OF u] by auto
+  let ?q = "hat1 (delta2f f (delta sst2)) (q2, v1)"
+  have m: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                                 (?q, v2))" 
+    using m0 v by simp
+  obtain w where w: "resolve_shuffle (SST.eta_hat sst2 (?q, w)) = m"
+    using type_hom_eta2f_hat_ex_string[OF m] by auto
+  have q2_reach: "reachable sst2 ?q"
     using assms(2) unfolding trim_def by simp
-  have "bounded_shuffle k m"
-    sorry
-  
+  then have "bounded k (SST.eta_hat sst2 (?q, w))"
+    using assms(1) unfolding bounded_copy_SST_def by simp
+  then have "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (?q, w)))"
+    by (simp add: resolve_bounded)
+  then show "bounded_shuffle k m" using w by simp
 qed
 
 end

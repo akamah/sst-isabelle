@@ -190,6 +190,73 @@ proof -
 qed
 
 
+lemma type_hom_eta2f_hat_ex_string:
+  fixes sst1 :: "('q1, 'x, 'a, 'b) SST"
+  fixes sst2 :: "('q2, 'y, 'b, 'c) SST"
+  shows "\<forall>m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v)).
+         \<exists>w. delta_hat sst2 (q2, w) = hat1 (delta2f f (delta sst2)) (q2, v) \<and>
+             resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
+proof (induct v rule: xa_rev_induct)
+  case Nil
+  then show ?case by (simp, rule exI[where x="[]"], simp add: resolve_idU_idS)
+next
+  case (Var x xs)
+  show ?case proof (simp add: Transducer.eta_append, rule ballI)
+    let ?set1 = "type_hom (compose_\<gamma> sst1 sst2)
+                  ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (q2, xs))"
+    let ?q = "hat1 (delta2f f (delta sst2)) (q2, xs)"
+    let ?q' = "(f (?q, x))"
+    fix m
+    assume "m \<in> mult_shuffles ?set1 (all_shuffles sst2 ?q ?q')"
+    then obtain m1 m2 :: "'y shuffle" 
+      where m: "m = concat o map m1 o m2 \<and>
+             m1 \<in> ?set1 \<and>
+             m2 \<in> (all_shuffles sst2 ?q ?q')"
+      by (auto simp add: mult_shuffles_def)
+    obtain w1 where w1: "delta_hat sst2 (q2, w1) = hat1 (delta2f f (delta sst2)) (q2, xs) \<and>
+                         m1 = resolve_shuffle (SST.eta_hat sst2 (q2, w1))"
+      using m Var by auto
+    obtain w2 where w2: "delta_hat sst2 (?q, w2) = ?q' \<and> m2 = resolve_shuffle (SST.eta_hat sst2 (?q, w2))"
+      using m unfolding all_shuffles_def by auto
+    have "delta_hat sst2 (q2, w1 @ w2) = f (hat1 (delta2f f (delta sst2)) (q2, xs), x)"
+      by (simp add: w1 w2)
+    moreover have "resolve_shuffle (SST.eta_hat sst2 (q2, w1 @ w2)) = m"
+      by (simp add: SST.eta_append resolve_shuffle_distrib m w1 w2)
+    ultimately show "\<exists>w. delta_hat sst2 (q2, w) = f (hat1 (delta2f f (delta sst2)) (q2, xs), x) \<and>
+                         resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
+      by (auto simp del: delta_append)
+  qed
+next
+  case (Alpha a xs)
+  show ?case proof (simp add: Transducer.eta_append, rule ballI)
+    let ?q = "hat1 (delta2f f (delta sst2)) (q2, xs)"
+    let ?q' = "delta sst2 (?q, a)"
+    let ?set1 = "type_hom (compose_\<gamma> sst1 sst2)
+                  ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (q2, xs))"
+    let ?set2 = "{resolve_shuffle (SST.eta sst2 (?q, a))}"
+    fix m
+    assume "m \<in> mult_shuffles ?set1 ?set2"
+    then obtain m1 m2 :: "'y shuffle" 
+      where m: "m = concat o map m1 o m2 \<and>
+             m1 \<in> ?set1 \<and>
+             m2 \<in> ?set2"
+      by (auto simp add: mult_shuffles_def)
+    obtain w1 where w1: "delta_hat sst2 (q2, w1) = hat1 (delta2f f (delta sst2)) (q2, xs) \<and>
+                         m1 = resolve_shuffle (SST.eta_hat sst2 (q2, w1))"
+      using m Alpha by auto
+    have w2: "delta_hat sst2 (?q, [a]) = ?q' \<and> m2 = resolve_shuffle (SST.eta_hat sst2 (?q, [a]))"
+      using m by (simp add: comp_right_neutral)
+    have "delta_hat sst2 (q2, w1 @ [a]) = delta sst2 (hat1 (delta2f f (delta sst2)) (q2, xs), a)"
+      by (simp add: w1 w2)
+    moreover have "resolve_shuffle (SST.eta_hat sst2 (q2, w1 @ [a])) = m"
+      by (simp add: SST.eta_append resolve_shuffle_distrib m w1 w2)
+    ultimately show "\<exists>w. delta_hat sst2 (q2, w) = delta sst2 (hat1 (delta2f f (delta sst2)) (q2, xs), a) \<and>
+                         resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
+      by (auto simp del: delta_append)
+  qed
+qed
+
+
 theorem compose_\<gamma>_bounded:
   fixes sst2 :: "('q2::finite, 'x2::finite, 'b, 'c) SST"
   assumes "bounded_copy_SST k sst2"

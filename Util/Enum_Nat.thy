@@ -77,7 +77,6 @@ proof
     using assms by (simp add: nat_enum_iso)
 qed
 
-
 lemma list_nat_less:
   assumes "e \<in> set xs"
   shows "enum_to_nat' xs e < length xs"
@@ -130,5 +129,16 @@ proof -
     by (simp add: card_UNIV_length_enum)
 qed
 
+lemma nat_enum_zero:
+  shows "enum_to_nat (nat_to_enum 0 :: 'e::enum) = 0"
+  by (rule nat_enum_iso, rule length_enum_gt_0)
+
+lemma enum_nat_zero_then_nat_enum_zero:
+  "enum_to_nat (z :: 'e::enum) = 0 \<Longrightarrow> nat_to_enum 0 = z"
+proof -
+  assume *: "enum_to_nat z = 0"
+  show "nat_to_enum 0 = z"
+    by (simp add: *[symmetric] enum_nat_iso enum_UNIV)
+qed
 
 end

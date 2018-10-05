@@ -730,28 +730,37 @@ next
   then show ?case by simp
 qed
 
+
+lemma variable_count_in_bounded_shuffle:
+  fixes s :: "('x::finite) shuffle"
+  assumes "bounded_shuffle k s"
+  shows "length (s x0) \<le> card (UNIV::'x set) * k"
+proof -
+  let ?univ = "UNIV::'x set"
+  have *: "\<forall>y. (\<Sum>x\<in>?univ. count_list (s x) y) \<le> k" using assms unfolding bounded_shuffle_def by simp
+  have "length (s x0) \<le> (\<Sum>x\<in>?univ. length (s x))" by (rule member_le_sum, simp_all)
+  also have "... = (\<Sum>x\<in>?univ. (\<Sum>y\<in>?univ. count_list (s x) y))"
+    by (rule sum.cong, simp_all add: sum_count_list_UNIV)
+  also have "... = (\<Sum>y\<in>?univ. (\<Sum>x\<in>?univ. count_list (s x) y))"
+    by (rule sum.commute)
+  also have "... \<le> (\<Sum>y\<in>?univ. k)"
+    by (rule sum_mono, simp add: *)
+  also have "... = card ?univ * k"
+    by simp
+  finally show ?thesis .
+qed
+
 lemma variable_count_in_bounded_update:
   fixes m :: "('x::finite, 'a) update"
   assumes "bounded k m"
   shows "length (extract_variables (m x0)) \<le> card (UNIV::'x set) * k"
   using assms unfolding bounded_def count_var_def
 proof -
-  let ?univ = "UNIV::'x set"
-  assume *: "\<forall>y::'x. (\<Sum>x\<in>(UNIV::'x set). count_list (m x) (Inl y)) \<le> k"
-  have le: "\<And>x. x \<in> (UNIV::'x set) - {x0} \<Longrightarrow> 0 \<le> length (extract_variables (m x))"
-    by simp
-  have "length (extract_variables (m x0))
-         \<le> (\<Sum>x\<in>?univ. length (extract_variables (m x)))" (is "?lhs \<le> _")
-    by (rule member_le_sum, simp_all add: le)
-  also have "... = (\<Sum>x\<in>?univ. (\<Sum>y\<in>?univ. count_list (m x) (Inl y)))"
-    by (rule sum.cong, auto simp add: count_extract_variables)
-  also have "... = (\<Sum>y\<in>?univ. (\<Sum>x\<in>?univ. count_list (m x) (Inl y)))"
-    by (rule sum.commute)
-  also have "... \<le> (\<Sum>y\<in>?univ. k)"
-    by (rule sum_mono, auto simp add: *)
-  also have "... = card ?univ * k" (is "_ = ?rhs")
-    by simp
-  finally show "?lhs \<le> ?rhs" .
+  have "bounded_shuffle k (resolve_shuffle m)"
+    using assms by (simp add: resolve_bounded)
+  then have "length (resolve_shuffle m x0) \<le> card (UNIV::'x set) * k"
+    by (simp add: variable_count_in_bounded_shuffle)
+  then show ?thesis by (simp add: resolve_shuffle_def)
 qed
 
 lemma length_scanned_of_variable_count:

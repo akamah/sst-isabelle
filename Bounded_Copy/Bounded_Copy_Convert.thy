@@ -277,7 +277,7 @@ qed
 
 
 lemma count_list_synthesize_ge_length:
-  assumes "length_scanned (scan u) < enum_to_nat (z0 :: ('y::enum, 'k::enum) type_mult_suc)"
+  assumes "length_scanned (scan u) \<le> enum_to_nat (z0 :: ('y::enum, 'k::enum) type_mult_suc)"
   shows "count_list (concat (map (synthesize_store B (Convert_Monoid_SST_Def.embed x)) (padding B y (scan u))))
                     (Inr (Inl (x0, y0, z0)))
       = 0"
@@ -295,7 +295,7 @@ next
       using Suc_lessD by blast
     then have len: "enum_to_nat (nat_to_enum (length_scanned (scan u)) :: ('y, 'k) type_mult_suc) = length_scanned (scan u) "
       by (simp add: nat_enum_iso)
-    assume "Suc (length_scanned (scan u)) < enum_to_nat (nat_to_enum (length_scanned (scan u)) :: ('y, 'k) type_mult_suc)"
+    assume "Suc (length_scanned (scan u)) \<le> enum_to_nat (nat_to_enum (length_scanned (scan u)) :: ('y, 'k) type_mult_suc)"
     then show False using len by simp
   qed
 qed
@@ -305,47 +305,64 @@ lemma count_list_append: "count_list (xs @ ys) a = count_list xs a + count_list 
 
 lemma map_Cons: "map f [x] = f x # map Inr []" by simp
 
-lemma count_list_synthesize_lt_Suc_length:
+lemma count_list_synthesize_lt_length:
   assumes "length_scanned (scan u) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)"
-  assumes "length xs \<ge> enum_to_nat (z :: ('y::enum, 'k::enum) type_mult_suc)"
-  shows "count_list (concat (map (synthesize_store B (Convert_Monoid_SST_Def.embed x)) (padding B y (scan (map Inl xs)))))
+  assumes "length_scanned (scan u) > enum_to_nat (z :: ('y::enum, 'k::enum) type_mult_suc)"
+  shows "count_list (concat (map (synthesize_store B (Convert_Monoid_SST_Def.embed x)) (padding B y (scan u))))
                     (Inr (Inl (x, y, z)))
        = 1"
-using assms proof (induct xs rule: rev_induct)
-  case Nil
+using assms proof (induct u rule: xw_induct)
+  case (Word w)
   then show ?case by (simp add: synthesize_store_def nat_enum_zero enum_nat_zero_then_nat_enum_zero)
 next
-  case (snoc x xs)
-  then show ?case proof (cases "enum_to_nat z = Suc (length xs)")
+  case (VarWord x w u)
+  then show ?case proof (cases "enum_to_nat z = length_scanned (scan u)")
     case True
     then show ?thesis proof -
-      have *: "length_scanned (scan (map Inl xs)) \<le> enum_to_nat z" using True by (simp add: length_scanned_map_Inl)
+      have *: "length_scanned (scan u) \<le> enum_to_nat z" using True by (simp add: )
       have z: "z \<in> set (Enum.enum :: ('y, 'k) type_mult_suc list)" by (simp add: enum_UNIV)
       thm count_list_synthesize_ge_length[OF *]
       show ?thesis
-        apply (simp only: map_append scan_last_simp map_Cons padding_last_simp)
-        apply (simp only: map_append concat_append count_list_append count_list_synthesize_ge_length[OF *])
+        apply (simp only: map_append scan_last_simp map_Cons padding_last_simp concat_append count_list_append)
+        apply (simp add: count_list_synthesize_ge_length[OF *])
         apply (simp add: synthesize_store_def)
-        apply (simp add: True[symmetric] enum_nat_iso[OF z] length_scanned_map_Inl)
+        apply (simp add: True[symmetric] enum_nat_iso[OF z])
         done
     qed
   next
     case False
-    then show ?thesis using snoc proof (simp add: synthesize_store_def length_scanned_map_Inl)
+    then show ?thesis using VarWord proof (simp add: synthesize_store_def)
       let ?enum = "Enum.enum :: ('y, 'k) type_mult_suc list"
-      assume "enum_to_nat z \<noteq> length_scanned sc"
-      assume "enum_to_nat z < Suc (length_scanned sc)"
-      have "enum_to_nat z < length (Enum.enum :: ('y, 'k) type_mult_suc list)" by (rule enum_nat_less)
-      show "nat_to_enum (length_scanned sc) \<noteq> z" proof (rule ccontr, simp)
-        assume "nat_to_enum (length_scanned sc) = z"
-        
+      assume neq: "enum_to_nat z \<noteq> length_scanned (scan u)"
+      have "length_scanned (scan u) \<le> length ?enum" using VarWord.prems by simp
+      show "nat_to_enum (length_scanned (scan u)) \<noteq> z" proof (rule ccontr, simp)
+        assume "nat_to_enum (length_scanned (scan u)) = z"
+        then have "enum_to_nat (nat_to_enum (length_scanned (scan u)) :: ('y, 'k) type_mult_suc) = enum_to_nat z" by simp
+        moreover have condition: "length_scanned (scan u) < length ?enum" using VarWord.prems by simp
+        ultimately have "length_scanned (scan u) = enum_to_nat z" by (simp add: nat_enum_iso[OF condition])
+        then show False using neq by simp
+      qed
+    qed
   qed
 qed
 
-lemma "count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0))) \<le> 1"
-  apply (simp add: \<iota>_def synthesize_def synthesize_shuffle_def hat_hom_left_concat_map comp_def)
+lemma count_list_synthesize:
+  assumes "length_scanned (scan u) \<le> length (Enum.enum::('y::enum, 'k::enum) type_mult_suc list)"
+  shows "count_list (concat (map (synthesize_store B (Convert_Monoid_SST_Def.embed x)) (padding B y (scan u))))
+                    (Inr (Inl (x, y, z :: ('y, 'k) type_mult_suc))) \<le> Suc 0"
+proof (cases "length_scanned (scan u) \<le> enum_to_nat z")
+  case True
+  then show ?thesis by (simp add: count_list_synthesize_ge_length)
+next
+  case False
+  then show ?thesis by (auto simp add: count_list_synthesize_lt_length assms)
+qed
 
-lemma "count_alpha (\<iota> B \<alpha> x) (Inl (x0, y0, z0) :: 'x \<times> ('y::enum, 'k::enum) index + 'b) \<le> 1"
+lemma
+  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
+  assumes "boundedness (B :: 'k::enum boundedness) k"
+  assumes "bounded_shuffle k (\<alpha> x)"
+  shows "count_alpha (\<iota> B \<alpha> x :: ('y, 'x \<times> ('y, 'k::enum) index + 'b) update) (Inl (x0, y0, z0) :: 'x \<times> ('y, 'k::enum) index + 'b) \<le> 1"
   unfolding count_alpha_def
 proof (simp add: hat_hom_left_concat_map)
   let ?f = "\<lambda>y. count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0)  :: 'x \<times> ('y::enum, 'k::enum) index + 'b))"
@@ -354,6 +371,21 @@ proof (simp add: hat_hom_left_concat_map)
     by (rule sum.cong, simp_all add: iota_x_y y_neq_y0_count_list_zero)
   also have "... = ?f y0" 
     by simp
+  finally have "sum ?f UNIV = ?f y0" .
+  then show "sum ?f UNIV \<le> Suc 0" proof (cases "x = x0")
+    case True
+    then show ?thesis proof -
+      have *: "length_scanned (scan (\<alpha> x :: ('y + 'x \<times> ('y, 'k::enum) index + 'b) list)) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)"
+        by (rule length_scanned_boundedness[OF assms])
+      then show ?thesis
+        thm count_list_synthesize[OF *]
+        apply (simp add: \<iota>_def synthesize_def synthesize_shuffle_def comp_def hat_hom_left_concat_map count_list_synthesize[OF *])
+    next
+    case False
+    then show ?thesis sorry
+  qed
+
+
 
 lemma
   assumes "is_type msst \<gamma>"

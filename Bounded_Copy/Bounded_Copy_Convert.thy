@@ -329,7 +329,7 @@ next
   then show ?thesis by (auto simp add: count_list_synthesize_lt_length assms)
 qed
 
-lemma
+lemma count_alpha_iota_le_1:
   fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
   assumes "boundedness (B :: 'k::enum boundedness) k"
   assumes "bounded_shuffle k (\<alpha> x)"
@@ -342,20 +342,31 @@ proof (simp add: hat_hom_left_concat_map)
     by (rule sum.cong, simp_all add: iota_x_y y_neq_y0_count_list_zero)
   also have "... = ?f y0" 
     by simp
-  finally have "sum ?f UNIV = ?f y0" .
-  then show "sum ?f UNIV \<le> Suc 0" proof (cases "x = x0")
+  also have "... \<le> Suc 0" proof (cases "x0 = x")
     case True
     then show ?thesis proof -
-      have *: "length_scanned (scan (\<alpha> x :: ('y + 'x \<times> ('y, 'k::enum) index + 'b) list)) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)"
-        by (rule length_scanned_boundedness[OF assms])
-      then show ?thesis
-        thm count_list_synthesize[OF *]
-        apply (simp add: \<iota>_def synthesize_def synthesize_shuffle_def comp_def hat_hom_left_concat_map count_list_synthesize[OF *])
-    next
+      have "length (extract_variables (map Inl (\<alpha> x y0))) \<le> card (UNIV::'y set) * k"
+        by (simp, rule variable_count_in_bounded_shuffle[OF assms(2)])
+      then have "length_scanned (scan (map Inl (\<alpha> x y0))) \<le> Suc (card (UNIV::'y set) * k)"
+        by (simp add: length_scanned_of_variable_count)
+      also have "Suc (card (UNIV::'y set) * k) = length (Enum.enum::('y::enum, 'k) type_mult_suc list)"
+        using assms unfolding boundedness_def
+        by (simp add: card_UNIV_length_enum[symmetric] card_cartesian_product[symmetric] card_UNIV_option)
+      finally have *:"length_scanned (scan (map Inl (\<alpha> x y0))) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)" .
+      show ?thesis
+        by (simp add: \<iota>_def synthesize_def synthesize_shuffle_def comp_def hat_hom_left_concat_map True count_list_synthesize[OF *])
+    qed
+  next
     case False
-    then show ?thesis sorry
+    then show ?thesis proof -
+      have w: "\<forall>yi\<in>set (\<iota> B \<alpha> x y0). pred_only_x_y x y0 yi"
+        by (simp add: iota_x_y Ball_set_list_all)
+      show ?thesis
+        by (metis False count_notin le_SucI le_zero_eq pred_only_x_y_apply w)
+    qed
   qed
-
+  finally show "sum ?f UNIV \<le> Suc 0" .
+qed
 
 
 lemma

@@ -217,14 +217,14 @@ qed
 
 lemma count_alpha_0_comp_count_alpha_n:
   assumes "count_alpha m1 a = 0"
-  assumes "count_alpha m2 a = n"
-  shows "count_alpha (m1 \<bullet> m2) a = n"
+  assumes "count_alpha m2 a \<le> n"
+  shows "count_alpha (m1 \<bullet> m2) a \<le> n"
   using assms by (simp add: count_alpha_comp, simp add: count_alpha_def)
 
 
 lemma count_alpha_le_1_bounded_copy:
   assumes "count_alpha m1 a \<le> 1"
-  assumes "count_alpha m2 a = n"
+  assumes "count_alpha m2 a \<le> n"
   assumes "bounded k m2"
   shows "count_alpha (m1 \<bullet> m2) a \<le> k + n"
 proof (cases "count_alpha m1 a = 0")
@@ -241,9 +241,10 @@ next
     by (rule sum.cong, auto simp add: y0 y1)
   also have "... = count_var m2 y1" by simp
   finally have *: "(\<Sum>y\<in>UNIV. count_list (m1 y) (Inr a) * count_var m2 y) = count_var m2 y1" .
-  show ?thesis using assms unfolding bounded_def
-    apply (simp add: count_alpha_comp, simp add: count_alpha_def)
-    using * by simp
+  have "(\<Sum>y\<in>UNIV. count_list (m1 y) (Inr a) * count_var m2 y) \<le> k"
+    using assms unfolding bounded_def by (simp add: "*")
+  then show ?thesis using assms unfolding bounded_def
+    by (simp add: count_alpha_comp)
 qed
 
 

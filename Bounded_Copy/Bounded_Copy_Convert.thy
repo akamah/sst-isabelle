@@ -369,36 +369,94 @@ proof (simp add: hat_hom_left_concat_map)
 qed
 
 
-lemma
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
-  assumes "count_list (SST.eta_hat msst (q, w) x0) (Inl x0) = 1"
-  shows "count_list (hat_homU (\<iota> B \<alpha>) (SST.eta_hat msst (q, w) x0) y0) (Inr (Inl (x0, y0, z0))) \<le> k"
+lemma count_alpha_iota_x_neq_x0_eq_0:
+  fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
+  assumes "x \<noteq> x0"
+  assumes "boundedness (B :: 'k::enum boundedness) k"
+  assumes "bounded_shuffle k (\<alpha> x)"
+  shows "count_alpha (\<iota> B \<alpha> x :: ('y, 'x \<times> ('y, 'k::enum) index + 'b) update) (Inl (x0, y0, z0) :: 'x \<times> ('y, 'k::enum) index + 'b) = 0"
 proof -
-  thm is_type_def
+  have w: "\<forall>yi\<in>set (\<iota> B \<alpha> x y0). pred_only_x_y x y0 yi"
+    by (simp add: iota_x_y Ball_set_list_all)
+  have "\<forall>y. count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0))) = 0"
+    by (metis assms(1) count_notin pred_only_x_y_apply w y_neq_y0_count_list_zero)
+  then show ?thesis unfolding count_alpha_def
+    by simp
+qed
 
-lemma
-  shows "count_list (hat_homU (\<iota> B2 \<alpha>) u y) (Inr (Inl (x0, y0, z0))) 
-      = (\<Sum>k\<in>UNIV. count_list (hat_homU (\<iota> B2 (replace_index_shuffle x0 \<alpha>)) (replace_index B1 x0 u) y)
-                              (Inr (Inl (Inl k, y0, z0))))"
-proof (induct u rule: xa_induct)
+lemma count_list_inr_list_Inl: "count_list (hat_alpha inr_list w) (Inr (Inl xyz)) = 0"
+  by (induct w rule: xa_induct, simp_all)
+
+lemma count_alpha_inr_list: "count_alpha (inr_list \<star> a) (Inl xyz) = 0"
+  unfolding count_alpha_def map_alpha_def by (simp add: count_list_inr_list_Inl)
+
+lemma count_alpha_hat_homU_eta_hat:
+  fixes msst :: "('q::finite, 'x::finite, 'y::enum, 'a, 'b) MSST"
+  fixes B1 :: "'k::enum boundedness"
+  fixes B2 :: "'l::enum boundedness"
+  assumes bc_msst: "bounded_copy_SST k msst"
+  assumes boundedness_l: "boundedness B2 l"
+  assumes typed: "is_type msst \<gamma>"
+  assumes bc_type: "bounded_copy_type l msst \<gamma>"
+  assumes reach: "reachable (convert_MSST B2 msst) (q1, \<beta>)"
+  assumes tail: "u \<in> tails (SST.eta_hat msst (q1, w) x)"
+  shows "count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 \<beta>)) u) (Inl (x0, y0, z0))
+       \<le> count_list u (Inl x0) * l"
+using tail proof (induct u rule: xa_induct)
 case Nil
-then show ?case by (simp add: idU_def)
+  then show ?case by (simp add: idU_def count_alpha_def)
 next
-  case (Var x xs)
-  then show ?case proof (cases "x0 = x")
-    case True
-    then show ?thesis using Var sorry
-  next
-    case False
-    then show ?thesis sorry
+  case (Var x' xs)
+  then show ?case proof -
+    have xs: "xs \<in> tails (SST.eta_hat msst (q1, w) x)" proof -
+      thm tails_def
+      obtain ys where "ys @ Inl x' # xs = SST.eta_hat msst (q1, w) x"
+        using Var.prems unfolding tails_def by auto
+      then have body: "SST.eta_hat msst (q1, w) x = (ys @ [Inl x']) @ xs" by simp
+      show ?thesis unfolding tails_def by (simp, rule exI[where x="ys @ [Inl x']"], rule body)
+    qed
+    note IH = Var.hyps(1)[OF xs]
+    have rep: "Rep_alpha B2 \<beta> x' \<in> \<gamma> (q1, x')"
+      by (rule condition_of_convert_MSST_reachable_state[OF boundedness_l typed bc_type reach])
+    then have bs: "bounded_shuffle l (Rep_alpha B2 \<beta> x')"
+      using bc_type unfolding bounded_copy_type_def
+      by (meson reach reachable_convert)
+    note bc = hat_homU_iota_bounded_copy_tail[OF boundedness_l typed bc_type reach xs]
+    show ?thesis proof (cases "x' = x0")
+      case True
+      then show ?thesis proof -
+        have x: "count_alpha (\<iota> B2 (Rep_alpha B2 \<beta>) x0) (Inl (x0, y0, z0)) \<le> 1"
+          apply (rule count_alpha_iota_le_1[OF boundedness_l])
+          using bs by (simp add: True)
+        show ?thesis by (simp del: Rep_alpha.simps add: True count_alpha_le_1_bounded_copy[OF x IH bc])
+      qed
+    next
+      case False
+      then show ?thesis proof -
+        have x: "count_alpha (\<iota> B2 (Rep_alpha B2 \<beta>) x') (Inl (x0, y0, z0)) = 0"
+          apply (rule count_alpha_iota_x_neq_x0_eq_0[OF False boundedness_l])
+          using bs by simp
+        show ?thesis by (simp del: Rep_alpha.simps add: False count_alpha_0_comp_count_alpha_n[OF x IH])
+      qed
+    qed
   qed
 next
   case (Alpha a xs)
-  then show ?case apply simp
+  then show ?case proof -
+    have xs: "xs \<in> tails (SST.eta_hat msst (q1, w) x)" proof -
+      thm tails_def
+      obtain ys where "ys @ Inr a # xs = SST.eta_hat msst (q1, w) x"
+        using Alpha.prems unfolding tails_def by auto
+      then have body: "SST.eta_hat msst (q1, w) x = (ys @ [Inr a]) @ xs" by simp
+      show ?thesis unfolding tails_def by (simp, rule exI[where x="ys @ [Inr a]"], rule body)
+    qed
+    note IH = Alpha.hyps(1)[OF xs]
+    have a: "count_alpha (inr_list \<star> a) (Inl (x0, y0, z0)) = 0" by (simp add: count_alpha_inr_list)
+    show ?thesis by (simp del: Rep_alpha.simps add: count_alpha_0_comp_count_alpha_n[OF a IH ])
+  qed
 qed
 
-*)
+
 theorem convert_MSST_bounded:
   fixes msst :: "('q::finite, 'x::finite, 'y::enum, 'a, 'b) MSST"
   fixes B1 :: "'k::enum boundedness"
@@ -445,8 +503,26 @@ proof (intro allI, rule impI)
       also have "... = (\<Sum>x\<in>UNIV. \<Sum>y\<in>UNIV. count_list (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x) y)
            (Inr (Inl (x0, y0, z0))))"
         by (simp add: sum_decompose[OF boundedness_l hat_homU_iota_bounded_copy[OF boundedness_l typed bc_type r_pair]])
-      also have "... \<le> k * l"
-        sorry
+      also have "... = (\<Sum>x\<in>UNIV. count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) (Inl (x0, y0, z0)))"
+        unfolding count_alpha_def by simp
+      also have "... \<le> k * l" proof -
+        have body: "\<And>x. count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) (Inl (x0, y0, z0))
+                    \<le> count_list (SST.eta_hat msst (fst qb, w) x) (Inl x0) * l" proof -
+          fix x
+          have tail: "SST.eta_hat msst (fst qb, w) x \<in> tails (SST.eta_hat msst (fst qb, w) x)"
+            unfolding tails_def by auto
+          show "count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) (Inl (x0, y0, z0))
+                    \<le> count_list (SST.eta_hat msst (fst qb, w) x) (Inl x0) * l"
+            by (simp add: count_alpha_hat_homU_eta_hat[OF bc_msst boundedness_l typed bc_type r_pair tail])
+        qed
+        have "(\<Sum>x\<in>UNIV. count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) (Inl (x0, y0, z0)))
+            \<le> (\<Sum>x\<in>UNIV. count_list (SST.eta_hat msst (fst qb, w) x) (Inl x0) * l)"
+          by (simp add: body sum_mono)
+        also have "... = (\<Sum>x\<in>UNIV. count_list (SST.eta_hat msst (fst qb, w) x) (Inl x0)) * l"
+          by (metis (mono_tags, lifting) sum.cong sum_distrib_right)
+        have "(\<Sum>x\<in>UNIV. count_list (SST.eta_hat msst (fst qb, w) x) (Inl x0)) = k"
+
+        show ?thesis apply (simp add: body)
       finally show "?lhs \<le> k * l" .
     qed
   qed

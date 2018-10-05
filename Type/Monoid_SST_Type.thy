@@ -145,7 +145,7 @@ lemma type_hom_hat:
 
 
 abbreviation is_type_tails :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
-  "is_type_tails k msst \<gamma> \<equiv> (\<forall>q x a. \<forall>u \<in> tails (SST.eta msst (q, a) x). 
+  "is_type_tails k msst \<gamma> \<equiv> (\<forall>q x w. \<forall>u \<in> tails (SST.eta_hat msst (q, w) x). 
                                      \<forall>m \<in> type_hom \<gamma> (q, u). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
 
 abbreviation is_type_bounded :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where

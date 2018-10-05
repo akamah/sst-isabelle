@@ -277,10 +277,10 @@ proof (auto simp add: bounded_copy_type_def all_shuffles_def)
   then show "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (q2, w)))"
     by (rule resolve_bounded)
 next
-  fix q1 f q2 a x u m 
+  fix q1 f q2 w x u m 
   assume "reachable (compose_SST_SST sst1 sst2) (q1, f)"
-  let ?eta = "SST.eta (compose_SST_SST sst1 sst2) ((q1, f), a) (q2, x)"
-  let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), [a]) (q2, x)"
+  let ?eta = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
+  let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
   assume "u \<in> tails ?eta"
   thm allI
   then have u: "u \<in> tails ?eta_hat" by (simp add: comp_right_neutral)

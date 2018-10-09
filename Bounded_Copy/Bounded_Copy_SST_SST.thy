@@ -36,7 +36,7 @@ proof -
 qed
 
 
-theorem compose_SST_Transducer_bounded:
+theorem compose_SST_SST_bounded:
   fixes sst1 :: "('q1::finite, 'x1::finite, 'a, 'b) SST"
   fixes sst2 :: "('q2::finite, 'x2::finite, 'b, 'c) SST"
   assumes "bounded_copy_SST k sst1"

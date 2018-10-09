@@ -5,18 +5,19 @@
 section \<open>Composition of two SSTs\<close>
 
 theory Compose
-  imports Main Compose_SST_SST Convert_Monoid_SST "../Type/Compose_SST_SST_Type"
+  imports Main Compose_SST_SST Convert_Monoid_SST
+          "../Type/Compose_SST_SST_Type" "../Bounded_Copy/Bounded_Copy_SST_SST" "../Type/Compose_SST_SST_Type" "../Bounded_Copy/Bounded_Copy_Convert"
 begin
 
 
-definition compose where
-  "compose B sst1 sst2 = convert_MSST B (compose_SST_SST sst1 sst2)"
+abbreviation compose where
+  "compose B sst1 sst2 \<equiv> convert_MSST B (compose_SST_SST sst1 sst2)"
 
 
 theorem SST_can_compose:
   assumes "boundedness B k"
   assumes "bounded_copy_SST k sst2"
-  assumes "trim sst2"
+  assumes "trim sst2" (* without loss of generality, we can assume sst2 is trim *)
   shows "SST.run (compose B sst1 sst2) w = Option.bind (SST.run sst1 w) (SST.run sst2)"
 proof -
   let ?gm = "compose_\<gamma> sst1 sst2"
@@ -26,6 +27,39 @@ proof -
   ultimately show ?thesis unfolding compose_def using assms
     by (simp add: MSST_can_convert can_compose_SST_SST)
 qed
+
+theorem composed_SST_bounded:
+  fixes sst1 :: "('q1::enum, 'x1::enum, 'a, 'b) SST"
+  fixes sst2 :: "('q2::enum, 'x2::enum, 'b, 'c) SST"
+  fixes B1 :: "'e1::enum boundedness"
+  fixes B2 :: "'e2::enum boundedness"
+  assumes "boundedness B1 k"
+  assumes "boundedness B2 l"
+  assumes "bounded_copy_SST k sst1"
+  assumes "bounded_copy_SST l sst2"
+  assumes "trim sst2"
+  shows "bounded_copy_SST (card (UNIV::'q2 set) * k * l) (compose B2 sst1 sst2)"
+proof -
+  let ?msst = "compose_SST_SST sst1 sst2"
+  let ?gamma = "compose_\<gamma> sst1 sst2"
+  let ?Bq2_k = "Type_Nat :: ('q2 \<times> 'e1) type_nat"
+  let ?q2_k = "card (UNIV::'q2 set) * k"
+  have bound: "boundedness ?Bq2_k ?q2_k"
+    using assms(1)
+    unfolding boundedness_def by (simp add: card_UNIV_length_enum[symmetric] UNIV_Times_UNIV[symmetric] del: UNIV_Times_UNIV)
+  have bc_msst: "bounded_copy_SST ?q2_k ?msst"
+    by (simp add: compose_SST_SST_bounded assms(3))
+  have typed: "is_type ?msst ?gamma"
+    by (simp add: compose_typable)
+  have bc_type: "bounded_copy_type l ?msst ?gamma"
+    by (simp add: compose_\<gamma>_bounded assms(4-5))
+  show ?thesis
+    by (rule convert_MSST_bounded[OF bc_msst bound assms(2) typed bc_type])
+qed
+
+
+
+
 
 definition revrev where
   "revrev = compose_SST_SST rev rev"

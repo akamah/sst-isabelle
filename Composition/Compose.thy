@@ -98,3 +98,4 @@ lemmas runner = SST.run_def Monoid_SST.run_def
          \<iota>_def synthesize_def synthesize_shuffle_def synthesize_store_def 
          resolve_shuffle_def map_alpha_def idS_def idU_def \<alpha>0_def resolve_store_def scan_def
 
+end

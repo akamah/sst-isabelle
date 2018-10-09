@@ -459,7 +459,6 @@ qed
 
 theorem convert_MSST_bounded:
   fixes msst :: "('q::finite, 'x::finite, 'y::enum, 'a, 'b) MSST"
-  fixes B1 :: "'k::enum boundedness"
   fixes B2 :: "'l::enum boundedness"
   assumes bc_msst: "bounded_copy_SST k msst"
   assumes boundedness_k: "boundedness B1 k"
@@ -472,6 +471,7 @@ proof (intro allI, rule impI)
   fix w qb
   assume "reachable (convert_MSST B2 msst) qb"
   then have r_pair: "reachable (convert_MSST B2 msst) (fst qb, snd qb)" by simp
+  then have r_fst: "reachable msst (fst qb)" by (rule reachable_convert)
   have l0: "0 < l" using assms length_enum_gt_0 unfolding boundedness_def by simp
   have k0: "0 < k" using assms length_enum_gt_0 unfolding boundedness_def by simp
 
@@ -520,9 +520,17 @@ proof (intro allI, rule impI)
           by (simp add: body sum_mono)
         also have "... = (\<Sum>x\<in>UNIV. count_list (SST.eta_hat msst (fst qb, w) x) (Inl x0)) * l"
           by (metis (mono_tags, lifting) sum.cong sum_distrib_right)
-        have "(\<Sum>x\<in>UNIV. count_list (SST.eta_hat msst (fst qb, w) x) (Inl x0)) = k"
-
-        show ?thesis apply (simp add: body)
+        also have "... = count_var (SST.eta_hat msst (fst qb, w)) x0 * l"
+          unfolding count_var_def by simp
+        also have "... \<le> k * l" proof -
+          have "bounded k (SST.eta_hat msst (fst qb, w))"
+            using bc_msst r_fst unfolding bounded_copy_SST_def by auto
+          then have "count_var (SST.eta_hat msst (fst qb, w)) x0 \<le> k"
+            by (simp add: bounded_def)
+          then show ?thesis by simp
+        qed
+        finally show ?thesis .
+      qed
       finally show "?lhs \<le> k * l" .
     qed
   qed

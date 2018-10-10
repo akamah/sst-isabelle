@@ -1,5 +1,5 @@
 theory Enum_Nat
-  imports Enum
+  imports HOL.Enum
 begin
 
 

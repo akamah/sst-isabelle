@@ -1,5 +1,5 @@
 theory Bounded_Copy_SST_SST
-  imports Main Finite_Set
+  imports Main HOL.Finite_Set
           "../Core/Update" "../Composition/Compose_SST_SST" "../Single_Use/Single_Use"
 begin
 

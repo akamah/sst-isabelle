@@ -9,7 +9,7 @@ definition update2homU ::
   "('x \<Rightarrow> ('y, 'z + 'b) update) \<Rightarrow> 
    ('x + ('y, 'b) update) \<Rightarrow>
    ('y, 'z + 'b) update"where
-  "update2homU \<phi> = fold_sum \<phi> (op \<star> inr_list)"
+  "update2homU \<phi> = fold_sum \<phi> ((\<star>) inr_list)"
 
 definition hat_homU ::
   "('x \<Rightarrow> ('y, 'z + 'b) update) \<Rightarrow> 

@@ -3,7 +3,7 @@
 *)
 
 theory Sum_Util
-  imports Sum_Type List
+  imports HOL.Sum_Type HOL.List
 begin
 
 

@@ -5,7 +5,7 @@
 section \<open>Proof of convertion from a Monoid SST to a ordinary SST\<close>
 
 theory Convert_Monoid_SST
-  imports Main Sum_Type "../Core/Update" "../Core/SST" "../Core/Monoid_SST" "../Decomposition/Decompose_Update"
+  imports Main HOL.Sum_Type "../Core/Update" "../Core/SST" "../Core/Monoid_SST" "../Decomposition/Decompose_Update"
                          "../Type/Monoid_SST_Type" "Convert_Monoid_SST_Def" "Convert_Monoid_SST_Type_Misc"
 begin
 

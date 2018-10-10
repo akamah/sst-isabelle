@@ -1,5 +1,5 @@
 theory Shuffle
-  imports Main Enum List "../Util/Enum_Nat" "../Core/Update" "../Single_Use/Single_Use" "Decompose_Update"
+  imports Main HOL.Enum HOL.List "../Util/Enum_Nat" "../Core/Update" "../Single_Use/Single_Use" "Decompose_Update"
 begin                                  
 
 

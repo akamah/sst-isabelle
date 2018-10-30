@@ -225,7 +225,7 @@ lemma map_alpha_distrib: "t \<star> (\<psi> \<bullet> \<phi>) = t \<star> \<psi>
 lemma map_alpha_idU[simp]: "t \<star> idU = idU"
   by (auto simp add: idU_def map_alpha_def )
 
-lemma map_alpha_concatU: "t \<star> concatU us = concatU (map ((\<star>) t) us)"
+lemma map_alpha_concatU: "t \<star> concatU us = concatU (map (map_alpha t) us)"
   by (induct us, simp_all add: map_alpha_distrib)
 
 lemma map_alpha_lem: "hat_alpha s (hat_alpha t u) = hat_alpha (concat \<circ> map s \<circ> t) u"

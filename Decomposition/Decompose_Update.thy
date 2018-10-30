@@ -742,7 +742,7 @@ proof -
   also have "... = (\<Sum>x\<in>?univ. (\<Sum>y\<in>?univ. count_list (s x) y))"
     by (rule sum.cong, simp_all add: sum_count_list_UNIV)
   also have "... = (\<Sum>y\<in>?univ. (\<Sum>x\<in>?univ. count_list (s x) y))"
-    by (rule sum.swap)
+    by (rule sum.commute)
   also have "... \<le> (\<Sum>y\<in>?univ. k)"
     by (rule sum_mono, simp add: *)
   also have "... = card ?univ * k"
@@ -886,4 +886,54 @@ lemma "resolve_store testB poyo (True, Some (False, False)) = ''B''"
 lemma "resolve_store testB poyo (True, Some (False, True)) = ''C''" 
   by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
 
+(*
+
+fun new_decompose_rest :: "'x \<Rightarrow> nat \<Rightarrow> ('x \<times> 'a list) list \<Rightarrow> 'a list" where
+  "new_decompose_rest y _ Nil = []" |
+  "new_decompose_rest y (0::nat) ((x, as)#rest) = (if y = x then as else new_decompose_rest y 0 rest)" |
+  "new_decompose_rest y (Suc k) ((x, as)#rest) = (if y = x then new_decompose_rest y k rest else
+                                                                new_decompose_rest y (Suc k) rest)"
+
+fun new_decompose_head :: "'x \<Rightarrow> ('x, 'a) scanned \<Rightarrow> 'a list" where
+  "new_decompose_head y (as, _) = as"
+
+fun new_decompose_nat :: "('y::enum, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'b list" where
+  "new_decompose_nat m y 0       = fst (scan (m y))" |
+  "new_decompose_nat m y (Suc k) = new_decompose_rest y k (concat (map (snd \<circ> scan \<circ> m) (Enum.enum :: 'y list)))"
+
+fun decompose :: "('y::enum, 'b) update \<Rightarrow> ('y \<times> 'k::enum) \<Rightarrow> 'b list" where
+  "decompose m (y, k) = new_decompose_nat m y (enum_to_nat k)"
+
+lemma "decompose poyo (False, None) = ''P''"
+  apply (simp add: enum_to_nat_def)
+  sorry
+
+
+type_synonym ('y, 'k) index2 = "'y \<times> ('k option)"
+
+fun synthesize_shuffle2 :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle 
+                          \<Rightarrow> ('y, 'y + ('y, 'k) index2, 'b) update'" where
+  "synthesize_shuffle2 B s y = map Inl (padding B y (scan (map Inl (s y) :: ('y + 'y) list)))"
+
+fun synthesize_store2 :: "'k::enum boundedness \<Rightarrow> (('y::enum, 'k) index2 \<Rightarrow> 'b list)
+                          \<Rightarrow> ('y + ('y, 'k) index2, 'y, 'b) update'" where
+  "synthesize_store2 B a (Inl y) = [Inl y]" | 
+  "synthesize_store2 B a (Inr i) = map Inr (a i)"
+
+definition synthesize2 :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, 'k, 'b) store
+                      \<Rightarrow> ('y, 'b) update" where
+  "synthesize2 B sa = (case sa of (s, a) \<Rightarrow> synthesize_store B a \<bullet> synthesize_shuffle B s)"
+
+*)
+
 end
+
+
+
+
+
+
+
+
+
+

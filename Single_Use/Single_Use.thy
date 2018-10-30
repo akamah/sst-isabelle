@@ -205,7 +205,7 @@ proof (simp)
       = (\<Sum>y\<in>UNIV. \<Sum>x\<in>UNIV. count_list (m1 y) (Inr a) * count_list (m2 x) (Inl y))" (is "?lhs = _")
     by (simp add: sum_distrib_left)
   also have "... = (\<Sum>x\<in>UNIV. \<Sum>y\<in>UNIV. count_list (m1 y) (Inr a) * count_list (m2 x) (Inl y))" (is "_ = ?rhs")
-    by (rule sum.swap)
+    by (rule sum.commute)
   finally have "?lhs = ?rhs" .
 
   then show "(\<Sum>x\<in>UNIV. count_list (hat_hom m1 (m2 x)) (Inr a)) =

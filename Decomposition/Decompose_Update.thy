@@ -497,13 +497,13 @@ subsection \<open>Properties of Decomposition\<close>
 
 
 lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle B s = synthesize_shuffle B s"
-  by (auto simp add: map_alpha_def hat_alpha_left_ignore synthesize_shuffle_def)
+  by (rule ext, simp add: map_alpha_def hat_alpha_left_ignore synthesize_shuffle_def)
 
 lemma map_alpha_synthesize_store: "t \<star> synthesize_store B p = synthesize_store B (concat o map t o p)"
   by (rule ext_sum, simp_all add: map_alpha_def Update.hat_alpha_right_map synthesize_store_def)
 
 lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, concat o map t o a)"
-  by (auto simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store synthesize_def)
+  by (rule ext, simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store synthesize_def)
 
 
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
@@ -823,7 +823,7 @@ proof -
   have "\<And>x. synthesize B (resolve_shuffle m, resolve_store B m) x = flat (scan (m x))"
     apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
     apply (simp add: resolve_shuffle_def)
-    apply (simp add: hat_hom_left_concat_map padding_scan_ignore_alphabet)
+    apply (simp add: padding_scan_ignore_alphabet)
     apply (simp add: concat_map_padding)
     apply (rule flat_store_flat)
     apply (rule length_scanned_boundedness)
@@ -848,7 +848,7 @@ qed
 
 
 theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
-  by (auto simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def hat_hom_left_concat_map
+  by (auto simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def
                      extract_variables_synthesize_store extract_variables_padding_scan)
 
 

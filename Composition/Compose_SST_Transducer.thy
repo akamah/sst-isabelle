@@ -33,7 +33,7 @@ definition H :: "('q, 'b) trans \<Rightarrow> ('q, 'b, 'c) out
 proposition \<Delta>_assoc_string:
   "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
    hat1 (delta2f f tr) (q, hat_hom theta u)"
-  by (induction u arbitrary: q rule: xa_induct, simp_all)
+  by (induct u arbitrary: q rule: xa_induct, simp_all)
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
   by (auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
@@ -42,8 +42,7 @@ proposition H_assoc_string:
   "hat_hom (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))
      (Transducer.hat2 (delta2f (\<lambda>(q2, x1). hat1 (delta2f f t_trans) (q2, theta x1)) t_trans) (eta2f t_out) (q, u)) =
    Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta u)"
-  by (induction u arbitrary: q rule: xa_induct,
-       simp_all add: Transducer.eta_append hat_hom_right_ignore)
+  by (induct u arbitrary: q rule: xa_induct, simp_all add: Transducer.eta_append)
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
   by (auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
@@ -65,9 +64,9 @@ definition compose_final :: "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'b, 'c) 
   "compose_final sst td = (\<lambda>(q1, f).
      case final sst q1 of
        Some u \<Rightarrow>
-         if Transducer.final td (\<Delta> (delta td) (f, \<lambda>x. u) (initial td, SOME x :: 'x1. True))
+         if Transducer.final td (\<Delta> (delta td) (f, \<lambda>x. u) (initial td, ()))
          then Some (H (delta td) (Transducer.eta td) (f, \<lambda>x. u)
-                      (initial td, SOME x :: 'x1. True))
+                      (initial td, ()))
          else None |
        None \<Rightarrow> None)"
 
@@ -84,7 +83,7 @@ definition compose_SST_Transducer ::
 lemma compose_\<delta>_hat: "hat1 (compose_\<delta> sst td) ((q, f), w) =
         (delta_hat sst (q, w),
          \<Delta> (delta td) (f, eta_hat sst (q, w)))"
-proof (induction w arbitrary: q f)
+proof (induct w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def \<Delta>_def)
 next
   case (Cons a u) then show ?case by (simp add: compose_\<delta>_def \<Delta>_assoc)
@@ -93,7 +92,7 @@ qed
 lemma compose_\<eta>_hat:
   "hat2 (compose_\<delta> sst td) (compose_\<eta> sst td) ((q, f), w) =
    H (delta td) (Transducer.eta td) (f, eta_hat sst (q, w))"
-proof (induction w arbitrary: q f)
+proof (induct w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def H_def)
 next
   case (Cons a u) then show ?case by (simp add: compose_\<delta>_def compose_\<eta>_def H_assoc)
@@ -104,7 +103,7 @@ subsection \<open>Property of valuation\<close>
 
 
 lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
-  by (induction w arbitrary: q rule: xa_induct, simp_all add: empty_def)
+  by (induct w arbitrary: q rule: xa_induct, simp_all add: empty_def)
 
 lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
@@ -112,7 +111,7 @@ lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q,
 lemma valuate_eta_hat_string:
   "valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w))
  = Transducer.hat2 tr td (q, valuate w)"
-  by (induction w arbitrary: q rule: xa_induct, simp_all)
+  by (induct w arbitrary: q rule: xa_induct, simp_all)
 
 lemma valuate_eta_hat: "Transducer.hat2 tr td (q, valuate (u x)) = valuate (H tr td (\<lambda>(q, x). q, u) (q, x))"
   by (simp add: H_def valuate_eta_hat_string)
@@ -131,7 +130,7 @@ proof (cases "SST.final sst (delta_hat sst (initial sst, w))")
 next
   case (Some output_final1)
   let ?output_of_1st_sst =
-    "valuate ((SST.eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x. True))"
+    "valuate ((SST.eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. output_final1)) ())"
   show ?thesis
   proof (cases "transducer.final td (delta_hat td (initial td, ?output_of_1st_sst))")
     case False then show ?thesis

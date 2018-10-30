@@ -13,11 +13,8 @@ subsection \<open>Properties\<close>
 
 
 lemma \<Delta>'_id: "\<Delta>' B (\<alpha>, idU) = \<alpha>"
-  apply (rule ext)
-  apply (simp add: \<Delta>'_def idU_def comp_right_neutral)
-  apply (simp add: resolve_shuffle_def \<iota>_def synthesize_inverse_shuffle)
-  by (simp add: Rep_bc_shuffle_inverse)
-
+  by (rule ext, simp add: \<Delta>'_def idU_def resolve_shuffle_def \<iota>_def synthesize_inverse_shuffle Rep_bc_shuffle_inverse)
+ 
 
 lemma \<Delta>'_assoc_string:
   fixes B :: "'k::enum boundedness"
@@ -74,7 +71,7 @@ using assm_reachable proof (induct w arbitrary: q rule: rev_induct)
 next
   case (snoc a w)
   then show ?case 
-    by (simp add: eta_append comp_right_neutral convert_\<delta>_def \<Delta>'_assoc[OF assms(1-3) snoc.prems])
+    by (simp add: eta_append convert_\<delta>_def \<Delta>'_assoc[OF assms(1-3) snoc.prems])
 qed
 
 
@@ -107,7 +104,7 @@ next
   case (Alpha a xs)
   then show ?case proof (cases a)
     case (Inl z)
-    then show ?thesis by (simp add: map_alpha_def Alpha hat_hom_right_ignore)
+    then show ?thesis by (simp add: map_alpha_def Alpha)
   next
     case (Inr b)
     then show ?thesis by (simp add: map_alpha_def Alpha)
@@ -181,19 +178,11 @@ qed
 lemma valuate_update_map_alpha: "valuate (valuate (\<theta> x)) = valuate ((ignore_left \<star> \<theta>) x)"
   by (simp add: map_alpha_def valuate_update)
 
-
-definition idA :: "'x \<Rightarrow> 'x list" where
-  "idA x = [x]"
-
-lemma ignore_left_inr_list_eq_idA: "(concat o map ignore_left o inr_list) = idA" unfolding idA_def by auto
-lemma map_alpha_idA: "idA \<star> m = m"
-proof -
-  have 1: "\<And>w. hat_alpha idA w = w" by (induct_tac w rule: xa_induct, simp_all add: idA_def)
-  show ?thesis by (rule ext, auto simp add: map_alpha_def 1)
-qed
+lemma ignore_left_inr_list_eq_idA: "(ignore_left \<odot> inr_list) = id_cm_comp"
+  by (rule ext, simp add: cm_comp_apply id_cm_comp_def)
 
 lemma ignore_left_inr_list: "ignore_left \<star> (inr_list \<star> a) = a"
-  by (auto simp add: map_alpha_assoc ignore_left_inr_list_eq_idA map_alpha_idA)
+  by (auto simp add: map_alpha_assoc ignore_left_inr_list_eq_idA)
 
 lemma ignore_left_iota_alpha0: "ignore_left \<star> \<iota> B \<alpha>0 x = idU"
 proof -
@@ -210,7 +199,7 @@ proof (induct m rule: xa_induct)
   then show ?case by simp
 next
   case (Var x xs)
-  then show ?case by (simp add: map_alpha_distrib ignore_left_iota_alpha0 comp_left_neutral)
+  then show ?case by (simp add: map_alpha_distrib ignore_left_iota_alpha0)
 next
   case (Alpha a xs)
   then show ?case by (simp add: map_alpha_distrib ignore_left_inr_list)
@@ -230,7 +219,7 @@ next
   case (Var x xs)
   then show ?case 
     apply (simp add: concatU_append hat_homU_append valuate_update_map_alpha map_alpha_distrib)
-    apply (simp add: ignore_left_iota_alpha0 comp_left_neutral)
+    apply (simp add: ignore_left_iota_alpha0)
     done
 next
   case (Alpha m xs)
@@ -344,17 +333,17 @@ lemma concat_map_ignore_left_embed: "concat \<circ> map ignore_left \<circ> Conv
   by (rule ext, simp)
 
 
-lemma cm_synthesize_store_const_is_inl: "list_all is_inl (concat (map (synthesize_store B (const [])) ps))"
+lemma cm_synthesize_store_const_is_inl: "list_all isl (concat (map (synthesize_store B (const [])) ps))"
   by (induct ps rule: xa_induct, simp_all add: synthesize_store_def)
 
 
 lemma list_all_is_inl_map_Inr:
-  assumes "list_all is_inl (map Inr bs)"
+  assumes "list_all isl (map Inr bs)"
   shows "bs = []"
   using assms by (induct bs, simp_all)
 
 lemma nth_string_scan_is_inl:
-  assumes "list_all is_inl u"
+  assumes "list_all isl u"
   shows "nth_string (scan u) k = []"
 using assms proof (induct u arbitrary: k rule: xw_induct)
   case (Word w)
@@ -370,12 +359,12 @@ qed
 lemma nth_string_map_scanned_ignore_left:
   "nth_string (map_scanned ignore_left (scan (\<iota> B \<alpha> x y))) k = []"
   apply (simp add: comp_def map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize concat_map_ignore_left_embed)
-  apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def comp_def hat_hom_left_concat_map)
+  apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def comp_def)
   apply (simp add: nth_string_scan_is_inl cm_synthesize_store_const_is_inl)
   done
 
 lemma valuate_H'_Nil_var: "valuate (H' B (\<alpha>, idU) (x, y, k)) = []"
-  apply (simp add: H'_def idU_def comp_right_neutral)
+  apply (simp add: H'_def idU_def)
   apply (simp add: resolve_store_def nth_string_valuate nth_string_map_scanned_ignore_left)
   done
 
@@ -466,14 +455,14 @@ using reach len proof (induct w arbitrary: q \<beta>)
 next
   case (Cons a w)
   then show ?case proof (cases "length w")
-    case 0 then show ?thesis by (simp add: convert_MSST_def convert_\<eta>_def comp_right_neutral)
+    case 0 then show ?thesis by (simp add: convert_MSST_def convert_\<eta>_def)
   next
     case (Suc nat) then show ?thesis proof -
       let ?qb' = "delta (convert_MSST B msst) ((q, \<beta>), a)"
       have l: "0 < length w" by (simp add: Suc)
       have r: "reachable (convert_MSST B msst) (fst ?qb', snd ?qb')"
         by (simp, rule reachable_delta, rule Cons.prems(1))
-      have hat: "SST.eta msst (q, a) = SST.eta_hat msst (q, [a])" by (simp add: comp_right_neutral)
+      have hat: "SST.eta msst (q, a) = SST.eta_hat msst (q, [a])" by (simp add:)
       show ?thesis
         apply (simp add: Cons.hyps[OF r l, simplified])
         apply (simp add: convert_MSST_def convert_\<eta>_simp convert_\<delta>_simp)

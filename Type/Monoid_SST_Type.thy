@@ -127,7 +127,7 @@ case Nil
   then show ?case by simp
 next
   case (Cons a w)
-  then show ?case proof (simp add: comp_def comp_lem[symmetric] del: Fun.comp_apply)
+  then show ?case proof (simp add: comp_lem del: Fun.comp_apply)
     let ?q' = "delta msst (q, a)"
     let ?e' = "SST.eta msst (q, a)"
     let ?uu = "hat_hom (SST.eta_hat msst (?q', w)) u"

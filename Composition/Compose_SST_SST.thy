@@ -27,14 +27,14 @@ definition \<Delta> :: "('q, 'b) trans
   where "\<Delta> t = (\<lambda>(f, \<theta>). (\<lambda>(q, a). hat1 (delta2f f t) (q, \<theta> a)))"
 
 definition H :: "('q2, 'b) trans \<Rightarrow> ('q2, 'x2, 'b, 'c) updator
-              \<Rightarrow> ('q2, 'x1) trans \<times> ('x1, 'b) update => ('q2 \<times> 'x1, ('x2, 'c) update) update"
+              \<Rightarrow> ('q2, 'x1) trans \<times> ('z, 'x1, 'b) update' => ('q2 \<times> 'z, 'q2 \<times> 'x1, ('x2, 'c) update) update'"
   where "H tr to = (\<lambda>(f, \<theta>). (\<lambda>(q, a). Transducer.hat2 (delta2f f tr) (eta2f to) (q, \<theta> a)))"
 
 
 proposition \<Delta>_assoc_string:
   "hat1 (delta2f (\<lambda>(q, a). hat1 (delta2f f tr) (q, theta a)) tr) (q, u) =
    hat1 (delta2f f tr) (q, hat_hom theta u)"
-  by (induction u arbitrary: q rule: xa_induct, simp_all)
+  by (induct u arbitrary: q rule: xa_induct, simp_all)
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
   by (auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
@@ -43,8 +43,7 @@ proposition H_assoc_string:
   "hat_hom (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))
      (Transducer.hat2 (delta2f (\<lambda>(q2, x1). hat1 (delta2f f t_trans) (q2, theta x1)) t_trans) (eta2f t_out) (q, u)) =
    Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q, hat_hom theta u)"
-  by (induction u arbitrary: q rule: xa_induct,
-       simp_all add: Transducer.eta_append hat_hom_right_ignore)
+  by (induct u arbitrary: q rule: xa_induct, simp_all add: Transducer.eta_append)
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
   by (auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
@@ -66,7 +65,7 @@ definition compose_final_update ::
   "compose_final_update sst1 sst2 = (\<lambda>(q1, f).
      case SST.final sst1 q1 of
        Some u \<Rightarrow> Some (H (delta sst2) (SST.eta sst2) (f, \<lambda>x. u)
-                        (initial sst2, SOME x :: 'x1. True)) |
+                        (initial sst2, ())) |
        None \<Rightarrow> None)"
 
 definition compose_final_string ::
@@ -74,7 +73,7 @@ definition compose_final_string ::
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2) \<Rightarrow> ('x2 + 'c) list option)" where
   "compose_final_string sst1 sst2 = (\<lambda>(q1, f).
      case SST.final sst1 q1 of
-       Some u \<Rightarrow> SST.final sst2 (\<Delta> (delta sst2) (f, \<lambda>x. u) (initial sst2, SOME x :: 'x1. True)) |
+       Some u \<Rightarrow> SST.final sst2 (\<Delta> (delta sst2) (f, \<lambda>x. u) (initial sst2, ())) |
        None \<Rightarrow> None)"
 
 definition compose_SST_SST ::
@@ -91,7 +90,7 @@ definition compose_SST_SST ::
 lemma compose_\<delta>_hat: "hat1 (compose_\<delta> sst1 sst2) ((q, f), w) =
         (delta_hat sst1 (q, w),
          \<Delta> (delta sst2) (f, SST.eta_hat sst1 (q, w)))"
-proof (induction w arbitrary: q f)
+proof (induct w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def \<Delta>_def)
 next
   case (Cons a u) then show ?case by (simp add: compose_\<delta>_def \<Delta>_assoc)
@@ -100,7 +99,7 @@ qed
 lemma compose_\<eta>_hat:
   "hat2 (compose_\<delta> sst1 sst2) (compose_\<eta> sst1 sst2) ((q, f), w) =
    H (delta sst2) (SST.eta sst2) (f, SST.eta_hat sst1 (q, w))"
-proof (induction w arbitrary: q f)
+proof (induct w arbitrary: q f)
   case Nil then show ?case by (simp add: idU_def H_def)
 next
   case (Cons a u) then show ?case by (simp add: compose_\<delta>_def compose_\<eta>_def H_assoc)
@@ -126,7 +125,7 @@ lemma valuation_delta_hat:
   by (simp add: \<Delta>_def valuation_delta_hat_string[OF assms])
 
 lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
-  by (induction w arbitrary: q rule: xa_induct, simp_all add: empty_def)
+  by (induct w arbitrary: q rule: xa_induct, simp_all add: empty_def)
 
 lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
   by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
@@ -146,7 +145,7 @@ lemma valuation_eta_hat_string:
 lemma valuate_eta_hat_string:
   "concatU (valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)))
  = SST.hat2 tr td (q, valuate w)"
-  by (induction w arbitrary: q rule: xa_induct, simp_all)
+  by (induct w arbitrary: q rule: xa_induct, simp_all)
 
 lemma valuate_eta_hat: "SST.hat2 tr td (q, valuate (u x)) = concatU (valuate (H tr td (\<lambda>(q, x). q, u) (q, x)))"
   by (simp add: H_def valuate_eta_hat_string)
@@ -203,7 +202,7 @@ proof (cases "SST.final sst1 (delta_hat sst1 (initial sst1, w))")
 next
   case Some_1: (Some output_final1)
   let ?output_of_1st_sst =
-    "valuate ((SST.eta_hat sst1 (initial sst1, w) \<bullet> (\<lambda>x. output_final1)) (SOME x :: 'x1. True))"
+    "valuate ((SST.eta_hat sst1 (initial sst1, w) \<bullet> (\<lambda>x. output_final1)) ())"
   show ?thesis
   proof (cases "SST.final sst2 (delta_hat sst2 (initial sst2, ?output_of_1st_sst))")
     case None then show ?thesis

@@ -14,7 +14,7 @@ lemma all_shuffles_first:
   unfolding all_shuffles_def
   apply auto
   apply (rule exI[of _ "[a]"])
-  apply (simp_all add: comp_right_neutral)
+  apply (simp_all add:)
   done
   
 
@@ -243,7 +243,7 @@ next
                          m1 = resolve_shuffle (SST.eta_hat sst2 (q2, w1))"
       using m Alpha by auto
     have w2: "delta_hat sst2 (?q, [a]) = ?q' \<and> m2 = resolve_shuffle (SST.eta_hat sst2 (?q, [a]))"
-      using m by (simp add: comp_right_neutral)
+      using m by (simp add:)
     have "delta_hat sst2 (q2, w1 @ [a]) = delta sst2 (hat1 (delta2f f (delta sst2)) (q2, xs), a)"
       by (simp add: w1 w2)
     moreover have "resolve_shuffle (SST.eta_hat sst2 (q2, w1 @ [a])) = m"
@@ -283,7 +283,7 @@ next
   let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
   assume "u \<in> tails ?eta"
   thm allI
-  then have u: "u \<in> tails ?eta_hat" by (simp add: comp_right_neutral)
+  then have u: "u \<in> tails ?eta_hat" by (simp add:)
   assume m0: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
   obtain v1 v2 where v: "u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
                                  (hat1 (delta2f f (delta sst2)) (q2, v1), v2)" using tail_substring_ex[OF u] by auto

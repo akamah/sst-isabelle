@@ -178,7 +178,7 @@ lemma synthesize_store_padding_x_y:
 
 lemma iota_x_y:
   "list_all (pred_only_x_y x0 y0) (\<iota> B \<alpha> x0 y0)"
-  by (simp add: hat_hom_left_concat_map \<iota>_def synthesize_def synthesize_shuffle_def comp_def synthesize_store_padding_x_y)
+  by (simp add: \<iota>_def synthesize_def synthesize_shuffle_def comp_def synthesize_store_padding_x_y)
 
 lemma y_neq_y0_count_list_zero: "y \<noteq> y0 \<Longrightarrow> count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0))) = 0"
 proof -
@@ -278,7 +278,7 @@ lemma count_alpha_iota_le_1:
   assumes "bounded_shuffle k (\<alpha> x)"
   shows "count_alpha (\<iota> B \<alpha> x :: ('y, 'x \<times> ('y, 'k::enum) index + 'b) update) (Inl (x0, y0, z0) :: 'x \<times> ('y, 'k::enum) index + 'b) \<le> 1"
   unfolding count_alpha_def
-proof (simp add: hat_hom_left_concat_map)
+proof (simp add:)
   let ?f = "\<lambda>y. count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0)  :: 'x \<times> ('y::enum, 'k::enum) index + 'b))"
   let ?g = "\<lambda>y. if y = y0 then count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0) :: 'x \<times> ('y::enum, 'k::enum) index + 'b)) else 0"
   have "sum ?f UNIV = sum ?g UNIV"
@@ -297,7 +297,7 @@ proof (simp add: hat_hom_left_concat_map)
         by (simp add: card_UNIV_length_enum[symmetric] card_cartesian_product[symmetric] card_UNIV_option)
       finally have *:"length_scanned (scan (map Inl (\<alpha> x y0))) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)" .
       show ?thesis
-        by (simp add: \<iota>_def synthesize_def synthesize_shuffle_def comp_def hat_hom_left_concat_map True count_list_synthesize[OF *])
+        by (simp add: \<iota>_def synthesize_def synthesize_shuffle_def comp_def True count_list_synthesize[OF *])
     qed
   next
     case False

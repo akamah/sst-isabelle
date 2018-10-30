@@ -57,14 +57,14 @@ lemma valuate_map_Inr[simp]: "valuate (map Inr as) = as"
 (* if the output is undefined, return None, or return some output *)
 definition run :: "('q, 'x, 'a, 'b, 'e) SST_scheme \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run sst w = (case final sst (delta_hat sst (initial sst, w)) of
-      Some u \<Rightarrow> Some ((valuate o (eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) (SOME x :: 'x. True)) |
+      Some u \<Rightarrow> Some ((valuate o (eta_hat sst (initial sst, w) \<bullet> (\<lambda>x. u))) ()) |
       None   \<Rightarrow> None)"
 
 
 subsection \<open>Lemmata\<close>
 
 lemma eta_append: "hat2 tf to (q, as @ bs) = hat2 tf to (q, as) \<bullet> hat2 tf to (hat1 tf (q, as), bs)"
-  by (induction as arbitrary: q, auto simp add: comp_assoc comp_left_neutral)
+  by (induction as arbitrary: q, auto simp add: comp_assoc)
 
 
 subsection \<open>Examples\<close>
@@ -85,9 +85,9 @@ definition reset :: "(nat, nat, nat, nat) SST" where
     final = \<lambda>q. Some [Inl 0] \<rparr>"
 
 lemma "run reset [1, 2, 0, 1, 2] = Some [1, 2]"
-  by (simp add: run_def reset_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
+  by (simp add: run_def reset_def Update.comp_apply hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
 
 lemma "run rev [2, 3, 4] = Some [4, 3, 2]"
-  by (simp add: run_def rev_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
+  by (simp add: run_def rev_def Update.comp_apply hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
 
 end

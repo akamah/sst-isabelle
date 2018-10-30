@@ -15,10 +15,10 @@ proof (induct u arbitrary: q rule: xa_induct)
   then show ?case by simp
 next
   case (Var x xs)
-  then show ?case by (auto simp add: Nat.le_SucI)
+  then show ?case by (simp add: Nat.le_SucI)
 next
   case (Alpha a xs)
-  then show ?case by (auto simp add: count_list_Inr)
+  then show ?case by (simp add: count_list_Inr)
 qed
 
 lemma compose_reachable:

@@ -1,5 +1,9 @@
+(* Title:   Setsum.thy
+   Author:  Minamide Yasuhiko
+*)
+
 theory Setsum
-imports Main
+  imports Main
 begin
 
 

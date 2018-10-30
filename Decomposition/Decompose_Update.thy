@@ -357,7 +357,7 @@ next
 qed
 
 lemma nth_string'_pos: "0 < n \<Longrightarrow> nth_string' ((x, as) # xas) n = nth_string' xas (n - 1)"
-  by (auto simp add: Nat.gr0_conv_Suc)
+  using Nat.gr0_conv_Suc by fastforce
 
 lemma nth_string_Nil: "nth_string (w, []) n = (if n = 0 then w else [])"
   by (cases n, simp_all)

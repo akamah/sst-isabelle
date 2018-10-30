@@ -81,13 +81,10 @@ definition compose_SST_SST ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'x2, 'b, 'c) SST \<Rightarrow>
    ('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2), 'q2 \<times> 'x1, 'x2, 'a, 'c) MSST" where
   "compose_SST_SST sst1 sst2 = \<lparr>
-    states = states sst1 \<times> {f. \<forall>q2\<in>states sst2. \<forall>x1\<in>variables sst1. f (q2, x1) \<in> states sst2},
     initial = (initial sst1, \<lambda>(q2, x1). q2),
     delta   = compose_\<delta> sst1 sst2,
-    variables = states sst2 \<times> variables sst1,
     eta     = compose_\<eta> sst1 sst2,
     final = compose_final_update sst1 sst2,
-    variables2 = variables sst2,
     final_string = compose_final_string sst1 sst2
    \<rparr>"
 
@@ -184,7 +181,6 @@ proof -
       then obtain \<mu>' where mu: "\<forall>q2 x. delta_hat sst2 (q2, \<mu>' x) = ?f' (q2, x)" by auto
       let ?mu = "\<lambda>x1. list_valuation \<mu>' (SST.eta sst1 (?q1', a) x1)"
       have body: "\<forall>q2 x1. delta_hat sst2 (q2, ?mu x1) = f (q2, x1)"
-        thm valuation_delta_hat[OF mu]
         using snoc(2) 
         apply (simp add: valuation_delta_hat[OF mu] compose_SST_SST_def compose_\<delta>_hat)
         apply (simp add: compose_\<delta>_def)

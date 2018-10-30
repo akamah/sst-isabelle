@@ -9,7 +9,6 @@ theory Monoid_SST
 begin
 
 record ('q, 'x, 'y, 'a, 'b) "MSST" = "('q, 'x, 'a, ('y, 'b) update) SST" +
-  variables2 :: "'y set"
   final_string :: "'q \<Rightarrow> ('y + 'b) list option"
 
 abbreviation final_update where

@@ -59,25 +59,6 @@ next
   then show "is_inl a" by simp
 qed
 
-primrec is_inr :: "('a + 'b) \<Rightarrow> bool" where
-  "is_inr (Inl l) = False" |
-  "is_inr (Inr r) = True"
-
-lemma is_inr_iff[iff]: "is_inr a \<longleftrightarrow> (\<exists>x. a = Inr x)"
-proof
-  assume *: "is_inr a"
-  then show "is_inr a \<Longrightarrow> (\<exists>x. a = Inr x)" proof (cases a)
-    case (Inl a)
-    then show ?thesis using * by auto
-  next
-    case (Inr b)
-    then show ?thesis by simp
-  qed
-next
-  assume "\<exists>x. a = Inr x"
-  then obtain x where "a = Inr x" by auto
-  then show "is_inr a" by simp
-qed
 
 primrec drop_left :: "('a + 'b) \<Rightarrow> 'b list" where
   "drop_left (Inl l) = []" |
@@ -88,17 +69,33 @@ primrec drop_right :: "('a + 'b) \<Rightarrow> 'a list" where
   "drop_right (Inr r) = []" 
 
 
-definition concat_map :: "('b \<Rightarrow> 'c list) \<Rightarrow> ('a \<Rightarrow> 'b list) \<Rightarrow> 'a \<Rightarrow> 'c list" (infixl "\<odot>" 55) where
-  "concat_map f g = concat o map f o g"
+definition cm_comp :: "('b \<Rightarrow> 'c list) \<Rightarrow> ('a \<Rightarrow> 'b list) \<Rightarrow> 'a \<Rightarrow> 'c list" (infixl "\<odot>" 55) where
+  "cm_comp f g = concat o map f o g"
 
-lemma concat_map_apply: "(f \<odot> g) x = concat (map f (g x))"
-  unfolding concat_map_def by simp
+lemma cm_comp_apply[simp]: "(f \<odot> g) x = concat (map f (g x))"
+  unfolding cm_comp_def by simp
 
-lemma concat_map_lem: "concat (map (concat o map f o g) xs) = concat (map f (concat (map g xs)))"
-  by (induct xs, auto simp add: concat_map_apply)
 
-lemma concat_map_assoc: "(f \<odot> g) \<odot> h = f \<odot> (g \<odot> h)"
-  by (auto simp add: concat_map_lem concat_map_def)
+definition id_cm_comp :: "'a \<Rightarrow> 'a list" where
+  "id_cm_comp x = [x]"
 
+declare id_cm_comp_def[simp]
+
+lemma [simp]: "concat (map id_cm_comp xs) = xs"
+  by (induct xs, simp_all)
+
+lemma [simp]: "id_cm_comp \<odot> f = f"
+  by (rule ext) simp
+
+lemma [simp]: "f \<odot> id_cm_comp = f"
+  by (rule ext) simp
+
+lemma cm_comp_lem: "concat (map (f \<odot> g) xs) = concat (map f (concat (map g xs)))"
+  by (induct xs, simp_all)
+
+lemma cm_comp_assoc: "(f \<odot> g) \<odot> h = f \<odot> (g \<odot> h)"
+  by (rule ext, simp add: cm_comp_lem)
+
+thm comp_assoc
 
 end

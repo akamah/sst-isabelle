@@ -4,9 +4,6 @@ theory Bounded_Copy_Convert
           "../Composition/Convert_Monoid_SST" "../Type/Monoid_SST_Type"
 begin
 
-
-
-
 lemma count_list_flat:
   fixes a :: "'a"
   fixes sc :: "('y, 'a) scanned"
@@ -135,60 +132,6 @@ proof -
     using assms by (simp add: count_list_scan_flat)
   finally show ?thesis .
 qed
-
-fun replace_index_aux :: "'e::enum boundedness \<Rightarrow> nat => 'x => ('x + 'a) list => (('e::enum + 'x) + 'a) list" where
-  "replace_index_aux B i x [] = []" |
-  "replace_index_aux B i x (Inl x'#xs) =
-     (if x = x' then Inl (Inl (nat_to_enum i)) # replace_index_aux B (Suc i) x xs
-                else Inl (Inr x') # replace_index_aux B i x xs)" |
-  "replace_index_aux B i x (Inr a#xs) = Inr a # replace_index_aux B i x xs"
-
-abbreviation replace_index :: "'e::enum boundedness \<Rightarrow> 'x => ('x + 'a) list => (('e::enum + 'x) + 'a) list" where
-  "replace_index B x xs == replace_index_aux B 0 x xs"
-
-lemma replace_index_aux_Inr[simp]: "replace_index_aux B i x (u @ [Inr a]) = replace_index_aux B i x u @ [Inr a]"
-  by (induct u arbitrary: i rule: xa_induct, auto)
-
-lemma replace_index_aux_Inl_eq[simp]:
-  fixes B :: "'k::enum boundedness"
-  shows "replace_index_aux B i x (u @ [Inl x]) 
-       = replace_index_aux B i x u @ [Inl (Inl (nat_to_enum (i + count_list u (Inl x))))]"
-  by (induct u arbitrary: i rule: xa_induct, auto)
-
-lemma replace_index_aux_Inl_neq[simp]:
-  fixes B :: "'k::enum boundedness"
-  assumes "x \<noteq> y"
-  shows "replace_index_aux B i y (u @ [Inl x]) 
-       = replace_index_aux B i y u @ [Inl (Inr x)]"
-  using assms by (induct u arbitrary: i rule: xa_induct, auto)
-
-lemma sum_count_list_replace_index:
-  fixes u :: "('x + 'a) list"
-  fixes B :: "'k::enum boundedness"
-  shows "count_list u (Inl y) = (\<Sum>i\<in>UNIV. count_list (replace_index B y u) (Inl (Inl i)))"
-proof (induct u rule: xa_rev_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case proof (cases "x = y")
-    case True
-    then show ?thesis using Var by (simp add: sum.distrib, simp only: count_list.simps, simp)
-  next
-    case False
-    then show ?thesis using Var by simp
-  qed
-next
-  case (Alpha a xs)
-  then show ?case by simp
-qed
-
-
-fun replace_index_shuffle where
-  "replace_index_shuffle x0 \<alpha> (Inl k) = \<alpha> x0" |
-  "replace_index_shuffle x0 \<alpha> (Inr x) = \<alpha> x"
-
-term "(\<iota> B2 (\<alpha> :: 'x \<Rightarrow> 'y::enum shuffle), \<iota> B2 (replace_index_shuffle x0 \<alpha>))"
 
 
 lemma exist_only_list:
@@ -326,7 +269,7 @@ proof (cases "length_scanned (scan u) \<le> enum_to_nat z")
   then show ?thesis by (simp add: count_list_synthesize_ge_length)
 next
   case False
-  then show ?thesis by (auto simp add: count_list_synthesize_lt_length assms)
+  then show ?thesis by (simp add: count_list_synthesize_lt_length assms)
 qed
 
 lemma count_alpha_iota_le_1:

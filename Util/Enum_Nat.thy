@@ -1,3 +1,7 @@
+(* Title:   Enum_Nat.thy
+   Author:  Akama Hitoshi
+*)
+
 theory Enum_Nat
   imports HOL.Enum
 begin

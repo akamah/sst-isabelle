@@ -105,10 +105,8 @@ lemma convert_\<eta>_simp: "convert_\<eta> B msst ((q1, \<beta>), a) = H' B (\<b
 definition convert_MSST :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum, 'a, 'b) MSST \<Rightarrow>
                             ('q \<times> ('x \<Rightarrow> ('i, 'y) bc_shuffle), 'x \<times> ('y, 'i) index, 'a, 'b) SST" where
   "convert_MSST B msst = \<lparr>
-    states = states msst \<times> {m1. True},
     initial = (initial msst, Abs_alpha B \<alpha>0),
     delta       = convert_\<delta> B msst,
-    variables = undefined,
     eta         = convert_\<eta> B msst,
     final       = convert_final B msst
   \<rparr>"

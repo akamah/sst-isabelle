@@ -37,7 +37,6 @@ definition compose_eta ::
 definition compose :: "('q1, 'a, 'b) transducer => ('q2, 'b, 'c) transducer =>
                 ('q1 \<times> 'q2, 'a, 'c) transducer" where
   "compose T1 T2 = (|
-    states = states T1 \<times> states T2,
     initial = (initial T1, initial T2),
     delta = compose_delta T1 T2,
     eta = compose_eta T1 T2,

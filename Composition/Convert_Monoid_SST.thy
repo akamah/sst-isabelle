@@ -151,19 +151,14 @@ lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> const [] = const []"
   by (auto simp add: comp_def)
 
 
-
-fun ignore_left where
-  "ignore_left (Inl x) = []" |
-  "ignore_left (Inr a) = [a]"
-
-lemma valuate_ignore_left: "valuate = concat o map ignore_left"
+lemma valuate_retain_right: "valuate = concat o map retain_right"
 proof -
-  have 1: "\<And>xs. valuate xs = concat (map ignore_left xs)"
+  have 1: "\<And>xs. valuate xs = concat (map retain_right xs)"
     by (induct_tac xs rule: xa_induct, auto)
   show ?thesis by (rule ext, auto simp add: 1)
 qed
 
-lemma valuate_update: "valuate (valuate u) = valuate (hat_alpha ignore_left u)"
+lemma valuate_update: "valuate (valuate u) = valuate (hat_alpha retain_right u)"
 proof (induct u rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -175,34 +170,34 @@ next
   then show ?case by (cases a, simp_all)
 qed
 
-lemma valuate_update_map_alpha: "valuate (valuate (\<theta> x)) = valuate ((ignore_left \<star> \<theta>) x)"
+lemma valuate_update_map_alpha: "valuate (valuate (\<theta> x)) = valuate ((retain_right \<star> \<theta>) x)"
   by (simp add: map_alpha_def valuate_update)
 
-lemma ignore_left_inr_list_eq_idA: "(ignore_left \<odot> inr_list) = id_cm_comp"
+lemma retain_right_inr_list_eq_idA: "(retain_right \<odot> inr_list) = id_cm_comp"
   by (rule ext, simp add: cm_comp_apply id_cm_comp_def)
 
-lemma ignore_left_inr_list: "ignore_left \<star> (inr_list \<star> a) = a"
-  by (auto simp add: map_alpha_assoc ignore_left_inr_list_eq_idA)
+lemma retain_right_inr_list: "retain_right \<star> (inr_list \<star> a) = a"
+  by (auto simp add: map_alpha_assoc retain_right_inr_list_eq_idA)
 
-lemma ignore_left_iota_alpha0: "ignore_left \<star> \<iota> B \<alpha>0 x = idU"
+lemma retain_right_iota_alpha0: "retain_right \<star> \<iota> B \<alpha>0 x = idU"
 proof -
-  have 1: "concat o map ignore_left o embed x = (\<lambda>(y, k). [])"
+  have 1: "concat o map retain_right o embed x = (\<lambda>(y, k). [])"
     by auto
   show ?thesis 
     by (simp add: \<iota>_def synthesize_store_def \<alpha>0_def map_alpha_synthesize 1 synthesize_idU)
 qed
 
 
-lemma ignore_left_hat_homU_iota_alpha0: "ignore_left \<star> hat_homU (\<iota> B \<alpha>0) m = concatU (valuate m)"
+lemma retain_right_hat_homU_iota_alpha0: "retain_right \<star> hat_homU (\<iota> B \<alpha>0) m = concatU (valuate m)"
 proof (induct m rule: xa_induct)
   case Nil
   then show ?case by simp
 next
   case (Var x xs)
-  then show ?case by (simp add: map_alpha_distrib ignore_left_iota_alpha0)
+  then show ?case by (simp add: map_alpha_distrib retain_right_iota_alpha0)
 next
   case (Alpha a xs)
-  then show ?case by (simp add: map_alpha_distrib ignore_left_inr_list)
+  then show ?case by (simp add: map_alpha_distrib retain_right_inr_list)
 qed
 
 
@@ -219,14 +214,14 @@ next
   case (Var x xs)
   then show ?case 
     apply (simp add: concatU_append hat_homU_append valuate_update_map_alpha map_alpha_distrib)
-    apply (simp add: ignore_left_iota_alpha0)
+    apply (simp add: retain_right_iota_alpha0)
     done
 next
   case (Alpha m xs)
   then show ?case 
     apply (simp add: concatU_append hat_homU_append valuate_update_map_alpha)
-    apply (simp add: map_alpha_distrib ignore_left_inr_list)
-    apply (simp add: ignore_left_hat_homU_iota_alpha0)
+    apply (simp add: map_alpha_distrib retain_right_inr_list)
+    apply (simp add: retain_right_hat_homU_iota_alpha0)
     done
 qed
 
@@ -264,10 +259,10 @@ lemma [simp]: "scan [Inl y] = ([], [(y, [])])"
   by (simp add: scan_def)
 
 
-lemma scan_valuate: "fst (scan (hat_alpha ignore_left u)) = valuate (fst (scan u))"
+lemma scan_valuate: "fst (scan (hat_alpha retain_right u)) = valuate (fst (scan u))"
 proof (induct u rule: xw_induct)
   case (Word w)
-  then show ?case by (simp add: hat_alpha_right_map valuate_ignore_left)
+  then show ?case by (simp add: hat_alpha_right_map valuate_retain_right)
 next
   case (VarWord x w u)
   then show ?case by (simp add: hat_alpha_right_map)
@@ -298,12 +293,12 @@ lemma map_scanned_hat_alpha: "scan (hat_alpha f u) = map_scanned f (scan u)"
 
 lemma nth_string_valuate: 
   "valuate (nth_string (scan u) n)
- = nth_string (map_scanned ignore_left (scan u)) n"
+ = nth_string (map_scanned retain_right (scan u)) n"
 proof (induct u arbitrary: n rule: xw_induct)
   case (Word w)
   then show ?case proof (cases n)
     case 0
-    then show ?thesis by (simp add: valuate_ignore_left)
+    then show ?thesis by (simp add: valuate_retain_right)
   next
     case (Suc nat)
     then show ?thesis by (simp add: hat_alpha_right_map nth_string_pos_Nil)
@@ -313,11 +308,11 @@ next
   then show ?case proof (cases n)
     case 0
     then show ?thesis using VarWord
-      by (simp add: valuate_ignore_left nth_string_append_first)
+      by (simp add: valuate_retain_right nth_string_append_first)
   next
     case (Suc nat)
     then show ?thesis using VarWord
-      by (auto simp add: valuate_ignore_left nth_string_append_last length_scan_hat_alpha length_map_scanned)
+      by (auto simp add: valuate_retain_right nth_string_append_last length_scan_hat_alpha length_map_scanned)
   qed
 qed
 
@@ -329,7 +324,7 @@ proof -
   then show ?thesis by simp
 qed
 
-lemma concat_map_ignore_left_embed: "concat \<circ> map ignore_left \<circ> Convert_Monoid_SST_Def.embed x = const []"
+lemma concat_map_retain_right_embed: "concat \<circ> map retain_right \<circ> Convert_Monoid_SST_Def.embed x = const []"
   by (rule ext, simp)
 
 
@@ -356,16 +351,16 @@ next
 qed
 
 
-lemma nth_string_map_scanned_ignore_left:
-  "nth_string (map_scanned ignore_left (scan (\<iota> B \<alpha> x y))) k = []"
-  apply (simp add: comp_def map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize concat_map_ignore_left_embed)
+lemma nth_string_map_scanned_retain_right:
+  "nth_string (map_scanned retain_right (scan (\<iota> B \<alpha> x y))) k = []"
+  apply (simp add: comp_def map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize concat_map_retain_right_embed)
   apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def comp_def)
   apply (simp add: nth_string_scan_is_inl cm_synthesize_store_const_is_inl)
   done
 
 lemma valuate_H'_Nil_var: "valuate (H' B (\<alpha>, idU) (x, y, k)) = []"
   apply (simp add: H'_def idU_def)
-  apply (simp add: resolve_store_def nth_string_valuate nth_string_map_scanned_ignore_left)
+  apply (simp add: resolve_store_def nth_string_valuate nth_string_map_scanned_retain_right)
   done
 
 

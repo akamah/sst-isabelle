@@ -39,13 +39,13 @@ lemma map_sum_eq_fold_sum: "map_sum f g = fold_sum (Inl o f) (Inr o g)"
 fun const :: "'a \<Rightarrow> 'b \<Rightarrow> 'a" where
   "const a b = a"
 
-primrec drop_left :: "('a + 'b) \<Rightarrow> 'b list" where
-  "drop_left (Inl l) = []" |
-  "drop_left (Inr r) = [r]" 
+primrec retain_right :: "('a + 'b) \<Rightarrow> 'b list" where
+  "retain_right (Inl l) = []" |
+  "retain_right (Inr r) = [r]" 
 
-primrec drop_right :: "('a + 'b) \<Rightarrow> 'a list" where
-  "drop_right (Inl l) = [l]" |
-  "drop_right (Inr r) = []" 
+primrec retain_left :: "('a + 'b) \<Rightarrow> 'a list" where
+  "retain_left (Inl l) = [l]" |
+  "retain_left (Inr r) = []" 
 
 
 definition cm_comp :: "('b \<Rightarrow> 'c list) \<Rightarrow> ('a \<Rightarrow> 'b list) \<Rightarrow> 'a \<Rightarrow> 'c list" (infixl "\<odot>" 55) where

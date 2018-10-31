@@ -26,6 +26,13 @@ proof
   show "f x = g x" using assms by (cases x, simp_all)
 qed
 
+lemma ext_prod:
+  assumes "\<And>x y. f (x, y) = g (x, y)"
+  shows "f = g"
+proof
+  fix x
+  show "f x = g x" using assms by (cases x, simp)
+qed
 
 lemma map_sum_comp: "map_sum (f1 o f2) (g1 o g2) = map_sum f1 g1 \<circ> map_sum f2 g2"
   by (rule ext_sum, simp_all)

@@ -47,32 +47,4 @@ primrec retain_left :: "('a + 'b) \<Rightarrow> 'a list" where
   "retain_left (Inl l) = [l]" |
   "retain_left (Inr r) = []" 
 
-
-definition cm_comp :: "('b \<Rightarrow> 'c list) \<Rightarrow> ('a \<Rightarrow> 'b list) \<Rightarrow> 'a \<Rightarrow> 'c list" (infixl "\<odot>" 55) where
-  "cm_comp f g = concat o map f o g"
-
-lemma cm_comp_apply: "(f \<odot> g) x = concat (map f (g x))"
-  unfolding cm_comp_def by simp
-
-
-definition id_cm_comp :: "'a \<Rightarrow> 'a list" where
-  "id_cm_comp x = [x]"
-
-lemma [simp]: "concat (map id_cm_comp xs) = xs"
-  by (induct xs, simp_all add: id_cm_comp_def)
-
-lemma [simp]: "id_cm_comp \<odot> f = f"
-  by (rule ext, simp add: cm_comp_apply)
-
-lemma [simp]: "f \<odot> id_cm_comp = f"
-  by (rule ext, simp add: cm_comp_apply id_cm_comp_def)
-
-lemma cm_comp_lem: "concat (map (f \<odot> g) xs) = concat (map f (concat (map g xs)))"
-  by (induct xs, simp_all add: cm_comp_apply)
-
-lemma cm_comp_assoc: "(f \<odot> g) \<odot> h = f \<odot> (g \<odot> h)"
-  by (rule ext, simp add: cm_comp_apply cm_comp_lem)
-
-hide_fact cm_comp_def
-
 end

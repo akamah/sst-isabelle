@@ -16,6 +16,7 @@ session "SST" = "HOL-Library" +
            "Composition/Convert_Monoid_SST"
            "Composition/Convert_Monoid_SST_Def"
            "Composition/Convert_Monoid_SST_Type_Misc"
+           "Core/Concat_Map"
            "Core/Monoid_SST"
            "Core/SST"
            "Core/State_Machine"

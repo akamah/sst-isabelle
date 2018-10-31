@@ -542,11 +542,6 @@ proof -
   show ?thesis by (rule ext, auto simp add: resolve_shuffle_def map_alpha_def *)
 qed
 
-lemma synthesize_idS_empty_store_idU: "synthesize B (idS, empty_store) = idU"
-  apply (rule ext)
-  unfolding synthesize_def
-  apply (simp add: idU_def compU_apply synthesize_shuffle_def idS_def)
-
 
 lemma synthesize_resolve_eq_flat:
   fixes B :: "'k::enum boundedness"
@@ -858,7 +853,7 @@ theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
                      extract_variables_synthesize_store extract_variables_padding_scan)
 
 
-lemma synthesize_idU: "synthesize B (idS :: 'x \<Rightarrow> 'x list, \<lambda>(y, k). []) = (idU :: ('x::enum, 'a) update)"
+lemma synthesize_idU: "synthesize B (idS :: 'x \<Rightarrow> 'x list, empty_store) = (idU :: ('x::enum, 'a) update)"
   by (auto simp add: synthesize_def synthesize_shuffle_def synthesize_store_def idU_def idS_def scan_def compU_apply)
 
 subsection \<open>Example\<close>

@@ -1,7 +1,7 @@
 theory Bounded_Copy_Convert
   imports Main HOL.Finite_Set
           "../Util/Enum_Nat" "../Core/Update" "../Single_Use/Single_Use" "../Decomposition/Decompose_Update"
-          "../Composition/Convert_Monoid_SST" "../Type/Monoid_SST_Type"
+          "../Composition/Convert_Monoid_SST_Def" "../Type/Monoid_SST_Type"
 begin
 
 lemma count_list_flat:

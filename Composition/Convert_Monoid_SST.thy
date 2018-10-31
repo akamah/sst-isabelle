@@ -147,7 +147,7 @@ qed
 lemma H'_embed: "H' B (\<beta>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))"
   by (auto simp add: compU_apply H'_def)
 
-lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> const [] = const []"
+lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> empty_store = empty_store"
   by (auto simp add: compU_apply)
 
 
@@ -179,13 +179,11 @@ lemma retain_right_inr_list_eq_idS: "(retain_right \<odot> inr_list) = idS"
 lemma retain_right_inr_list: "retain_right \<star> (inr_list \<star> a) = a"
   by (auto simp add: map_alpha_assoc retain_right_inr_list_eq_idS)
 
+lemma retain_right_embed: "retain_right \<odot> Convert_Monoid_SST_Def.embed x = empty_store"
+  by (rule ext_prod, simp add: compS_apply)
+
 lemma retain_right_iota_alpha0: "retain_right \<star> \<iota> B \<alpha>0 x = idU"
-proof -
-  have 1: "retain_right \<odot> embed x = empty_store"
-    by auto
-  show ?thesis 
-    apply (simp add: \<iota>_def \<alpha>0_def map_alpha_synthesize 1 synthesize_idU)
-qed
+  by (simp add: \<iota>_def \<alpha>0_def map_alpha_synthesize retain_right_embed synthesize_idU)
 
 
 lemma retain_right_hat_homU_iota_alpha0: "retain_right \<star> hat_homU (\<iota> B \<alpha>0) m = concatU (valuate m)"
@@ -306,25 +304,22 @@ next
   next
     case (Suc nat)
     then show ?thesis using VarWord
-      by (auto simp add: valuate_retain_right nth_string_append_last length_scan_hat_alpha length_map_scanned)
+      by (auto simp add: valuate_retain_right nth_string_append_last length_scanned_hat_alpha length_map_scanned)
   qed
 qed
 
 lemma hat_alpha_synthesize:
-  "hat_alpha t (synthesize B (s, a) y) = synthesize B (s, concat o map t o a) y"
+  "hat_alpha t (synthesize B (s, a) y) = synthesize B (s, t \<odot> a) y"
 proof -
-  have "\<And>y'. (hat_alpha t \<circ> synthesize B (s, a)) y = synthesize B (s, concat \<circ> map t \<circ> a) y"
+  have "\<And>y'. (hat_alpha t \<circ> synthesize B (s, a)) y = synthesize B (s, t \<odot> a) y"
     by (simp add: map_alpha_synthesize[simplified map_alpha_def])
   then show ?thesis by simp
 qed
 
-lemma concat_map_retain_right_embed: "concat \<circ> map retain_right \<circ> Convert_Monoid_SST_Def.embed x = const []"
-  by (rule ext, simp)
 
-
-lemma cm_synthesize_store_const_is_inl: "list_all isl (concat (map (synthesize_store B (const [])) ps))"
-  by (induct ps rule: xa_induct, simp_all add: synthesize_store_def)
-
+lemma cm_synthesize_store_const_is_inl: "list_all isl (concat (map (synthesize_store B empty_store) ps))"
+  apply (induct ps rule: xa_induct, simp_all add: synthesize_store_def)
+  by auto
 
 lemma list_all_is_inl_map_Inr:
   assumes "list_all isl (map Inr bs)"
@@ -347,7 +342,7 @@ qed
 
 lemma nth_string_map_scanned_retain_right:
   "nth_string (map_scanned retain_right (scan (\<iota> B \<alpha> x y))) k = []"
-  apply (simp add: compU_apply map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize concat_map_retain_right_embed)
+  apply (simp add: compU_apply map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize retain_right_embed)
   apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def compU_apply)
   apply (simp add: nth_string_scan_is_inl cm_synthesize_store_const_is_inl)
   done
@@ -384,7 +379,7 @@ lemma map_alpha_H'_iota_\<Delta>:
   shows "map_alpha (update2hom (H' B (\<beta>, SST.eta_hat msst (q, w)))) o \<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)))) 
        = hat_homU (\<iota> B (Rep_alpha B \<beta>)) o SST.eta_hat msst (q, w)"
   apply (rule ext)
-  apply (simp add: \<iota>_def map_alpha_synthesize compU_apply[symmetric] hat_hom_def[symmetric] H'_embed \<Delta>'_def)
+  apply (simp add: \<iota>_def map_alpha_synthesize compU_apply hat_hom_def[symmetric] H'_embed \<Delta>'_def)
   apply (simp only: resolve_shuffle_hat_homU_inverse[OF assms])
   apply (rule resolve_inverse)
   apply (rule hat_homU_iota_bounded_copy)

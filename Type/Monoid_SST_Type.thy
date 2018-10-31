@@ -10,23 +10,8 @@ begin
 type_synonym ('q, 'x, 'y) msst_type = "'q \<times> 'x \<Rightarrow> 'y shuffle set"
 
 
-lemma concat_map_right_idS [simp]: "concat o map a o idS = a"
-  by (rule ext, simp add: idS_def)
-
-lemma concat_map_left_idS [simp]: "concat o map idS o a = a"
-  by (rule ext, simp add: idS_def)
-
-lemma concat_map_assoc: "concat o map a o (concat o map b o c) = concat o map (concat o map a o b) o c"
-proof -
-  { fix l
-    have "concat (map (concat o map a o b) l)
-        = concat (map a (concat (map b l)))" by (induct l, simp_all)
-  } note that = this
-  show ?thesis by (rule ext, simp add: that)
-qed
-
 definition mult_shuffles :: "'x shuffle set \<Rightarrow> 'x shuffle set \<Rightarrow> 'x shuffle set" where
-  "mult_shuffles A B = (\<Union>a\<in>A. \<Union>b\<in>B. { concat \<circ> map a \<circ> b })"
+  "mult_shuffles A B = (\<Union>a\<in>A. \<Union>b\<in>B. { a \<odot> b })"
 
 lemma mult_shuffles_right_unit [simp]: "mult_shuffles A { idS } = A"
   by (simp add: mult_shuffles_def)
@@ -36,11 +21,7 @@ lemma mult_shuffles_left_unit [simp]: "mult_shuffles { idS } A = A"
 
 lemma mult_shuffles_assoc [simp]:
   "mult_shuffles A (mult_shuffles B C) = mult_shuffles (mult_shuffles A B) C" (is "?lhs = ?rhs")
-proof
-  show "?lhs \<subseteq> ?rhs" by (simp add: mult_shuffles_def concat_map_assoc)
-next
-  show "?rhs \<subseteq> ?lhs" by (simp add: mult_shuffles_def concat_map_assoc)
-qed
+  by (rule equalityI, simp_all add: mult_shuffles_def compS_assoc)
 
 lemma mult_shuffles_subset:
   assumes "A \<subseteq> C"
@@ -49,27 +30,19 @@ lemma mult_shuffles_subset:
 proof
   fix x
   assume "x \<in> mult_shuffles A B"
-  then show "x \<in> mult_shuffles C D" proof -
-    obtain a b where ab: "x = concat o map a o b \<and> a \<in> A \<and> b \<in> B"
-      by (metis (no_types, lifting) UN_E \<open>x \<in> mult_shuffles A B\<close> mult_shuffles_def singletonD)
-    then have cd: "a \<in> C \<and> b \<in> D" using assms(1) assms(2) by blast
-    then show ?thesis
-      apply (simp add: mult_shuffles_def ab) using cd by blast
-  qed
+  then obtain a b where ab: "x = a \<odot> b \<and> a \<in> A \<and> b \<in> B"
+    unfolding mult_shuffles_def by blast
+  then have cd: "a \<in> C \<and> b \<in> D" using assms(1) assms(2) by blast
+  then show "x \<in> mult_shuffles C D"
+    using ab unfolding mult_shuffles_def by blast
 qed
 
 lemma mult_shuffles_member:
   assumes "a \<in> A"
   assumes "b \<in> B"
-  shows "(\<lambda>x. concat (map a (b x))) \<in> mult_shuffles A B"
+  shows "a \<odot> b \<in> mult_shuffles A B"
   unfolding mult_shuffles_def
-proof (simp, intro bexI)
-  show "(\<lambda>x. concat (map a (b x))) = concat o map a o b" by (rule ext, simp)
-next
-  show "b \<in> B" using assms by simp
-next
-  show "a \<in> A" using assms by simp
-qed
+using assms by (simp, intro bexI, simp_all)
 
 fun tails_fun :: "'a list \<Rightarrow> 'a list set" where
   "tails_fun [] = {[]}" |
@@ -127,7 +100,7 @@ case Nil
   then show ?case by simp
 next
   case (Cons a w)
-  then show ?case proof (simp add: comp_lem del: Fun.comp_apply)
+  then show ?case proof (simp add: compU_lem del: Fun.comp_apply)
     let ?q' = "delta msst (q, a)"
     let ?e' = "SST.eta msst (q, a)"
     let ?uu = "hat_hom (SST.eta_hat msst (?q', w)) u"

@@ -75,7 +75,7 @@ proof (cases "SST.final sst (delta_hat sst (initial sst, w))")
   then show ?thesis unfolding SST.run_def SST_run_def by simp
 next
   case (Some a)
-  then show ?thesis unfolding SST.run_def SST_run_def by (simp add: comp_apply)
+  then show ?thesis unfolding SST.run_def SST_run_def by (simp add: compU_apply)
 qed
 
 definition MSST_run :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where

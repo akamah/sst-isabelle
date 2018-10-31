@@ -28,12 +28,6 @@ type_synonym ('y, 'k) index = "'y \<times> ('y, 'k) type_mult_suc"
 (* Shuffle *)
 type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
 
-(* unit operation of Shuffle *)
-definition idS :: "'y shuffle" where
-  "idS \<equiv> (\<lambda>y. [y])"
-
-definition emptyS :: "'y shuffle" where
-  "emptyS \<equiv> (\<lambda>y. [])"
 
 (* Store object is an array of string indexed with ('y, 'i) index *)
 type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
@@ -482,6 +476,9 @@ definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) u
                           \<Rightarrow> ('y, 'k, 'b) store" where
   "resolve_store B \<theta> yi = (case yi of (x, k) \<Rightarrow> nth_string (scan (\<theta> x)) (enum_to_nat k))"
 
+fun empty_store :: "('y::enum, 'k, 'b) store" where
+  "empty_store (y, k) = []"
+
 
 subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>
@@ -511,17 +508,17 @@ subsection \<open>Properties of Decomposition\<close>
 lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle B s = synthesize_shuffle B s"
   by (rule ext, simp add: map_alpha_def hat_alpha_left_ignore synthesize_shuffle_def)
 
-lemma map_alpha_synthesize_store: "t \<star> synthesize_store B p = synthesize_store B (concat o map t o p)"
-  by (rule ext_sum, simp_all add: map_alpha_def Update.hat_alpha_right_map synthesize_store_def)
+lemma map_alpha_synthesize_store: "t \<star> synthesize_store B p = synthesize_store B (t \<odot> p)"
+  by (rule ext_sum, simp_all add: map_alpha_def Update.hat_alpha_right_map synthesize_store_def compS_apply)
 
-lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, concat o map t o a)"
+lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, t \<odot> a)"
   by (rule ext, simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store synthesize_def)
 
 
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
-lemma resolve_idU_empty: "resolve_store B idU (y, k) = (\<lambda>y'. []) (y, k)"
+lemma resolve_idU_empty: "resolve_store B idU (y, k) = empty_store (y, k)"
 proof (cases "enum_to_nat k")
   case 0
   then show ?thesis by (simp add: resolve_store_def idU_def scan_def)
@@ -535,8 +532,8 @@ lemma resolve_shuffle_distrib_str:
   "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle \<phi>) (extract_variables u))"
   by (induct u rule: xa_induct, simp_all add: resolve_shuffle_def)
 
-lemma resolve_shuffle_distrib: "resolve_shuffle (\<phi> \<bullet> \<psi>) = concat o map (resolve_shuffle \<phi>) o resolve_shuffle \<psi>"
-  by (rule ext, simp add: comp_def resolve_shuffle_def resolve_shuffle_distrib_str)
+lemma resolve_shuffle_distrib: "resolve_shuffle (\<phi> \<bullet> \<psi>) = resolve_shuffle \<phi> \<odot> resolve_shuffle \<psi>"
+  by (rule ext, simp add: compU_apply resolve_shuffle_def resolve_shuffle_distrib_str compS_apply)
 
 lemma resolve_shuffle_map_alpha: "resolve_shuffle (t \<star> m) = resolve_shuffle m"
 proof -
@@ -544,6 +541,11 @@ proof -
     by (induct_tac u rule: xa_induct, simp_all)
   show ?thesis by (rule ext, auto simp add: resolve_shuffle_def map_alpha_def *)
 qed
+
+lemma synthesize_idS_empty_store_idU: "synthesize B (idS, empty_store) = idU"
+  apply (rule ext)
+  unfolding synthesize_def
+  apply (simp add: idU_def compU_apply synthesize_shuffle_def idS_def)
 
 
 lemma synthesize_resolve_eq_flat:
@@ -825,7 +827,7 @@ theorem resolve_inverse:
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
 proof -
   have "\<And>x. synthesize B (resolve_shuffle m, resolve_store B m) x = flat (scan (m x))"
-    apply (simp add: synthesize_def synthesize_shuffle_def comp_def)
+    apply (simp add: synthesize_def synthesize_shuffle_def compU_apply)
     apply (simp add: resolve_shuffle_def)
     apply (simp add: padding_scan_ignore_alphabet)
     apply (simp add: concat_map_padding)
@@ -852,12 +854,12 @@ qed
 
 
 theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
-  by (auto simp add: synthesize_def resolve_shuffle_def comp_def synthesize_shuffle_def
+  by (auto simp add: synthesize_def resolve_shuffle_def compU_apply synthesize_shuffle_def
                      extract_variables_synthesize_store extract_variables_padding_scan)
 
 
 lemma synthesize_idU: "synthesize B (idS :: 'x \<Rightarrow> 'x list, \<lambda>(y, k). []) = (idU :: ('x::enum, 'a) update)"
-  by (auto simp add: synthesize_def synthesize_shuffle_def synthesize_store_def idU_def idS_def scan_def comp_def)
+  by (auto simp add: synthesize_def synthesize_shuffle_def synthesize_store_def idU_def idS_def scan_def compU_apply)
 
 subsection \<open>Example\<close>
 

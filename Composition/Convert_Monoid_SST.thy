@@ -52,7 +52,7 @@ proof -
     apply (rule hat_homU_iota_bounded_copy[OF assms])
     done
   then show ?thesis
-    by (intro ext, simp add: \<Delta>'_def comp_def \<Delta>'_assoc_string Abs_alpha_inverse[OF assms(1) *])
+    by (intro ext, simp add: \<Delta>'_def compU_apply \<Delta>'_assoc_string Abs_alpha_inverse[OF assms(1) *])
 qed
 
 
@@ -113,7 +113,7 @@ qed
 
 lemma hat_hom_valuate_fun:
   shows "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
-  by (rule ext, simp add: comp_def hat_hom_valuate)
+  by (rule ext, simp add: compU_apply hat_hom_valuate)
 
 lemma valuate_hat_hom_emptyU: "valuate (hat_hom emptyU w) = valuate w"
   by (induct w rule: xa_induct, simp_all add: emptyU_def)
@@ -145,10 +145,10 @@ qed
 
 
 lemma H'_embed: "H' B (\<beta>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))"
-  by (auto simp add: comp_def H'_def)
+  by (auto simp add: compU_apply H'_def)
 
 lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> const [] = const []"
-  by (auto simp add: comp_def)
+  by (auto simp add: compU_apply)
 
 
 lemma valuate_retain_right: "valuate = concat o map retain_right"
@@ -173,18 +173,18 @@ qed
 lemma valuate_update_map_alpha: "valuate (valuate (\<theta> x)) = valuate ((retain_right \<star> \<theta>) x)"
   by (simp add: map_alpha_def valuate_update)
 
-lemma retain_right_inr_list_eq_idA: "(retain_right \<odot> inr_list) = id_cm_comp"
-  by (rule ext, simp add: cm_comp_apply id_cm_comp_def)
+lemma retain_right_inr_list_eq_idS: "(retain_right \<odot> inr_list) = idS"
+  by (rule ext, simp add: compS_apply idS_def)
 
 lemma retain_right_inr_list: "retain_right \<star> (inr_list \<star> a) = a"
-  by (auto simp add: map_alpha_assoc retain_right_inr_list_eq_idA)
+  by (auto simp add: map_alpha_assoc retain_right_inr_list_eq_idS)
 
 lemma retain_right_iota_alpha0: "retain_right \<star> \<iota> B \<alpha>0 x = idU"
 proof -
-  have 1: "concat o map retain_right o embed x = (\<lambda>(y, k). [])"
+  have 1: "retain_right \<odot> embed x = empty_store"
     by auto
   show ?thesis 
-    by (simp add: \<iota>_def synthesize_store_def \<alpha>0_def map_alpha_synthesize 1 synthesize_idU)
+    apply (simp add: \<iota>_def \<alpha>0_def map_alpha_synthesize 1 synthesize_idU)
 qed
 
 
@@ -246,7 +246,7 @@ qed
 
 lemma map_alpha_resolve_store:
   "(t \<bullet> resolve_store B \<theta>) (y, k) = resolve_store B (update2hom t \<star> \<theta>) (y, k)"
-  by (cases "enum_to_nat k", simp_all add: resolve_store_def comp_def map_alpha_def map_alpha_resolve_store_aux)
+  by (cases "enum_to_nat k", simp_all add: resolve_store_def compU_apply map_alpha_def map_alpha_resolve_store_aux)
 
 
 lemma [simp]: "scan [Inl y] = ([], [(y, [])])"
@@ -347,8 +347,8 @@ qed
 
 lemma nth_string_map_scanned_retain_right:
   "nth_string (map_scanned retain_right (scan (\<iota> B \<alpha> x y))) k = []"
-  apply (simp add: comp_def map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize concat_map_retain_right_embed)
-  apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def comp_def)
+  apply (simp add: compU_apply map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize concat_map_retain_right_embed)
+  apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def compU_apply)
   apply (simp add: nth_string_scan_is_inl cm_synthesize_store_const_is_inl)
   done
 
@@ -384,7 +384,7 @@ lemma map_alpha_H'_iota_\<Delta>:
   shows "map_alpha (update2hom (H' B (\<beta>, SST.eta_hat msst (q, w)))) o \<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)))) 
        = hat_homU (\<iota> B (Rep_alpha B \<beta>)) o SST.eta_hat msst (q, w)"
   apply (rule ext)
-  apply (simp add: \<iota>_def map_alpha_synthesize comp_def[symmetric] hat_hom_def[symmetric] H'_embed \<Delta>'_def)
+  apply (simp add: \<iota>_def map_alpha_synthesize compU_apply[symmetric] hat_hom_def[symmetric] H'_embed \<Delta>'_def)
   apply (simp only: resolve_shuffle_hat_homU_inverse[OF assms])
   apply (rule resolve_inverse)
   apply (rule hat_homU_iota_bounded_copy)
@@ -424,7 +424,7 @@ lemma H'_assoc:
 proof -
   have "\<And>x y e. H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) (x, y, e) 
               = (H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)) (x, y, e)"
-    by (simp add: comp_def H'_assoc_string[OF assms] H'_simp2)
+    by (simp add: compU_apply H'_assoc_string[OF assms] H'_simp2)
   then show ?thesis by auto
 qed
 
@@ -504,7 +504,7 @@ next
     show ?thesis using Some2
       apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] Some1)
       using convert_\<eta>_hat_valuate[OF assms reach0]
-      apply (simp add: convert_MSST_def comp_def)
+      apply (simp add: convert_MSST_def compU_apply)
       apply (simp add: hat_hom_valuate_hat_hom hat_homU_map_alpha
                        update2hom_hat_alpha map_alpha_H'_iota_\<Delta>[OF assms reach0] hat_homU_lem iota_alpha0_remove)
       done

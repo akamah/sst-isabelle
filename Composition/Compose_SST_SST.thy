@@ -37,7 +37,7 @@ proposition \<Delta>_assoc_string:
   by (induct u arbitrary: q rule: xa_induct, simp_all)
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
-  by (auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
+  by (auto simp add: \<Delta>_def compU_apply \<Delta>_assoc_string)
 
 proposition H_assoc_string:
   "hat_hom (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))
@@ -46,7 +46,7 @@ proposition H_assoc_string:
   by (induct u arbitrary: q rule: xa_induct, simp_all add: Transducer.eta_append)
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
-  by (auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
+  by (auto simp add: \<Delta>_def H_def compU_apply H_assoc_string)
 
 subsection \<open>Construction\<close>
 
@@ -214,7 +214,7 @@ next
                compose_final_update_def compose_final_string_def
                Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat Some_2
                        \<Delta>_assoc valuate_delta_hat
-                       comp_ignore
+                       compU_ignore
                        valuate_eta_hat
                        H_assoc
                        Some_1)
@@ -225,8 +225,8 @@ subsection \<open>Examples\<close>
 
 lemma "Monoid_SST.run (compose_SST_SST rev rev) [1, 2, 3] = Some [1, 2, 3]"
   apply (simp add: compose_SST_SST_def compose_\<delta>_def compose_\<eta>_def compose_final_update_def compose_final_string_def
-        Monoid_SST.run_def SST.run_def rev_def Update.comp_def hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
-  apply (simp add: \<Delta>_def H_def idU_def emptyU_def comp_def)
+        Monoid_SST.run_def SST.run_def rev_def compU_apply hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
+  apply (simp add: \<Delta>_def H_def idU_def emptyU_def compU_apply)
   done
 
 end

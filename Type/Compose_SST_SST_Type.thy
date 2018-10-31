@@ -27,7 +27,7 @@ proof (auto)
   assume "q1 = delta_hat sst2 (q0, u)"
   assume "q2 = delta_hat sst2 (delta_hat sst2 (q0, u), v)"
   show "\<exists>wb. delta_hat sst2 (q0, wb) = delta_hat sst2 (delta_hat sst2 (q0, u), v) \<and>
-                 concat \<circ> map (resolve_shuffle (SST.eta_hat sst2 (q0, u))) \<circ>
+                 resolve_shuffle (SST.eta_hat sst2 (q0, u)) \<odot>
                  resolve_shuffle (SST.eta_hat sst2 (delta_hat sst2 (q0, u), v)) =
                  resolve_shuffle (SST.eta_hat sst2 (q0, wb))"
     by (rule exI[where x="u@v"], auto simp add: eta_append resolve_shuffle_distrib)
@@ -207,7 +207,7 @@ next
     fix m
     assume "m \<in> mult_shuffles ?set1 (all_shuffles sst2 ?q ?q')"
     then obtain m1 m2 :: "'y shuffle" 
-      where m: "m = concat o map m1 o m2 \<and>
+      where m: "m = m1 \<odot> m2 \<and>
              m1 \<in> ?set1 \<and>
              m2 \<in> (all_shuffles sst2 ?q ?q')"
       by (auto simp add: mult_shuffles_def)
@@ -235,7 +235,7 @@ next
     fix m
     assume "m \<in> mult_shuffles ?set1 ?set2"
     then obtain m1 m2 :: "'y shuffle" 
-      where m: "m = concat o map m1 o m2 \<and>
+      where m: "m = m1 \<odot> m2 \<and>
              m1 \<in> ?set1 \<and>
              m2 \<in> ?set2"
       by (auto simp add: mult_shuffles_def)

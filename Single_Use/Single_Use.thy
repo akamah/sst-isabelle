@@ -130,11 +130,11 @@ proof (rule allI)
         unfolding count_var_def
         by (auto)
       show ?thesis
-        by (simp add: basic_count comp_def)
+        by (simp add: basic_count compU_apply)
     next
       assume a1: "count_var f x = 1"
       show ?thesis
-      proof (simp add: comp_def basic_count)
+      proof (simp add: compU_apply basic_count)
         have "\<exists>y \<in> UNIV. (\<lambda>y. count_list (f y) (Inl x)) y = 1 \<and> sum (\<lambda>y. count_list (f y) (Inl x)) (UNIV - {y}) = 0"
           by (rule sum1, simp, insert a1, simp add: count_var_def)
         then obtain z where z: "(\<lambda>y. count_list (f y) (Inl x)) z = Suc 0"
@@ -199,7 +199,7 @@ lemma count_alpha_comp:
   fixes m2 :: "('x::finite, 'y, 'b) update'"
   shows "count_alpha (m1 \<bullet> m2) a
  = (\<Sum>y::'y\<in>UNIV. count_list (m1 y) (Inr a) * count_var m2 y) + count_alpha m2 a"
-  unfolding comp_def count_alpha_def count_var_def
+  unfolding compU_def count_alpha_def count_var_def
 proof (simp)
   have "(\<Sum>y\<in>UNIV. count_list (m1 y) (Inr a) * (\<Sum>x\<in>UNIV. count_list (m2 x) (Inl y)))
       = (\<Sum>y\<in>UNIV. \<Sum>x\<in>UNIV. count_list (m1 y) (Inr a) * count_list (m2 x) (Inl y))" (is "?lhs = _")

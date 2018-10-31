@@ -64,7 +64,7 @@ definition run :: "('q, 'x, 'a, 'b, 'e) SST_scheme \<Rightarrow> 'a list \<Right
 subsection \<open>Lemmata\<close>
 
 lemma eta_append: "hat2 tf to (q, as @ bs) = hat2 tf to (q, as) \<bullet> hat2 tf to (hat1 tf (q, as), bs)"
-  by (induction as arbitrary: q, auto simp add: comp_assoc)
+  by (induction as arbitrary: q, auto simp add: compU_assoc)
 
 
 subsection \<open>Examples\<close>
@@ -85,9 +85,9 @@ definition reset :: "(nat, nat, nat, nat) SST" where
     final = \<lambda>q. Some [Inl 0] \<rparr>"
 
 lemma "run reset [1, 2, 0, 1, 2] = Some [1, 2]"
-  by (simp add: run_def reset_def Update.comp_apply hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
+  by (simp add: run_def reset_def compU_apply hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
 
 lemma "run rev [2, 3, 4] = Some [4, 3, 2]"
-  by (simp add: run_def rev_def Update.comp_apply hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
+  by (simp add: run_def rev_def compU_apply hat_hom_def update2hom_def fold_sum_def idU_def emptyU_def)
 
 end

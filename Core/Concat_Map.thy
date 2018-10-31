@@ -13,8 +13,15 @@ definition compS :: "('b \<Rightarrow> 'c list) \<Rightarrow> ('a \<Rightarrow> 
 lemma compS_apply: "(f \<odot> g) x = concat (map f (g x))"
   unfolding compS_def by simp
 
+hide_fact compS_def
+
+
 definition idS :: "'a \<Rightarrow> 'a list" where
   "idS x = [x]"
+
+definition emptyS :: "'a \<Rightarrow> 'a list" where
+  "emptyS x = []"
+
 
 lemma [simp]: "concat (map idS xs) = xs"
   by (induct xs, simp_all add: idS_def)
@@ -31,8 +38,11 @@ lemma compS_lem: "concat (map (f \<odot> g) xs) = concat (map f (concat (map g x
 lemma compS_assoc: "(f \<odot> g) \<odot> h = f \<odot> (g \<odot> h)"
   by (rule ext, simp add: compS_apply compS_lem)
 
-hide_fact compS_def
+lemma [simp]: "f \<odot> emptyS = emptyS"
+  by (rule ext, simp add: emptyS_def compS_apply)
 
+lemma [simp]: "emptyS \<odot> f = emptyS"
+  by (rule ext, simp add: compS_apply emptyS_def)
 
 
 end

@@ -36,7 +36,7 @@ proposition \<Delta>_assoc_string:
   by (induct u arbitrary: q rule: xa_induct, simp_all)
 
 lemma \<Delta>_assoc: "\<Delta> t (f, \<phi> \<bullet> \<psi>) = \<Delta> t (\<Delta> t (f, \<phi>), \<psi>)"
-  by (auto simp add: \<Delta>_def comp_def \<Delta>_assoc_string)
+  by (auto simp add: \<Delta>_def compU_apply \<Delta>_assoc_string)
 
 proposition H_assoc_string:
   "hat_hom (\<lambda>(q2, x1). Transducer.hat2 (delta2f f t_trans) (eta2f t_out) (q2, theta x1))
@@ -45,7 +45,7 @@ proposition H_assoc_string:
   by (induct u arbitrary: q rule: xa_induct, simp_all add: Transducer.eta_append)
 
 lemma H_assoc: "H tr to (f, \<phi> \<bullet> \<psi>) = H tr to (f, \<phi>) \<bullet> H tr to (\<Delta> tr (f, \<phi>), \<psi>)"
-  by (auto simp add: \<Delta>_def H_def comp_def H_assoc_string)
+  by (auto simp add: \<Delta>_def H_def compU_apply H_assoc_string)
 
 
 subsection \<open>Construction\<close>
@@ -141,7 +141,7 @@ next
       by (simp add: SST.run_def compose_SST_Transducer_def compose_final_def
                        Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat Some
                        \<Delta>_assoc valuate_delta_hat
-                       comp_ignore
+                       compU_ignore
                        valuate_eta_hat
                        H_assoc)
   qed

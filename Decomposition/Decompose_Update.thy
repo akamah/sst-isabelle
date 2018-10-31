@@ -226,6 +226,14 @@ corollary scan_last_single_simp[simp]:
   by (simp add: scan_last_simp[of "[]", simplified] append_scanned_simp)
 
 
+lemma length_scanned_hat_alpha: "length_scanned (scan (hat_alpha t u)) = length_scanned (scan u)"
+  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
+
+lemma length_scanned_ignore_alphabet: 
+  "length_scanned (scan (map Inl (extract_variables u))) = length_scanned (scan u)"
+  by (induct u rule: xw_induct, simp_all)
+
+
 subsubsection \<open>Flat\<close>
 
 text \<open>flatten pairs\<close>
@@ -253,7 +261,8 @@ next
   then show ?case by (simp add: append_scanned_simp append_scanned_assoc)
 qed
 
-
+theorem scan_inverse: "flat (scan u) = u"
+  by (induct u rule: xw_induct, simp_all)
 
 subsubsection \<open>Padding\<close>
 
@@ -304,6 +313,10 @@ next
   case (PairSnoc x as sc)
   then show ?case by (simp add: append_scanned_assoc[symmetric])
 qed
+
+lemma padding_scan_ignore_alphabet:
+  "padding B x (scan (map Inl (extract_variables u))) = padding B x (scan u)"
+  by (induct u rule: xw_induct, auto simp add: length_scanned_ignore_alphabet)
 
 
 subsubsection \<open>nth_string\<close>
@@ -433,6 +446,9 @@ corollary nth_string_lt_length:
   using assms by (simp add: nth_string_append)
 
 
+subsubsection \<open>Flat Store\<close>
+
+
 definition flat_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) scanned \<Rightarrow> ('y + ('y, 'k) index) \<Rightarrow> ('y + 'b) list" where
   "flat_store L xas yi = (case yi of
     (Inl y) \<Rightarrow> [Inl y] |
@@ -455,13 +471,9 @@ next
 qed
 
 
-theorem scan_inverse: "flat (scan u) = u"
-  by (induct u rule: xw_induct, simp_all)
-
-
 subsection \<open>Resolve\<close>
-text \<open>\<pi> in the thesis\<close>
 
+text \<open>\<pi> in the thesis\<close>
 
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
@@ -532,14 +544,6 @@ proof -
     by (induct_tac u rule: xa_induct, simp_all)
   show ?thesis by (rule ext, auto simp add: resolve_shuffle_def map_alpha_def *)
 qed
-
-lemma length_scanned_ignore_alphabet: 
-  "length_scanned (scan (map Inl (extract_variables u))) = length_scanned (scan u)"
-  by (induct u rule: xw_induct, simp_all)
-
-lemma padding_scan_ignore_alphabet:
-  "padding B x (scan (map Inl (extract_variables u))) = padding B x (scan u)"
-  by (induct u rule: xw_induct, auto simp add: length_scanned_ignore_alphabet)
 
 
 lemma synthesize_resolve_eq_flat:
@@ -927,13 +931,3 @@ definition synthesize2 :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \
 *)
 
 end
-
-
-
-
-
-
-
-
-
-

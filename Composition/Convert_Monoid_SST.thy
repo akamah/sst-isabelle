@@ -232,12 +232,6 @@ lemma iota_alpha0_remove:
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
 
-
-
-lemma length_scan_hat_alpha: "length_scanned (scan (hat_alpha t u)) = length_scanned (scan u)"
-  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
-
-
 lemma map_alpha_resolve_store_aux: 
   "hat_hom t (nth_string (scan u) k)
  = nth_string (scan (hat_alpha (update2hom t) u)) k"
@@ -247,7 +241,7 @@ proof (induct u arbitrary: k rule: xw_induct)
 next
   case (VarWord x w u)
   then show ?case
-    by (auto simp add: hat_alpha_right_map nth_string_append_last length_scan_hat_alpha hat_hom_def)
+    by (auto simp add: hat_alpha_right_map nth_string_append_last length_scanned_hat_alpha hat_hom_def)
 qed
 
 lemma map_alpha_resolve_store:

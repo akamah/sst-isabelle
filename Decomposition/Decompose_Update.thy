@@ -217,9 +217,11 @@ corollary scan_last_single_simp[simp]:
   "scan (Inl x # map Inr w) = ([], [(x, w)])"
   by (simp add: scan_last_simp[of "[]", simplified] append_scanned_simp)
 
+corollary scan_var_simp[simp]: "scan [Inl x] = ([], [(x, [])])"
+  by (simp add: scan_last_var_simp[of "[]" "x", simplified] append_scanned_simp)
 
 lemma length_scanned_hat_alpha: "length_scanned (scan (hat_alpha t u)) = length_scanned (scan u)"
-  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
+  by (induct u rule: xw_induct, simp_all)
 
 lemma length_scanned_ignore_alphabet: 
   "length_scanned (scan (map Inl (extract_variables u))) = length_scanned (scan u)"
@@ -450,9 +452,39 @@ fun decompose_rec :: "'x \<Rightarrow> nat \<Rightarrow> ('x \<times> 'a list) l
   "decompose_rec y 0       ((x, as)#rest) = (if y = x then as else decompose_rec y 0 rest)" |
   "decompose_rec y (Suc k) ((x, as)#rest) = (if y = x then decompose_rec y k rest else decompose_rec y (Suc k) rest)"
 
+lemma decompose_rec_alphabet:
+  assumes "\<forall>(x, as) \<in> set xas. P as"
+  assumes "P []"
+  shows "P (decompose_rec y k xas)"
+  using assms by (induct y k xas rule: decompose_rec.induct, simp_all)
+
 fun concat_scan_tail where
   "concat_scan_tail m Nil    = []" |
   "concat_scan_tail m (y#ys) = snd (scan (m y)) @ concat_scan_tail m ys"
+
+lemma concat_scan_tail_idU: "\<forall>(x, as)\<in>set (concat_scan_tail (idU :: ('x, 'a) update) ys). as = []"
+proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a ys)
+  show ?case proof (simp add: prod.case_eq_if, rule ballI)
+    fix x :: "'x \<times> 'a list"
+    assume *: "x \<in> set (snd (scan (idU a))) \<union> set (concat_scan_tail idU ys)"
+    show "snd x = []" proof (cases "x \<in> set (snd (scan (idU a)))")
+      case True
+      then show ?thesis by (simp add: idU_def)
+    next
+      case False
+      then show ?thesis proof -
+        have "x \<in> set (concat_scan_tail idU ys)" using * False by simp
+        then show ?thesis using Cons by fastforce
+      qed
+    qed
+  qed
+qed
+
+
 
 fun decompose_nat :: "('y::enum, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'b list" where
   "decompose_nat m y k = decompose_rec y k (concat_scan_tail m (Enum.enum :: 'y list))"
@@ -483,13 +515,15 @@ fun update_counter_rec :: "('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Righta
   "update_counter_rec c Nil    = c" |
   "update_counter_rec c (y#ys) = update_counter_rec (incr y c) ys"
 
-fun gen_table_rec :: "'k::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<times> ('y \<times> 'k) list) list" where
-  "gen_table_rec B s c Nil    = []" |
-  "gen_table_rec B s c (y#ys) = (y, give_index_rec B c (s y)) # gen_table_rec B s (update_counter_rec c (s y)) ys"
+fun gen_table_rec :: "'k::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<times> 'k) list" where
+  "gen_table_rec B s y0 c Nil    = []" |
+  "gen_table_rec B s y0 c (y#ys) = (if y = y0 
+     then give_index_rec B c (s y0)
+     else gen_table_rec B s y0 (update_counter_rec c (s y)) ys)"
 
 fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y \<times> 'k, 'b) update'" where
-  "synthesize_shuffle B s = (let tab = map_of (gen_table_rec B s (\<lambda>_. 0) (Enum.enum :: 'y list))
-                             in (\<lambda>y. case tab y of Some x \<Rightarrow> map Inl x | None \<Rightarrow> []))"
+  "synthesize_shuffle B s y = map Inl (gen_table_rec B s y (\<lambda>_. 0) (Enum.enum :: 'y list))"
+
 
 fun synthesize_append  :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y \<times> 'k, 'y, 'b) update'" where
   "synthesize_append B store (y, k) = Inl y # map Inr (store (y, Some k))"
@@ -502,38 +536,41 @@ definition synthesize :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<
   "synthesize B sa = (case sa of (s, a) \<Rightarrow> synthesize_append B a \<bullet> synthesize_shuffle B s \<bullet> synthesize_prepend B a)"
 
 
-lemma concat_map_synthesize_store_map_Inr:
-  "concat (map (synthesize_store B a) (map Inr w)) = map Inr (concat (map a w))"
-  by (induct w, simp_all)
-
 subsection \<open>Properties of Decomposition\<close>
 
 
 lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle B s = synthesize_shuffle B s"
-  by (rule ext, simp add: map_alpha_def hat_alpha_left_ignore)
+  by (rule ext, simp add: map_alpha_apply)
 
-lemma map_alpha_synthesize_store: "t \<star> synthesize_store B p = synthesize_store B (t \<odot> p)"
-  by (rule ext_sum, simp_all add: map_alpha_def Update.hat_alpha_right_map compS_apply)
+lemma map_alpha_synthesize_append: "t \<star> synthesize_append B p = synthesize_append B (t \<odot> p)"
+  by (rule ext_prod, simp add: map_alpha_apply compS_apply)
+
+lemma map_alpha_synthesize_prepend: "t \<star> synthesize_prepend B p = synthesize_prepend B (t \<odot> p)"
+  by (rule ext, simp add: map_alpha_apply compS_apply)
 
 lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, t \<odot> a)"
-  by (rule ext, simp add: map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store synthesize_def)
-
+  apply (rule ext, simp add: synthesize_def map_alpha_distrib)
+  apply (simp add:  map_alpha_synthesize_shuffle map_alpha_synthesize_append map_alpha_synthesize_prepend)
+  done
 
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
-lemma resolve_idU_empty: "resolve_store B idU (y, k::'k::enum option) = empty_store (y, k)"
-proof (cases "enum_to_nat k = 0")
-  case True
-  then show ?thesis by (simp add: idU_def scan_def)
+lemma resolve_idU_empty:
+  fixes B :: "'k::enum boundedness"
+  shows "resolve_store B (idU :: ('y::enum, 'b) update) = empty_store"
+  unfolding resolve_store_def
+proof (rule ext_prod, auto simp add: option.case_eq_if)
+  fix y :: "'y"
+  show "fst (scan (idU y)) = []" unfolding idU_def by simp
 next
-  case False
-  then show ?thesis proof -
-    have "resolve_store B idU (y, k) = decompose_rest y (enum_to_nat k - 1) (concat (map (snd o scan o idU)"
-      apply simp
-    have using Nat.gr0_implies_Suc apply simp
+  fix y :: "'y" and k :: "'k"
+  show "decompose_rec y (enum_to_nat k) (concat_scan_tail idU enum_class.enum) = []"
+    apply (rule decompose_rec_alphabet)
+     apply (rule concat_scan_tail_idU)
+    apply (simp)
+    done
 qed
-
 
 lemma resolve_shuffle_distrib_str: 
   "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle \<phi>) (extract_variables u))"
@@ -843,9 +880,11 @@ theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
   by (auto simp add: synthesize_def resolve_shuffle_def compU_apply
                      extract_variables_synthesize_store extract_variables_padding_scan)
 
+lemma synthesize_prepend_idU: "synthesize_prepend B empty_store = idU"
+  by (rule ext, simp add: idU_def)
 
 lemma synthesize_idU: "synthesize B (idS :: 'x \<Rightarrow> 'x list, empty_store) = (idU :: ('x::enum, 'a) update)"
-  by (auto simp add: synthesize_def synthesize_shuffle_def synthesize_store_def idU_def idS_def scan_def compU_apply)
+  apply (auto simp add: synthesize_def idU_def idS_def scan_def compU_apply synthesize_prepend_idU)
 
 subsection \<open>Example\<close>
 
@@ -877,32 +916,6 @@ lemma "resolve_store testB poyo (True, Some (False, False)) = ''B''"
 
 lemma "resolve_store testB poyo (True, Some (False, True)) = ''C''" 
   by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
-
-
-(*
-fun decompose_rest :: "'x \<Rightarrow> nat \<Rightarrow> ('x \<times> 'a list) list \<Rightarrow> 'a list" where
-  "decompose_rest y _ Nil = []" |
-  "decompose_rest y (0::nat) ((x, as)#rest) = (if y = x then as else decompose_rest y 0 rest)" |
-  "decompose_rest y (Suc k) ((x, as)#rest) = (if y = x then decompose_rest y k rest else
-                                                            decompose_rest y (Suc k) rest)"
-
-fun decompose_head :: "'x \<Rightarrow> ('x, 'a) scanned \<Rightarrow> 'a list" where
-  "decompose_head y (as, _) = as"
-
-fun decompose_nat :: "('y::enum, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'b list" where
-  "decompose_nat m y 0       = fst (scan (m y))" |
-  "decompose_nat m y (Suc k) = decompose_rest y k (concat (map (snd \<circ> scan \<circ> m) (Enum.enum :: 'y list)))"
-
-fun decompose :: "('y::enum, 'b) update \<Rightarrow> ('y, 'k::enum, 'b) store2" where  
-  "decompose m (y, k) = decompose_nat m y (enum_to_nat k)"
-*)
-
-
-
-
-
-
-
 
 
 end

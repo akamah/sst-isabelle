@@ -119,10 +119,10 @@ lemma [simp]: "hat_alpha t (xs@ys) = hat_alpha t xs @ hat_alpha t ys"
 lemma [simp]: "hat_alpha idS xs = xs"
   by (induct xs rule: xa_induct, simp_all add: compS_apply, simp add: idS_def)
 
-lemma hat_alpha_left_ignore: "hat_alpha f (map Inl xs) = map Inl xs"
+lemma hat_alpha_left_ignore[simp]: "hat_alpha f (map Inl xs) = map Inl xs"
   by (induct xs, auto)
 
-lemma hat_alpha_right_map: "hat_alpha f (map Inr as) = map Inr (concat (map f as))"
+lemma hat_alpha_right_map[simp]: "hat_alpha f (map Inr as) = map Inr (concat (map f as))"
   by (induct as, auto)
 
 

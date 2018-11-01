@@ -515,14 +515,14 @@ fun update_counter_rec :: "('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Righta
   "update_counter_rec c Nil    = c" |
   "update_counter_rec c (y#ys) = update_counter_rec (incr y c) ys"
 
-fun gen_table_rec :: "'k::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<times> 'k) list" where
-  "gen_table_rec B s y0 c Nil    = []" |
-  "gen_table_rec B s y0 c (y#ys) = (if y = y0 
+fun row_rec :: "'k::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<times> 'k) list" where
+  "row_rec B s y0 c Nil    = []" |
+  "row_rec B s y0 c (y#ys) = (if y = y0 
      then give_index_rec B c (s y0)
-     else gen_table_rec B s y0 (update_counter_rec c (s y)) ys)"
+     else row_rec B s y0 (update_counter_rec c (s y)) ys)"
 
 fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y \<times> 'k, 'b) update'" where
-  "synthesize_shuffle B s y = map Inl (gen_table_rec B s y (\<lambda>_. 0) (Enum.enum :: 'y list))"
+  "synthesize_shuffle B s y = map Inl (row_rec B s y (\<lambda>_. 0) (Enum.enum :: 'y list))"
 
 
 fun synthesize_append  :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y \<times> 'k, 'y, 'b) update'" where
@@ -589,6 +589,12 @@ qed
 
 subsection \<open>Properties of flat_store and synthesize_store & resolve_store\<close>
 
+fun append_resolve where
+  "append_resolve B m (y, k) = Inl y # map Inr (decompose_nat m y (enum_to_nat k))"
+
+lemma "synthesize_append B (resolve_store B m) (y, k) = append_resolve B m (y, k)"
+  unfolding resolve_store_def by simp
+
 abbreviation z_equal_var where
   "z_equal_var x yi \<equiv> ((\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k)))"
 
@@ -596,6 +602,7 @@ abbreviation z_equal_var where
 lemma padding_x: "list_all (z_equal_var x) (padding B x xas)"
   by (induct xas rule: scanned_rev_induct, simp_all)
 
+(*
 lemma concat_map_synthesize_resolve_flat:
   fixes B :: "'k::enum type_nat"
   assumes "list_all (z_equal_var x) xs"
@@ -617,7 +624,7 @@ lemma concat_map_padding:
   shows "concat (map (synthesize_store B (resolve_store B m)) (padding B x xas))
        = concat (map (flat_store B (scan (m x))) (padding B x xas))"
   by (rule concat_map_synthesize_resolve_flat, rule padding_x)
-
+*)
 
 abbreviation z_less_than where
   "z_less_than n z \<equiv> (\<forall>y i. z = Inr (y, i) \<longrightarrow> enum_to_nat i < n)"
@@ -630,6 +637,7 @@ lemma all_z_less_than_Suc:
   shows "list_all (z_less_than (Suc n)) xs"
   using assms by (induct xs, simp_all add: less_SucI)
 
+(*
 lemma flat_store_lt_length:
   assumes "z_less_than (length_scanned sc) (Inr (y, i))"
   shows "flat_store B (sc @@@ rest) (Inr (y, i)) = flat_store B sc (Inr (y, i))"
@@ -650,7 +658,7 @@ next
   moreover have "list_all (z_less_than (length_scanned sc)) xs" using Alpha.prems by auto
   ultimately show ?case by (cases a, simp add: flat_store_lt_length Alpha)
 qed
-
+*)
 lemma padding_lt_length_scanned:
   assumes "length_scanned sc \<le> length (Enum.enum :: ('y::enum, 'k::enum) type_mult_suc list)"
   shows "list_all (z_less_than (length_scanned sc)) (padding B x sc :: ('y, 'k) pad)"
@@ -841,7 +849,7 @@ lemma length_scanned_boundedness:
   shows "length_scanned (scan (m x)) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)"
   using assms by (simp add: type_mult_suc_length  bounded_copy_length_scanned)
   
-
+(*
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"
@@ -861,6 +869,19 @@ proof -
     done
   then show ?thesis by (auto simp add: scan_inverse)
 qed
+  oops
+*)
+
+theorem resolve_inverse:
+  fixes B :: "'k::enum boundedness"
+  fixes m :: "('y::enum, 'b) update"
+  assumes "bounded k m"
+  assumes "boundedness B k"
+  shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
+  apply (rule ext)
+  apply (simp add: synthesize_def)
+  apply (simp add: compU_apply)
+
 
 
 lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"

@@ -444,55 +444,42 @@ subsection \<open>Resolve\<close>
 
 text \<open>\<pi> in the thesis\<close>
 
+
+fun counter0 where
+  "counter0 y = 0"
+
+fun incr where
+  "incr y counter x = (if x = y then Suc (counter x) else counter x)"
+
+fun lookup_row where
+  "lookup_row y0 k0 c Nil           = None" |
+  "lookup_row y0 k0 c ((y, as)#yas) =
+    (if y = y0 \<and> c y = k0 then Some as else lookup_row y0 k0 (incr y c) yas)"
+
+fun incr_row where
+  "incr_row Nil c = c" |
+  "incr_row ((y, _)#yas) c = incr_row yas (incr y c)"
+
+fun lookup_rec where
+  "lookup_rec m y0 k0 c Nil    = None" |
+  "lookup_rec m y0 k0 c (y#ys) = 
+     (case lookup_row y0 k0 c (snd (scan (m y))) of
+       Some as \<Rightarrow> Some as |
+       None    \<Rightarrow> lookup_rec m y0 k0 (incr_row (snd (scan (m y))) c) ys)"
+
+fun lookup :: "'y list \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'b list" where
+  "lookup ys m y k = (case lookup_rec m y k counter0 ys of
+                       Some as \<Rightarrow> as |
+                       None    \<Rightarrow> [])"
+
+
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
-
-fun decompose_rec :: "'x \<Rightarrow> nat \<Rightarrow> ('x \<times> 'a list) list \<Rightarrow> 'a list" where
-  "decompose_rec y _ Nil = []" |
-  "decompose_rec y 0       ((x, as)#rest) = (if y = x then as else decompose_rec y 0 rest)" |
-  "decompose_rec y (Suc k) ((x, as)#rest) = (if y = x then decompose_rec y k rest else decompose_rec y (Suc k) rest)"
-
-lemma decompose_rec_alphabet:
-  assumes "\<forall>(x, as) \<in> set xas. P as"
-  assumes "P []"
-  shows "P (decompose_rec y k xas)"
-  using assms by (induct y k xas rule: decompose_rec.induct, simp_all)
-
-fun concat_scan_tail where
-  "concat_scan_tail m Nil    = []" |
-  "concat_scan_tail m (y#ys) = snd (scan (m y)) @ concat_scan_tail m ys"
-
-lemma concat_scan_tail_idU: "\<forall>(x, as)\<in>set (concat_scan_tail (idU :: ('x, 'a) update) ys). as = []"
-proof (induct ys)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a ys)
-  show ?case proof (simp add: prod.case_eq_if, rule ballI)
-    fix x :: "'x \<times> 'a list"
-    assume *: "x \<in> set (snd (scan (idU a))) \<union> set (concat_scan_tail idU ys)"
-    show "snd x = []" proof (cases "x \<in> set (snd (scan (idU a)))")
-      case True
-      then show ?thesis by (simp add: idU_def)
-    next
-      case False
-      then show ?thesis proof -
-        have "x \<in> set (concat_scan_tail idU ys)" using * False by simp
-        then show ?thesis using Cons by fastforce
-      qed
-    qed
-  qed
-qed
-
-
-
-fun decompose_nat :: "('y::enum, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'b list" where
-  "decompose_nat m y k = decompose_rec y k (concat_scan_tail m (Enum.enum :: 'y list))"
 
 definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y, 'k::enum, 'b) store" where  
   "resolve_store B m yi = (case yi of
      (y, None)   \<Rightarrow> fst (scan (m y)) | 
-     (y, Some k) \<Rightarrow> decompose_nat m y (enum_to_nat k))"
+     (y, Some k) \<Rightarrow> lookup (Enum.enum :: 'y::enum list) m y (enum_to_nat k))"
 
 fun empty_store :: "('y::enum, 'k, 'b) store" where
   "empty_store (y, k) = []"
@@ -501,39 +488,44 @@ fun empty_store :: "('y::enum, 'k, 'b) store" where
 subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>
 
-fun incr where
-  "incr y counter x = (if x = y then counter x + 1 else counter x)"
-
-find_consts "('a \<times> 'b) list \<Rightarrow> 'a \<Rightarrow> 'b option"
-find_consts "'a option \<Rightarrow> 'a \<Rightarrow> 'a"
-
-fun give_index_rec :: "'k::enum boundedness \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<times> 'k) list" where
+fun give_index_rec :: "'k::enum boundedness \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> ('y \<times> 'b list) list \<Rightarrow> ('y + 'y \<times> nat option) list" where
   "give_index_rec B _ Nil    = []" |
-  "give_index_rec B c (y#ys) = (y, nat_to_enum (c y)) # give_index_rec B (incr y c) ys"
+  "give_index_rec B c ((y, as)#yas) = Inl y # Inr (y, Some (c y)) # give_index_rec B (incr y c) yas"
 
 fun update_counter_rec :: "('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<Rightarrow> nat)" where
   "update_counter_rec c Nil    = c" |
   "update_counter_rec c (y#ys) = update_counter_rec (incr y c) ys"
 
-fun row_rec :: "'k::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<times> 'k) list" where
+fun row_rec :: "'k::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> nat option) list" where
   "row_rec B s y0 c Nil    = []" |
   "row_rec B s y0 c (y#ys) = (if y = y0 
-     then give_index_rec B c (s y0)
+     then Inr (y0, None) # give_index_rec B c (snd (scan (map Inl (s y0) :: ('y + 'y) list)))
      else row_rec B s y0 (update_counter_rec c (s y)) ys)"
 
-fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y \<times> 'k, 'b) update'" where
-  "synthesize_shuffle B s y = map Inl (row_rec B s y (\<lambda>_. 0) (Enum.enum :: 'y list))"
+fun my_enum_cast :: "'k::enum boundedness \<Rightarrow> ('y + 'y \<times> nat option) \<Rightarrow> (('y + 'y \<times> 'k option) + 'b)" where
+  "my_enum_cast B (Inl y) = Inl (Inl y)" |
+  "my_enum_cast B (Inr (y, None)) = Inl (Inr (y, None))" |
+  "my_enum_cast B (Inr (y, Some n)) = Inl (Inr (y, Some (nat_to_enum n)))"
+ 
 
+fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y + 'y \<times> 'k option, 'b) update'" where
+  "synthesize_shuffle B s y = map (my_enum_cast B) (row_rec B s y counter0 (Enum.enum :: 'y list))"
 
+(*
 fun synthesize_append  :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y \<times> 'k, 'y, 'b) update'" where
   "synthesize_append B store (y, k) = Inl y # map Inr (store (y, Some k))"
 
 fun synthesize_prepend :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y, 'b) update" where
   "synthesize_prepend B store y = map Inr (store (y, None)) @ [Inl y]"
+*)
+
+fun synthesize_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y + 'y \<times> 'k option, 'y, 'b) update'" where
+  "synthesize_store B store (Inl y)      = [Inl y]" |
+  "synthesize_store B store (Inr (y, k)) = map Inr (store (y, k))"
 
 definition synthesize :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, 'k, 'b) store
                       \<Rightarrow> ('y, 'b) update" where
-  "synthesize B sa = (case sa of (s, a) \<Rightarrow> synthesize_append B a \<bullet> synthesize_shuffle B s \<bullet> synthesize_prepend B a)"
+  "synthesize B sa = (case sa of (s, a) \<Rightarrow> synthesize_store B a \<bullet> synthesize_shuffle B s)"
 
 
 subsection \<open>Properties of Decomposition\<close>
@@ -588,12 +580,6 @@ qed
 
 
 subsection \<open>Properties of flat_store and synthesize_store & resolve_store\<close>
-
-fun append_resolve where
-  "append_resolve B m (y, k) = Inl y # map Inr (decompose_nat m y (enum_to_nat k))"
-
-lemma "synthesize_append B (resolve_store B m) (y, k) = append_resolve B m (y, k)"
-  unfolding resolve_store_def by simp
 
 abbreviation z_equal_var where
   "z_equal_var x yi \<equiv> ((\<exists>y. yi = Inl y) \<or> (\<exists>k. yi = Inr (x, k)))"
@@ -872,6 +858,41 @@ qed
   oops
 *)
 
+fun store_resolve where
+  "store_resolve B m (Inl y) = [Inl y]" |
+  "store_resolve B m (Inr (y, None)) = map Inr (fst (scan (m y)))" |
+  "store_resolve B m (Inr (y, Some k)) = map Inr (lookup m y k)"
+
+lemma store_resolve_eq: "synthesize_store B (resolve_store B m) = store_resolve B m"
+proof (rule ext_sum)
+  show "\<And>l. synthesize_store B (resolve_store B m) (Inl l) = store_resolve B m (Inl l)"
+    unfolding resolve_store_def by simp
+next
+  fix r
+  show "synthesize_store B (resolve_store B m) (Inr r) = store_resolve B m (Inr r)"
+  proof (cases "r")
+    case (Pair a b)
+    then show ?thesis proof (cases "b")
+      case None
+      then show ?thesis using Pair unfolding resolve_store_def by simp
+    next
+      case (Some c)
+      then show ?thesis using Pair unfolding resolve_store_def by simp
+    qed
+  qed
+qed
+
+
+lemma my_great_lemma:
+  fixes B :: "'k::enum boundedness"
+  fixes y :: "'y::enum"
+  assumes "Inr (x, Some n) \<in> set (give_index_rec B c xas)"
+  shows "\<exists>as. lookup_row x n c xas = Some as"
+  using assms unfolding resolve_shuffle_def
+  by (induct xas arbitrary: c rule: pair_induct,auto)
+
+
+
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"
@@ -880,7 +901,7 @@ theorem resolve_inverse:
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
   apply (rule ext)
   apply (simp add: synthesize_def)
-  apply (simp add: compU_apply)
+  apply (simp add: compU_apply store_resolve_eq)
 
 
 

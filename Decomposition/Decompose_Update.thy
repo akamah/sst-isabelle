@@ -460,6 +460,12 @@ fun incr_row where
   "incr_row Nil c = c" |
   "incr_row ((y, _)#yas) c = incr_row yas (incr y c)"
 
+fun incr_rows_until where
+  "incr_rows_until m y0 Nil c = c" |
+  "incr_rows_until m y0 (y#ys) c =
+    (if y = y0 then c else incr_rows_until m y0 ys (incr_row (snd (scan (m y))) c))"
+
+
 fun lookup_rec where
   "lookup_rec m y0 k0 c Nil    = None" |
   "lookup_rec m y0 k0 c (y#ys) = 
@@ -488,19 +494,15 @@ fun empty_store :: "('y::enum, 'k, 'b) store" where
 subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>
 
-fun give_index_rec :: "'k::enum boundedness \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> ('y \<times> 'b list) list \<Rightarrow> ('y + 'y \<times> nat option) list" where
-  "give_index_rec B _ Nil    = []" |
-  "give_index_rec B c ((y, as)#yas) = Inl y # Inr (y, Some (c y)) # give_index_rec B (incr y c) yas"
+fun give_index_rec :: "('y \<Rightarrow> nat) \<Rightarrow> ('y \<times> 'b list) list \<Rightarrow> ('y + 'y \<times> nat option) list" where
+  "give_index_rec _ Nil    = []" |
+  "give_index_rec c ((y, as)#yas) = Inl y # Inr (y, Some (c y)) # give_index_rec (incr y c) yas"
 
-fun update_counter_rec :: "('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y \<Rightarrow> nat)" where
-  "update_counter_rec c Nil    = c" |
-  "update_counter_rec c (y#ys) = update_counter_rec (incr y c) ys"
-
-fun row_rec :: "'k::enum boundedness \<Rightarrow> 'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> nat option) list" where
-  "row_rec B s y0 c Nil    = []" |
-  "row_rec B s y0 c (y#ys) = (if y = y0 
-     then Inr (y0, None) # give_index_rec B c (snd (scan (map Inl (s y0) :: ('y + 'y) list)))
-     else row_rec B s y0 (update_counter_rec c (s y)) ys)"
+fun row_rec :: "'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> nat option) list" where
+  "row_rec s y0 c Nil    = []" |
+  "row_rec s y0 c (y#ys) = (if y = y0 
+     then Inr (y0, None) # give_index_rec c (snd (scan (map Inl (s y0) :: ('y + 'y) list)))
+     else row_rec s y0 (incr_row (snd (scan (map Inl (s y) :: ('y + 'y) list))) c) ys)"
 
 fun my_enum_cast :: "'k::enum boundedness \<Rightarrow> ('y + 'y \<times> nat option) \<Rightarrow> (('y + 'y \<times> 'k option) + 'b)" where
   "my_enum_cast B (Inl y) = Inl (Inl y)" |
@@ -884,12 +886,21 @@ qed
 
 
 lemma my_great_lemma:
-  fixes B :: "'k::enum boundedness"
-  fixes y :: "'y::enum"
-  assumes "Inr (x, Some n) \<in> set (give_index_rec B c xas)"
+  assumes "Inr (x, Some n) \<in> set (give_index_rec c xas)"
   shows "\<exists>as. lookup_row x n c xas = Some as"
   using assms unfolding resolve_shuffle_def
-  by (induct xas arbitrary: c rule: pair_induct,auto)
+  by (induct xas arbitrary: c rule: pair_induct, auto)
+
+lemma
+  assumes "Inr (x, Some n) \<in> set (give_index_rec (incr_rows_until m y0 ys c0) (snd (scan (m y0))))"
+  shows "lookup_rec m x n c0 (ys@[y0]) = lookup_row x n (incr_rows_until m y0 ys c0) (snd (scan (m y0)))"
+  using assms proof (induct ys arbitrary: c)
+  case Nil
+  then show ?case using my_great_lemma by fastforce
+next
+  case (Cons a ys)
+  then show ?case apply auto
+qed
 
 
 

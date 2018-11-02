@@ -72,6 +72,11 @@ lemma nat_enum_iso:
   unfolding enum_to_nat_def nat_to_enum_def
   by (rule nat_list_iso, rule assms(1), rule Enum.enum_distinct)
 
+lemma nat_enum_iso_UNIV:
+  assumes "n < card (UNIV :: ('e::enum) set)"
+  shows "enum_to_nat (nat_to_enum n :: 'e) = n"
+  by (rule nat_enum_iso, simp add: card_UNIV_length_enum[symmetric] assms)
+
 lemma enum_ex_zero:
   assumes "0 < length (Enum.enum :: ('e::enum) list)"
   shows "\<exists>k0::'e. (enum_to_nat k0 = 0)"

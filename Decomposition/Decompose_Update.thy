@@ -164,18 +164,35 @@ subsubsection \<open>Scan\<close>
 
 text \<open>scan var-alphabet list, and split it into a scanned string\<close>
 
-fun scan_pair :: "'y \<Rightarrow> 'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y, 'b) scanned_tail" where
-  "scan_pair x as [] = [(x, as)]" |
-  "scan_pair x as (Inl y#u) = (x, as) # scan_pair y [] u" |
-  "scan_pair x as (Inr a#u) = scan_pair x (as @ [a]) u"
+fun scan_pair_rec :: "'y \<Rightarrow> 'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y, 'b) scanned_tail" where
+  "scan_pair_rec x as [] = [(x, as)]" |
+  "scan_pair_rec x as (Inl y#u) = (x, as) # scan_pair_rec y [] u" |
+  "scan_pair_rec x as (Inr a#u) = scan_pair_rec x (as @ [a]) u"
 
 fun scan_head :: "'b list \<Rightarrow> ('y + 'b) list \<Rightarrow> ('y, 'b) scanned" where
   "scan_head as [] = (as, [])" |
-  "scan_head as (Inl x#u) = (as, scan_pair x [] u)" |
+  "scan_head as (Inl x#u) = (as, scan_pair_rec x [] u)" |
   "scan_head as (Inr a#u) = scan_head (as @ [a]) u"
 
 definition scan :: "('y + 'b) list \<Rightarrow> ('y, 'b) scanned" where
   "scan u = scan_head [] u"
+
+definition scan_pair :: "('y + 'b) list \<Rightarrow> ('y \<times> 'b list) list" where
+  "scan_pair u = snd (scan u)"
+
+definition extract_variables_pair :: "('y \<times> 'b list) list \<Rightarrow> 'y list" where
+  "extract_variables_pair ps = map fst ps"
+
+lemma extract_variables_pair_Nil[simp]: "extract_variables_pair [] = []" 
+  unfolding extract_variables_pair_def by simp
+
+lemma extract_variables_pair_Cons[simp]: "extract_variables_pair ((x, as)#xas) = x # extract_variables_pair xas"
+  unfolding extract_variables_pair_def by simp
+
+lemma extract_variables_pair_snoc[simp]: "extract_variables_pair (xas @ [(x, as)]) = extract_variables_pair xas @ [x]"
+  unfolding extract_variables_pair_def by simp
+
+
 
 lemma scan_word_simp[simp]:
   "scan (map Inr w) = (w, [])"
@@ -192,10 +209,10 @@ lemma scan_last_simp[simp]:
   "scan (u @ Inl x # map Inr w) = scan u @@@ [(x :: 'x, w)]"
 proof -
   { fix y :: 'x and bs
-    have "scan_pair y bs (map Inr w) = [(y, bs @ w)]" by (induct w arbitrary: bs, simp_all)
+    have "scan_pair_rec y bs (map Inr w) = [(y, bs @ w)]" by (induct w arbitrary: bs, simp_all)
   } note pair_alphabet = this
   { fix x y :: 'x and as u
-    have "scan_pair x as (u @ Inl y # map Inr w) = scan_pair x as u @ [(y, w)]"
+    have "scan_pair_rec x as (u @ Inl y # map Inr w) = scan_pair_rec x as u @ [(y, w)]"
       by (induct u arbitrary: x y as rule: xa_induct, simp_all add: pair_alphabet)
   } note pair = this
   { fix as
@@ -445,47 +462,88 @@ subsection \<open>Resolve\<close>
 text \<open>\<pi> in the thesis\<close>
 
 
-fun counter0 where
-  "counter0 y = 0"
-
-fun incr where
-  "incr y counter x = (if x = y then Suc (counter x) else counter x)"
-
-fun lookup_row where
-  "lookup_row y0 k0 c Nil           = None" |
-  "lookup_row y0 k0 c ((y, as)#yas) =
-    (if y = y0 \<and> c y = k0 then Some as else lookup_row y0 k0 (incr y c) yas)"
-
-fun incr_row where
-  "incr_row Nil c = c" |
-  "incr_row ((y, _)#yas) c = incr_row yas (incr y c)"
-
-fun incr_rows_until where
-  "incr_rows_until m y0 Nil c = c" |
-  "incr_rows_until m y0 (y#ys) c =
-    (if y = y0 then c else incr_rows_until m y0 ys (incr_row (snd (scan (m y))) c))"
-
-
-fun lookup_rec where
-  "lookup_rec m y0 k0 c Nil    = None" |
-  "lookup_rec m y0 k0 c (y#ys) = 
-     (case lookup_row y0 k0 c (snd (scan (m y))) of
-       Some as \<Rightarrow> Some as |
-       None    \<Rightarrow> lookup_rec m y0 k0 (incr_row (snd (scan (m y))) c) ys)"
-
-fun lookup :: "'y list \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'b list" where
-  "lookup ys m y k = (case lookup_rec m y k counter0 ys of
-                       Some as \<Rightarrow> as |
-                       None    \<Rightarrow> [])"
-
 
 definition resolve_shuffle :: "('y, 'b) update \<Rightarrow> 'y shuffle" where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
+abbreviation orElse where
+  "orElse a b \<equiv> combine_options (\<lambda>x y. x) a b"
+
+lemma orElse_assoc: "orElse (orElse a b) c = orElse a (orElse b c)"
+proof (cases a)
+  case None
+  then show ?thesis by simp
+next
+  case A: (Some a)
+  then show ?thesis proof (cases b)
+    case None
+    then show ?thesis by simp
+  next
+    case B: (Some b)
+    then show ?thesis proof (cases c)
+      case None
+      then show ?thesis by simp
+    next
+      case C: (Some c)
+      then show ?thesis by (simp add: A B C)
+    qed
+  qed
+qed
+
+
+fun counter0 :: "'x \<Rightarrow> nat" where
+  "counter0 y = 0"
+
+fun incr :: "('x \<Rightarrow> nat) \<Rightarrow> 'x \<Rightarrow> ('x \<Rightarrow> nat)" where
+  "incr counter x x' = (if x' = x then Suc (counter x) else counter x')"
+
+(* increment a counter by all elements of a row *)
+definition incr_row :: "('x \<Rightarrow> nat) \<Rightarrow> 'x list \<Rightarrow> ('x \<Rightarrow> nat)" where
+  "incr_row c ys = foldl incr c ys"
+
+lemma [simp]: "incr_row c [] = c" unfolding incr_row_def by simp
+lemma [simp]: "incr_row c (x#xs) = incr_row (incr c x) xs" unfolding incr_row_def by simp
+
+fun incr_rows_until :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y \<Rightarrow> ('x \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('x \<Rightarrow> nat)" where
+  "incr_rows_until s y0 c Nil = c" |
+  "incr_rows_until s y0 c (y#ys) =
+    (if y = y0 then c else incr_rows_until s y0 (incr_row c (s y)) ys)"
+
+(* lookup a single row *)
+fun lookup_row :: "'x \<Rightarrow> 'k::enum \<Rightarrow> ('x \<Rightarrow> nat) \<Rightarrow> ('x \<times> 'a list) list \<Rightarrow> 'a list option" where
+  "lookup_row x0 k0 c Nil           = None" |
+  "lookup_row x0 k0 c ((x, as)#xas) =
+    (if x = x0 \<and> nat_to_enum (c x) = k0 then Some as else lookup_row x0 k0 (incr c x) xas)"
+
+fun lookup_rec where
+  "lookup_rec m y0 k0 whole Nil    = None" |
+  "lookup_rec m y0 k0 whole (y#ys) = 
+     orElse (lookup_row y0 k0 (incr_rows_until (resolve_shuffle m) y0 counter0 whole) (scan_pair (m y)))
+            (lookup_rec m y0 k0 whole ys)"
+
+lemma lookup_rec_last:
+  "lookup_rec m y0 k0 whole (ys @ [y]) =
+    orElse (lookup_rec m y0 k0 whole ys)
+           (lookup_row y0 k0 (incr_rows_until (resolve_shuffle m) y0 counter0 whole) (scan_pair (m y)))"
+proof (induct ys)
+case Nil
+  then show ?case by (simp del: counter0.simps)
+next
+  case (Cons a ys)
+  then show ?case by (simp del: counter0.simps add: orElse_assoc)
+qed
+
+(* lookup a string at specified position in a given update monoid *)
+fun lookup :: "'y list \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y \<Rightarrow> 'k::enum \<Rightarrow> 'b list" where
+  "lookup ys m y k = (case lookup_rec m y k ys ys of
+                       Some as \<Rightarrow> as |
+                       None    \<Rightarrow> [])"
+
+
 definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y, 'k::enum, 'b) store" where  
   "resolve_store B m yi = (case yi of
      (y, None)   \<Rightarrow> fst (scan (m y)) | 
-     (y, Some k) \<Rightarrow> lookup (Enum.enum :: 'y::enum list) m y (enum_to_nat k))"
+     (y, Some k) \<Rightarrow> lookup (Enum.enum :: 'y list) m y k)"
 
 fun empty_store :: "('y::enum, 'k, 'b) store" where
   "empty_store (y, k) = []"
@@ -494,24 +552,17 @@ fun empty_store :: "('y::enum, 'k, 'b) store" where
 subsection \<open>Synthesize\<close>
 text \<open>inverse of \<pi> in the thesis\<close>
 
-fun give_index_rec :: "('y \<Rightarrow> nat) \<Rightarrow> ('y \<times> 'b list) list \<Rightarrow> ('y + 'y \<times> nat option) list" where
-  "give_index_rec _ Nil    = []" |
-  "give_index_rec c ((y, as)#yas) = Inl y # Inr (y, Some (c y)) # give_index_rec (incr y c) yas"
+fun give_index_row_rec :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> nat) \<Rightarrow> 'x list \<Rightarrow> ('x + 'x \<times> 'k option) list" where
+  "give_index_row_rec B _ Nil    = []" |
+  "give_index_row_rec B c (x#xs) = Inl x # Inr (x, Some (nat_to_enum (c x) :: 'k)) # give_index_row_rec B (incr c x) xs"
 
-fun row_rec :: "'y shuffle \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> nat option) list" where
-  "row_rec s y0 c Nil    = []" |
-  "row_rec s y0 c (y#ys) = (if y = y0 
-     then Inr (y0, None) # give_index_rec c (snd (scan (map Inl (s y0) :: ('y + 'y) list)))
-     else row_rec s y0 (incr_row (snd (scan (map Inl (s y) :: ('y + 'y) list))) c) ys)"
-
-fun my_enum_cast :: "'k::enum boundedness \<Rightarrow> ('y + 'y \<times> nat option) \<Rightarrow> (('y + 'y \<times> 'k option) + 'b)" where
-  "my_enum_cast B (Inl y) = Inl (Inl y)" |
-  "my_enum_cast B (Inr (y, None)) = Inl (Inr (y, None))" |
-  "my_enum_cast B (Inr (y, Some n)) = Inl (Inr (y, Some (nat_to_enum n)))"
- 
+fun give_index_row :: "'k::enum boundedness \<Rightarrow> 'y \<Rightarrow> ('y \<Rightarrow> nat) \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> 'k option) list" where
+  "give_index_row B y c xs = Inr (y, None) # 
+                               give_index_row_rec B c xs"
 
 fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y + 'y \<times> 'k option, 'b) update'" where
-  "synthesize_shuffle B s y = map (my_enum_cast B) (row_rec B s y counter0 (Enum.enum :: 'y list))"
+  "synthesize_shuffle B s y =
+     map Inl (give_index_row B y (incr_rows_until s y counter0 (Enum.enum :: 'y list)) (s y))"
 
 (*
 fun synthesize_append  :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y \<times> 'k, 'y, 'b) update'" where
@@ -860,10 +911,10 @@ qed
   oops
 *)
 
-fun store_resolve where
+fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where
   "store_resolve B m (Inl y) = [Inl y]" |
-  "store_resolve B m (Inr (y, None)) = map Inr (fst (scan (m y)))" |
-  "store_resolve B m (Inr (y, Some k)) = map Inr (lookup m y k)"
+  "store_resolve B m (Inr (y, None))   = map Inr (fst (scan (m y)))" |
+  "store_resolve B m (Inr (y, Some k)) = map Inr (lookup (Enum.enum :: 'y list) m y k)"
 
 lemma store_resolve_eq: "synthesize_store B (resolve_store B m) = store_resolve B m"
 proof (rule ext_sum)
@@ -886,20 +937,29 @@ qed
 
 
 lemma my_great_lemma:
-  assumes "Inr (x, Some n) \<in> set (give_index_rec c xas)"
+  assumes "Inr (x, Some n) \<in> set (give_index_row B y c (extract_variables_pair xas))"
   shows "\<exists>as. lookup_row x n c xas = Some as"
   using assms unfolding resolve_shuffle_def
-  by (induct xas arbitrary: c rule: pair_induct, auto)
-
-lemma
-  assumes "Inr (x, Some n) \<in> set (give_index_rec (incr_rows_until m y0 ys c0) (snd (scan (m y0))))"
-  shows "lookup_rec m x n c0 (ys@[y0]) = lookup_row x n (incr_rows_until m y0 ys c0) (snd (scan (m y0)))"
-  using assms proof (induct ys arbitrary: c)
+proof (induct xas arbitrary: c rule: pair_induct)
   case Nil
-  then show ?case using my_great_lemma by fastforce
+  then show ?case by simp
 next
-  case (Cons a ys)
-  then show ?case apply auto
+  case (PairCons x as xas)
+  then show ?case by auto
+qed
+
+lemma inspect_only_this_row:
+  assumes "y \<in> set whole"
+  assumes "c = incr_rows_until (resolve_shuffle m) y counter0 whole"
+  assumes "Inr (x, Some k) \<in> set (give_index_row B y c (extract_variables_pair (scan_pair (m y))))"
+  shows "lookup_rec m x k whole whole = lookup_row x n c (scan_pair (m y))"
+  using assms(2-3) proof (induct whole rule: rev_induct)
+  case Nil
+  then show ?case using my_great_lemma by simp
+next
+  case (snoc y' whole')
+  thm snoc
+  show ?case apply (simp add: lookup_rec_last)
 qed
 
 
@@ -912,7 +972,7 @@ theorem resolve_inverse:
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
   apply (rule ext)
   apply (simp add: synthesize_def)
-  apply (simp add: compU_apply store_resolve_eq)
+  apply (simp add: compU_apply store_resolve_eq del: give_index_row.simps)
 
 
 

@@ -96,13 +96,9 @@ lemma option_if_None_Some_eq_None:
 using assms by (cases cond, simp_all)
 
 
-
-
-fun take_rows_until :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
-  "take_rows_until y0 ys = takeWhile (not_equal y0) ys"
-
-fun drop_rows_until :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
-  "drop_rows_until y0 ys = dropWhile (\<lambda>y. y = y0) (dropWhile (not_equal y0) ys)"
+fun seek :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
+  "seek y0 [] = []" |
+  "seek y0 (y#ys) = (if y = y0 then ys else seek y0 ys)"
 
 definition calc_position_rows where
   "calc_position_rows s ys x = sum_list (map (\<lambda>y. count_list (s y) x) ys)"
@@ -153,7 +149,7 @@ fun give_index_row where
 
 
 fun synthesize_shuffle_nat :: "'y::enum shuffle \<Rightarrow> 'y \<Rightarrow> ('y + 'y \<times> nat option) list" where
-  "synthesize_shuffle_nat s y = give_index_row s y (drop_rows_until y (Enum.enum :: 'y list)) (s y)"
+  "synthesize_shuffle_nat s y = give_index_row s y (seek y (Enum.enum :: 'y list)) (s y)"
 
 fun enum_convert :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
   "enum_convert B (y, None)   = [(y, None)]" |
@@ -335,7 +331,7 @@ lemma
   assumes "bounded_shuffle K s"
   assumes "boundedness B K"
   shows "list_all (under_boundedness B) (give_index_row y (countup_rows_until s y (Enum.enum :: 'y list)) (s y))"
-
+  oops
 
 lemma concat_map_store_resolve_nat:
   fixes B :: "'k::enum boundedness"
@@ -372,20 +368,65 @@ lemma my_great_lemma:
   using assms unfolding resolve_shuffle_def
   by (induct xas rule: pair_induct, auto)
 
+
+lemma do_not_look_back:
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 ys (extract_variables_pair (scan_pair (m y0))))"
+  shows "lookup_rec m x0 k0 (y0#ys)
+       = lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0))"
+proof -
+  have "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
+    using assms by (rule my_great_lemma)
+  then show ?thesis
+    by auto
+qed
+
+lemma previous_row_does_not_have_same_variable:
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) ()"
+  assumes "y0 \<in> set ys"
+  shows "lookup_row s x0 k0 ys xs2 = None"
+using assms proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a ys)
+  show ?case apply simp
+qed
+
+
 lemma inspect_only_this_row:
-  assumes "y \<in> set whole"
-  assumes "Inr (x, Some k) \<in> set (give_index_row (resolve_shuffle m) y ys (extract_variables (m y)))"
-  shows "lookup_rec m x0 k0 (y#ys)
-       = lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y))"
+  assumes "y0 \<in> set ys"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys)
+                                                    (extract_variables_pair (scan_pair (m y0))))"
+  shows "lookup_rec m x0 k0 ys
+       = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
   using assms 
 proof (induct ys)
   case Nil
   then show ?case by simp
 next
-  case (Cons y' ys')
-  show ?case apply (simp add:)
+  case (Cons y ys)
+  show ?case proof (auto)
+    assume a: "y = y0"
+    then have "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
+      using Cons by (simp add: my_great_lemma)
+    then show "orElse (lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0))) (lookup_rec m x0 k0 ys)
+             = lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0))"
+      by auto
+  next
+    assume y: "y \<noteq> y0"
+    then have y0: "y0 \<in> set ys" using Cons(2) by simp
+    moreover have in_row: "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
+                                                           (extract_variables_pair (scan_pair (m y0))))"
+      using Cons(3) y by simp 
+    ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+      using Cons by simp
+    have "lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y)) = None"
+      using in_row y0 y by (rule previous_row_does_not_have_same_variable)
+    then show "orElse (lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y))) (lookup_rec m x0 k0 ys)
+            =  lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+      using * by simp
+  qed
 qed
-
 
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"

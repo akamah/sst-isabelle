@@ -5,7 +5,11 @@
 section \<open>Decomposition of an Update\<close>
 
 theory Decompose_Update
-  imports Main HOL.Enum HOL.List "../Util/Enum_Nat" "../Util/Scan" "../Core/Update" "../Core/SST" "../Single_Use/Single_Use"
+  imports Main HOL.Enum HOL.List
+    "../Util/Enum_Nat" "../Util/Scan"
+    "../Core/Update" "../Core/SST" 
+    "../Single_Use/Single_Use"
+    "../Decomposition/Shuffle"
 begin
 
 (* an Update can be divided into two objects:
@@ -23,10 +27,6 @@ begin
  *)
 type_synonym ('y, 'k) index = "'y \<times> 'k option"
 
-(* Shuffle *)
-type_synonym 'y shuffle = "'y \<Rightarrow> 'y list"
-
-
 (* Store object is an array of string indexed with ('y, 'i) index *)
 type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
@@ -35,11 +35,13 @@ subsection \<open>Resolve\<close>
 
 text \<open>\<pi> in the thesis\<close>
 
-definition resolve_shuffle :: "('y, 'x, 'b) update' \<Rightarrow> ('y \<Rightarrow> 'x list)" where
-  "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
-abbreviation orElse where
-  "orElse a b \<equiv> combine_options (\<lambda>x y. x) a b"
+fun orElse where
+  "orElse None b = b" |
+  "orElse (Some a) b = Some a"
+
+lemma [simp]: "orElse a None = a"
+  by (cases a, simp_all)
 
 lemma orElse_assoc: "orElse (orElse a b) c = orElse a (orElse b c)"
 proof (cases a)
@@ -61,6 +63,39 @@ next
     qed
   qed
 qed
+
+lemma orElse_eq_Some:
+  assumes "orElse x y = Some a"
+  shows "x = Some a \<or> y = Some a"
+proof (cases x)
+  case None
+  then show ?thesis using assms by simp
+next
+  case (Some a)
+  then show ?thesis using assms by simp
+qed
+
+lemma option_if_Some_None_eq_Some:
+  assumes "(if cond then Some a else None) = Some b"
+  shows "a = b"
+using assms by (cases cond, simp_all)
+
+lemma option_if_None_Some_eq_Some:
+  assumes "(if cond then None else Some a) = Some b"
+  shows "a = b"
+using assms by (cases cond, simp_all)
+
+lemma option_if_Some_None_eq_None:
+  assumes "(if cond then Some a else None) = None"
+  shows "\<not>cond"
+using assms by (cases cond, simp_all)
+
+lemma option_if_None_Some_eq_None:
+  assumes "(if cond then None else Some a) = None"
+  shows "cond"
+using assms by (cases cond, simp_all)
+
+
 
 
 fun take_rows_until :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
@@ -87,15 +122,15 @@ fun lookup_rec where
   "lookup_rec m x0 k0 (y#ys) = orElse (lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y)))
                                        (lookup_rec m x0 k0 ys)"
 
-fun lookup :: "'y list \<Rightarrow> ('y, 'x, 'b) update' \<Rightarrow> 'x \<Rightarrow> nat \<Rightarrow> 'b list" where
-  "lookup ys m x0 k0 = (case lookup_rec m x0 k0 ys of
+fun lookup :: "('y, 'x, 'b) update' \<Rightarrow> 'x \<Rightarrow> nat \<Rightarrow>'y list \<Rightarrow> 'b list" where
+  "lookup m x0 k0 ys = (case lookup_rec m x0 k0 ys of
                           Some as \<Rightarrow> as |
                           None    \<Rightarrow> [])"
 
 
 fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" where  
   "resolve_store_nat m (y, None) = fst (scan (m y))" |
-  "resolve_store_nat m (y, Some n) = lookup (Enum.enum :: 'y list) m y n"
+  "resolve_store_nat m (y, Some k) = lookup m y k (Enum.enum :: 'y list)"
 
 definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y, 'k::enum, 'b) store" where  
   "resolve_store B m yi = (case yi of
@@ -155,7 +190,49 @@ lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, t 
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
 
-(*
+lemma lookup_row_idU:
+  assumes "lookup_row (resolve_shuffle (idU :: ('y, 'b) update))
+                    x0 k0 ys (scan_pair ((idU :: ('y, 'b) update) y)) = Some as"
+  shows "as = []"
+proof (cases "y = x0 \<and> calc_position (resolve_shuffle (idU :: ('y, 'b) update)) ys [] y = k0")
+  case True
+  then show ?thesis using assms by (auto simp add: idU_def)
+next
+  case False
+  then show ?thesis proof -
+    have "lookup_row (resolve_shuffle (idU :: ('y, 'b) update)) x0 k0 ys (scan_pair ((idU :: ('y, 'b) update) y)) = None"
+      using False by (simp add: idU_def)
+    then show ?thesis using assms by simp
+  qed
+qed
+
+lemma lookup_rec_idU:
+  assumes "lookup_rec (idU :: ('y, 'b) update) x0 k0 ys = Some as"
+  shows "as = []"
+using assms proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  let ?idU = "idU::('y, 'b) update"
+  case (Cons a ys)
+  show ?case proof -
+    thm Cons[simplified]
+    let ?left = "lookup_row (resolve_shuffle ?idU) x0 k0 ys (scan_pair (?idU a))"
+    let ?right= "lookup_rec ?idU x0 k0 ys"
+    have "orElse ?left ?right = Some as" 
+      using Cons by simp
+    then have "?left = Some as \<or> ?right = Some as"
+      by (rule orElse_eq_Some)
+    then show ?thesis proof
+      assume "?left = Some as"
+      then show ?thesis by (rule lookup_row_idU)
+    next
+      assume "?right = Some as"
+      then show ?thesis using Cons by simp
+    qed
+  qed
+qed
+
 lemma resolve_idU_empty:
   fixes B :: "'k::enum boundedness"
   shows "resolve_store B (idU :: ('y::enum, 'b) update) = empty_store"
@@ -164,14 +241,15 @@ proof (rule ext_prod, auto simp add: option.case_eq_if)
   fix y :: "'y"
   show "fst (scan (idU y)) = []" unfolding idU_def by simp
 next
-  fix y :: "'y" and k :: "'k"
-  show "decompose_rec y (enum_to_nat k) (concat_scan_tail idU enum_class.enum) = []"
-    apply (rule decompose_rec_alphabet)
-     apply (rule concat_scan_tail_idU)
-    apply (simp)
-    done
+  fix y :: "'y"
+  show "fst (scan (idU y)) = []" unfolding idU_def by simp
+next
+  let ?idU = "idU :: ('y, 'b) update"
+  fix y :: "'y" and k :: "'k" and as :: "'b list"
+  assume "lookup_rec idU y (enum_to_nat k) enum_class.enum = Some as"
+  then show "as = []" by (rule lookup_rec_idU)
 qed
-*)
+
 
 lemma resolve_shuffle_distrib_str: 
   "extract_variables (hat_hom \<phi> u) = concat (map (resolve_shuffle \<phi>) (extract_variables u))"
@@ -188,101 +266,6 @@ proof -
 qed
 
 
-subsection \<open>Properties of flat_store and synthesize_store & resolve_store\<close>
-
-subsection \<open>boundedness of Shuffle\<close>
-
-definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
-  "bounded_shuffle k f \<equiv> \<forall>x. (\<Sum>y\<in>UNIV. count_list (f y) x) \<le> k"
-
-
-lemma count_list_extract_variables: "count_list (extract_variables u) x = count_list u (Inl x)"
-  by (induct u rule: xa_induct, simp_all)
-
-lemma resolve_bounded:
-  fixes m :: "('x::finite, 'b) update"
-  assumes "bounded k m"
-  shows "bounded_shuffle k (resolve_shuffle m)"
-proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
-  fix x
-  show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
-    using assms unfolding bounded_def count_var_def
-    by (simp add: count_list_extract_variables)
-qed
-
-lemma resolve_bounded_inverse:
-  fixes m :: "('x::finite, 'b) update"
-  assumes "bounded_shuffle k (resolve_shuffle m)"
-  shows "bounded k m"
-  unfolding bounded_def count_var_def proof (auto)
-  fix x
-  show "(\<Sum>y\<in>UNIV. count_list (m y) (Inl x)) \<le> k"
-    using assms unfolding bounded_shuffle_def resolve_shuffle_def
-    by (simp add: count_list_extract_variables)
-qed
-
-lemma count_extract_variables:
-  fixes m :: "('x::finite, 'a) update"
-  shows "(\<Sum>y\<in>(UNIV::'x set). count_list u (Inl y)) = length (extract_variables u)"
-proof (induct u rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case proof (simp)
-    have "(\<Sum>y\<in>(UNIV::'x set). if x = y then count_list xs (Inl y) + 1 else count_list xs (Inl y))
-        = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0) + count_list xs (Inl y))" (is "?lhs = _")
-    proof (rule sum_cong)
-      fix x :: "'x"
-      show "x \<in> UNIV" by simp
-    next
-      show "(\<lambda>y. if x = y then count_list xs (Inl y) + 1  else count_list xs (Inl y)) =
-            (\<lambda>y. (if x = y then 1 else 0) + count_list xs (Inl y))"
-        by auto
-    qed
-    also have "...  = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0)) + (\<Sum>y\<in>(UNIV::'x set). count_list xs (Inl y))"
-      by (rule sum.distrib)
-    also have "... = Suc (length (extract_variables xs))" (is "_ = ?rhs")
-      by (simp add: Var)
-    finally show "?lhs = ?rhs".
-  qed
-next
-  case (Alpha a xs)
-  then show ?case by simp
-qed
-
-
-lemma variable_count_in_bounded_shuffle:
-  fixes s :: "('x::finite) shuffle"
-  assumes "bounded_shuffle k s"
-  shows "length (s x0) \<le> card (UNIV::'x set) * k"
-proof -
-  let ?univ = "UNIV::'x set"
-  have *: "\<forall>y. (\<Sum>x\<in>?univ. count_list (s x) y) \<le> k" using assms unfolding bounded_shuffle_def by simp
-  have "length (s x0) \<le> (\<Sum>x\<in>?univ. length (s x))" by (rule member_le_sum, simp_all)
-  also have "... = (\<Sum>x\<in>?univ. (\<Sum>y\<in>?univ. count_list (s x) y))"
-    by (rule sum.cong, simp_all add: sum_count_list_UNIV)
-  also have "... = (\<Sum>y\<in>?univ. (\<Sum>x\<in>?univ. count_list (s x) y))"
-    by (rule sum.commute)
-  also have "... \<le> (\<Sum>y\<in>?univ. k)"
-    by (rule sum_mono, simp add: *)
-  also have "... = card ?univ * k"
-    by simp
-  finally show ?thesis .
-qed
-
-lemma variable_count_in_bounded_update:
-  fixes m :: "('x::finite, 'a) update"
-  assumes "bounded k m"
-  shows "length (extract_variables (m x0)) \<le> card (UNIV::'x set) * k"
-  using assms unfolding bounded_def count_var_def
-proof -
-  have "bounded_shuffle k (resolve_shuffle m)"
-    using assms by (simp add: resolve_bounded)
-  then have "length (resolve_shuffle m x0) \<le> card (UNIV::'x set) * k"
-    by (simp add: variable_count_in_bounded_shuffle)
-  then show ?thesis by (simp add: resolve_shuffle_def)
-qed
 
 lemma length_scanned_of_variable_count:
   fixes u :: "('x::finite + 'a) list"
@@ -308,15 +291,18 @@ proof -
     by (simp add: length_scanned_of_variable_count)
 qed
 
+
+
+
 fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where
   "store_resolve B m (Inl y) = [Inl y]" |
   "store_resolve B m (Inr (y, None))   = map Inr (fst (scan (m y)))" |
-  "store_resolve B m (Inr (y, Some k)) = map Inr (lookup (Enum.enum :: 'y list) m y (enum_to_nat k))"
+  "store_resolve B m (Inr (y, Some k)) = map Inr (lookup m y (enum_to_nat k) (Enum.enum :: 'y list))"
 
 fun store_resolve_nat :: "('y::enum, 'b) update \<Rightarrow> ('y + 'y \<times> nat option) \<Rightarrow> ('y + 'b) list" where
   "store_resolve_nat m (Inl y) = [Inl y]" |
   "store_resolve_nat m (Inr (y, None))   = map Inr (fst (scan (m y)))" |
-  "store_resolve_nat m (Inr (y, Some n)) = map Inr (lookup (Enum.enum :: 'y list) m y n)"
+  "store_resolve_nat m (Inr (y, Some n)) = map Inr (lookup m y n (Enum.enum :: 'y list))"
 
 
 lemma store_resolve_eq: "synthesize_store B (resolve_store B m) = store_resolve B m"
@@ -380,31 +366,24 @@ qed
 
 
 
-
 lemma my_great_lemma:
-  assumes "Inr (x, Some n) \<in> set (give_index_row y c (extract_variables_pair xas))"
-  shows "\<exists>as. lookup_row x n c xas = Some as"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y ys (extract_variables_pair xas))"
+  shows "\<exists>as. lookup_row s x0 k0 ys xas = Some as"
   using assms unfolding resolve_shuffle_def
-proof (induct xas arbitrary: c rule: pair_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (PairCons x as xas)
-  then show ?case by auto
-qed
+  by (induct xas rule: pair_induct, auto)
 
 lemma inspect_only_this_row:
   assumes "y \<in> set whole"
-  assumes "c = countup_rows_until (resolve_shuffle m) y whole"
-  assumes "Inr (x, Some k) \<in> set (give_index_row y c (extract_variables (m y)))"
-  shows "lookup_rec m x k whole whole = lookup_row x k c (scan_pair (m y))"
-  using assms proof (induct whole rule: rev_induct)
+  assumes "Inr (x, Some k) \<in> set (give_index_row (resolve_shuffle m) y ys (extract_variables (m y)))"
+  shows "lookup_rec m x0 k0 (y#ys)
+       = lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y))"
+  using assms 
+proof (induct ys)
   case Nil
-  then show ?case by auto
+  then show ?case by simp
 next
-  case (snoc y' whole')
-  thm snoc
-  show ?case apply (simp add: lookup_rec_last snoc(3))
+  case (Cons y' ys')
+  show ?case apply (simp add:)
 qed
 
 

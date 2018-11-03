@@ -1,17 +1,24 @@
+(* Title:   Shuffle.thy
+   Author:  Akama Hitoshi
+*)
+
 theory Shuffle
-  imports Main HOL.Enum HOL.List "../Util/Enum_Nat" "../Core/Update" "../Single_Use/Single_Use" "Decompose_Update"
+  imports Main HOL.Enum HOL.List
+    "../Util/Enum_Nat" "../Core/Update" "../Single_Use/Single_Use"
 begin                                  
 
+subsection \<open>Shuffle\<close>
+(* more generic definition of Shuffle *)
+type_synonym ('y, 'x) shuffle' = "'y \<Rightarrow> 'x list"
 
-typedef (overloaded) ('e::enum, 'x::finite) bc_shuffle =
-  "{m :: 'x shuffle. bounded_shuffle (length (Enum.enum :: 'e list)) m}"
-  morphisms Rep_bc_shuffle Abs_bc_shuffle
-proof
-  show "emptyS \<in> {m :: 'x shuffle. bounded_shuffle (length (Enum.enum :: 'e list)) m}"
-    unfolding emptyS_def bounded_shuffle_def by simp
-qed
+(* Shuffle *)
+type_synonym 'y shuffle = "('y, 'y) shuffle'"
 
-thm Rep_bc_shuffle_inverse Abs_bc_shuffle_inverse
+definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
+  "bounded_shuffle k f \<equiv> \<forall>x. (\<Sum>y\<in>UNIV. count_list (f y) x) \<le> k"
+
+definition resolve_shuffle :: "('y, 'x, 'b) update' \<Rightarrow> ('y, 'x) shuffle'" where
+  "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
 
 
 lemma sum_specific_if:
@@ -43,6 +50,109 @@ qed
 
 lemma idS_bounded_enum: "bounded_shuffle (length (Enum.enum :: 'k::enum list)) (idS :: 'y::finite shuffle)"
   by (rule idS_bounded) (rule length_enum_gt_0)
+
+
+lemma count_list_extract_variables: "count_list (extract_variables u) x = count_list u (Inl x)"
+  by (induct u rule: xa_induct, simp_all)
+
+
+lemma resolve_bounded:
+  fixes m :: "('x::finite, 'b) update"
+  assumes "bounded k m"
+  shows "bounded_shuffle k (resolve_shuffle m)"
+proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
+  fix x
+  show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
+    using assms unfolding bounded_def count_var_def
+    by (simp add: count_list_extract_variables)
+qed
+
+lemma resolve_bounded_inverse:
+  fixes m :: "('x::finite, 'b) update"
+  assumes "bounded_shuffle k (resolve_shuffle m)"
+  shows "bounded k m"
+  unfolding bounded_def count_var_def proof (auto)
+  fix x
+  show "(\<Sum>y\<in>UNIV. count_list (m y) (Inl x)) \<le> k"
+    using assms unfolding bounded_shuffle_def resolve_shuffle_def
+    by (simp add: count_list_extract_variables)
+qed
+
+
+lemma count_extract_variables:
+  fixes m :: "('x::finite, 'a) update"
+  shows "(\<Sum>y\<in>(UNIV::'x set). count_list u (Inl y)) = length (extract_variables u)"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case proof (simp)
+    have "(\<Sum>y\<in>(UNIV::'x set). if x = y then count_list xs (Inl y) + 1 else count_list xs (Inl y))
+        = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0) + count_list xs (Inl y))" (is "?lhs = _")
+    proof (rule sum_cong)
+      fix x :: "'x"
+      show "x \<in> UNIV" by simp
+    next
+      show "(\<lambda>y. if x = y then count_list xs (Inl y) + 1  else count_list xs (Inl y)) =
+            (\<lambda>y. (if x = y then 1 else 0) + count_list xs (Inl y))"
+        by auto
+    qed
+    also have "...  = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0)) + (\<Sum>y\<in>(UNIV::'x set). count_list xs (Inl y))"
+      by (rule sum.distrib)
+    also have "... = Suc (length (extract_variables xs))" (is "_ = ?rhs")
+      by (simp add: Var)
+    finally show "?lhs = ?rhs".
+  qed
+next
+  case (Alpha a xs)
+  then show ?case by simp
+qed
+
+
+lemma variable_count_in_bounded_shuffle:
+  fixes s :: "('x::finite) shuffle"
+  assumes "bounded_shuffle k s"
+  shows "length (s x0) \<le> card (UNIV::'x set) * k"
+proof -
+  let ?univ = "UNIV::'x set"
+  have *: "\<forall>y. (\<Sum>x\<in>?univ. count_list (s x) y) \<le> k" using assms unfolding bounded_shuffle_def by simp
+  have "length (s x0) \<le> (\<Sum>x\<in>?univ. length (s x))" by (rule member_le_sum, simp_all)
+  also have "... = (\<Sum>x\<in>?univ. (\<Sum>y\<in>?univ. count_list (s x) y))"
+    by (rule sum.cong, simp_all add: sum_count_list_UNIV)
+  also have "... = (\<Sum>y\<in>?univ. (\<Sum>x\<in>?univ. count_list (s x) y))"
+    by (rule sum.commute)
+  also have "... \<le> (\<Sum>y\<in>?univ. k)"
+    by (rule sum_mono, simp add: *)
+  also have "... = card ?univ * k"
+    by simp
+  finally show ?thesis .
+qed
+
+lemma variable_count_in_bounded_update:
+  fixes m :: "('x::finite, 'a) update"
+  assumes "bounded k m"
+  shows "length (extract_variables (m x0)) \<le> card (UNIV::'x set) * k"
+  using assms unfolding bounded_def count_var_def
+proof -
+  have "bounded_shuffle k (resolve_shuffle m)"
+    using assms by (simp add: resolve_bounded)
+  then have "length (resolve_shuffle m x0) \<le> card (UNIV::'x set) * k"
+    by (simp add: variable_count_in_bounded_shuffle)
+  then show ?thesis by (simp add: resolve_shuffle_def)
+qed
+
+
+subsection \<open>Bounded-copy shuffle\<close>
+
+typedef (overloaded) ('e::enum, 'x::finite) bc_shuffle =
+  "{m :: 'x shuffle. bounded_shuffle (length (Enum.enum :: 'e list)) m}"
+  morphisms Rep_bc_shuffle Abs_bc_shuffle
+proof
+  show "emptyS \<in> {m :: 'x shuffle. bounded_shuffle (length (Enum.enum :: 'e list)) m}"
+    unfolding emptyS_def bounded_shuffle_def by simp
+qed
+
 
 lemma list_length_set_Suc:
   "{xs. length xs = Suc k} = (\<Union>x::'a\<in>UNIV. \<Union>xs\<in>{xs. length xs = k}. { x # xs })" (is "?lhs = ?rhs")

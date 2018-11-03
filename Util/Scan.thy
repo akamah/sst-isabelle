@@ -209,6 +209,13 @@ corollary scan_last_single_simp[simp]:
 corollary scan_var_simp[simp]: "scan [Inl x] = ([], [(x, [])])"
   by (simp add: scan_last_var_simp[of "[]" "x", simplified] append_scanned_simp)
 
+lemma scan_pair_nil_simp[simp]: "scan_pair [] = []"
+  unfolding scan_pair_def by simp
+
+lemma scan_pair_var_simp[simp]: "scan_pair [Inl x] = [(x, [])]"
+  unfolding scan_pair_def by simp
+
+
 
 subsubsection \<open>Flat\<close>
 

@@ -325,16 +325,24 @@ next
 qed
 
 
-fun under_boundedness :: "'k boundedness \<Rightarrow> 'y + 'y \<times> nat option \<Rightarrow> bool" where
-  "under_boundedness B (Inl y) = True" |
-  "under_boundedness B (Inr (y, None)) = True" |
-  "under_boundedness B (Inr (y, Some k)) = (k < card (UNIV::'k set))"
+fun var_mark_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Rightarrow> bool" where
+  "var_mark_less_than K (Inl x0) = True" |
+  "var_mark_less_than K (Inr (x0, None)) = True" |
+  "var_mark_less_than K (Inr (x0, Some k0)) = (k0 < K)"
+
+lemma all_variable_mark_less_than_position_row:
+  fixes s :: "'y shuffle"
+  assumes "y0 \<in> set ys"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) (s y0))"
+  shows "k0 < calc_position_rows s ys x0"
+  oops
 
 lemma
   fixes s :: "'y::enum shuffle"
   assumes "bounded_shuffle K s"
   assumes "boundedness B K"
-  shows "list_all (under_boundedness B) (give_index_row y (countup_rows_until s y (Enum.enum :: 'y list)) (s y))"
+  shows "list_all (var_mark_less_than K) 
+                   (give_index_row s y0 (seek y0 (Enum.enum :: 'y list)) (s y0))"
   oops
 
 lemma concat_map_store_resolve_nat:

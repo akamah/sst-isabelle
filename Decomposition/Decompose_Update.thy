@@ -373,18 +373,6 @@ lemma there_exists_corresponding_string:
   by (induct xas rule: pair_induct, auto)
 
 
-lemma do_not_look_back:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 ys (extract_variables_pair (scan_pair (m y0))))"
-  shows "lookup_rec m x0 k0 (y0#ys)
-       = lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0))"
-proof -
-  have "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
-    using assms by (rule there_exists_corresponding_string)
-  then show ?thesis
-    by auto
-qed
-
-
 lemma give_index_row_position_ge:
   assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
   shows "k0 \<ge> calc_position_rows s ys x0"
@@ -423,29 +411,6 @@ next
     then show ?thesis using PairCons by simp
   qed
 qed
-
-lemma give_index_row_contain:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
-  shows "x0 \<in> set xs"
-using assms proof (induct xs)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons x xs)
-  then show ?case by (cases "x = x0", simp_all)
-qed
-
-lemma calc_position_seek:
-  assumes "y0 \<in> set ys"
-  shows "calc_position (resolve_shuffle m) (seek y0 ys) (extract_variables_pair (scan_pair (m y0))) x0
-       \<le> calc_position_rows (resolve_shuffle m) ys x0"
-  apply (simp add: calc_position_def) thm calc_position_rows.simps calc_position_def
-  using assms proof (induct ys)
-  oops
-
-lemma calc_position_rows_le_calc_position:
-  shows "calc_position_rows s ys x0 \<le> calc_position s ys xs x0"
-  unfolding calc_position_def by simp
 
 
 lemma calc_position_rows_seek:

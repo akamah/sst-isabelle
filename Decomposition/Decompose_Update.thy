@@ -96,6 +96,9 @@ lemma option_if_None_Some_eq_None:
 using assms by (cases cond, simp_all)
 
 
+lemma extract_variables_pair_scan_pair: "extract_variables_pair (scan_pair u) = extract_variables u"
+  by (induct u rule: xw_induct, simp_all)
+
 fun seek :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
   "seek y0 [] = []" |
   "seek y0 (y#ys) = (if y = y0 then ys else seek y0 ys)"
@@ -404,6 +407,23 @@ next
   then show ?case using Cons by (cases "x = x0", auto simp add: calc_position_def)
 qed
 
+lemma lookup_row_position_lt_None:
+  assumes "k0 < calc_position_rows s ys x0"
+  shows "lookup_row s x0 k0 ys xas = None"
+using assms proof (induct xas rule: pair_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (PairCons x as xas)
+  then show ?case proof (cases "x = x0")
+    case True
+    then show ?thesis using PairCons by (simp add: calc_position_def)
+  next
+    case False
+    then show ?thesis using PairCons by simp
+  qed
+qed
+
 lemma give_index_row_contain:
   assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
   shows "x0 \<in> set xs"
@@ -421,22 +441,18 @@ lemma calc_position_seek:
        \<le> calc_position_rows (resolve_shuffle m) ys x0"
   apply (simp add: calc_position_def) thm calc_position_rows.simps calc_position_def
   using assms proof (induct ys)
+  oops
 
-lemma previous_row_does_not_have_same_variable:
+lemma calc_position_rows_le_calc_position:
+  shows "calc_position_rows s ys x0 \<le> calc_position s ys xs x0"
+  unfolding calc_position_def by simp
+
+
+lemma calc_position_rows_seek:
   assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
-                                      (extract_variables_pair (scan_pair (m y0))))"
-  shows "lookup_row s x0 k0 ys xs = None"
-proof -
-  have "k0 < calc_position (resolve_shuffle m) (seek y0 ys) (extract_variables_pair (scan_pair (m y0))) x0"
-    using assms(2) by (rule give_index_row_position_lt)
-  
-
-
-lemma previous_row_does_not_have_same_variable:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) xs1)"
-  assumes "y0 \<in> set ys"
-  shows "lookup_row s x0 k0 ys xs2 = None"
+  shows "calc_position (resolve_shuffle m) (seek y0 ys)
+                                           (extract_variables_pair (scan_pair (m y0))) x0
+       \<le> calc_position_rows (resolve_shuffle m) ys x0"
 using assms proof (induct ys)
   case Nil
   then show ?case by simp
@@ -444,14 +460,30 @@ next
   case (Cons y ys)
   show ?case proof (cases "y = y0")
     case True
-    then show ?thesis sorry
+    then show ?thesis unfolding calc_position_def
+      by (simp add: extract_variables_pair_scan_pair, simp add: resolve_shuffle_def)
   next
     case False
     then have "y0 \<in> set ys" using Cons.prems by simp
-    then show ?thesis using Cons False apply auto
+    then show ?thesis using False Cons.hyps by simp
   qed
 qed
 
+lemma previous_row_does_not_have_same_variable:
+  assumes "y0 \<in> set ys"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
+                                      (extract_variables_pair (scan_pair (m y0))))"
+  shows "lookup_row (resolve_shuffle m) x0 k0 ys xs = None"
+proof -
+  let ?xs0 = "extract_variables_pair (scan_pair (m y0))"
+  have "k0 < calc_position (resolve_shuffle m) (seek y0 ys) ?xs0 x0"
+    using assms(2) by (rule give_index_row_position_lt)
+  also have "... \<le> calc_position_rows (resolve_shuffle m) ys x0"
+    using assms(1) by (rule calc_position_rows_seek)
+  finally have "k0 < calc_position_rows (resolve_shuffle m) ys x0" .
+  then show ?thesis
+    by (rule lookup_row_position_lt_None)
+qed
 
 lemma inspect_only_this_row:
   assumes "y0 \<in> set ys"
@@ -481,7 +513,7 @@ next
     ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
       using Cons by simp
     have "lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y)) = None"
-      using in_row y0 y by (rule previous_row_does_not_have_same_variable)
+      using y0 in_row by (rule previous_row_does_not_have_same_variable)
     then show "orElse (lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y))) (lookup_rec m x0 k0 ys)
             =  lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
       using * by simp

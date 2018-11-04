@@ -215,6 +215,13 @@ lemma scan_pair_nil_simp[simp]: "scan_pair [] = []"
 lemma scan_pair_var_simp[simp]: "scan_pair [Inl x] = [(x, [])]"
   unfolding scan_pair_def by simp
 
+lemma scan_pair_word_simp[simp]: "scan_pair (map Inr as) = []"
+  unfolding scan_pair_def by simp
+
+lemma scan_pair_last_simp[simp]:
+  "scan_pair (u @ Inl x # map Inr w) = scan_pair u @ [(x :: 'x, w)]"
+  unfolding scan_pair_def
+  by (cases "scan u", simp add: append_scanned_simp)
 
 
 subsubsection \<open>Flat\<close>

@@ -11,6 +11,35 @@ begin
 type_synonym ('a, 'b) update = "'a \<Rightarrow> ('a + 'b) list"
 type_synonym ('x, 'y, 'b) update' = "'x \<Rightarrow> ('y + 'b) list"
 
+(* extract only variables from var-alphabet list *)
+fun extract_variables :: "('x + 'b) list \<Rightarrow> 'x list" where
+  "extract_variables [] = []" |
+  "extract_variables (Inl x#xs) = x # extract_variables xs" |
+  "extract_variables (Inr a#xs) = extract_variables xs"
+
+
+lemma [simp]: "extract_variables (u @ v) = extract_variables u @ extract_variables v"
+  by (induct u arbitrary: v rule: xa_induct; simp_all)
+
+lemma extract_variables_left_id[simp]: "extract_variables (map Inl u) = u"
+  by (induct u, simp_all)
+
+lemma extract_variables_right_ignore[simp]: "extract_variables (map Inr u) = []"
+  by (induct u, simp_all)
+
+(* remove variables in the output string *)
+fun valuate :: "('x + 'b) list => 'b list" where
+  "valuate []           = []" |
+  "valuate (Inl x#rest) = valuate rest" |
+  "valuate (Inr b#rest) = b # valuate rest"
+
+lemma valuate_distrib[simp]: "valuate (as @ bs) == valuate as @ valuate bs"
+  by (induction as rule: xa_induct, simp_all)
+
+lemma valuate_map_Inr[simp]: "valuate (map Inr as) = as"
+  by (induction as, simp_all)
+
+
 definition idU :: "('a, 'b) update" where
   "idU x == [Inl x]"
 

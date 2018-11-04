@@ -25,34 +25,6 @@ fun hat2 :: "('q, 'a) trans \<Rightarrow> ('q, 'x, 'a, 'b) updator \<Rightarrow>
 abbreviation eta_hat :: "('q, 'x, 'a, 'b, 'e) SST_scheme \<Rightarrow> ('q, 'x, 'a list, 'b) updator" where
   "eta_hat sst \<equiv> hat2 (delta sst) (eta sst)"
 
-(* extract only variables from var-alphabet list *)
-fun extract_variables :: "('x + 'b) list \<Rightarrow> 'x list" where
-  "extract_variables [] = []" |
-  "extract_variables (Inl x#xs) = x # extract_variables xs" |
-  "extract_variables (Inr a#xs) = extract_variables xs"
-
-
-lemma [simp]: "extract_variables (u @ v) = extract_variables u @ extract_variables v"
-  by (induct u arbitrary: v rule: xa_induct; simp_all)
-
-lemma extract_variables_left_id[simp]: "extract_variables (map Inl u) = u"
-  by (induct u, simp_all)
-
-lemma extract_variables_right_ignore[simp]: "extract_variables (map Inr u) = []"
-  by (induct u, simp_all)
-
-(* remove variables in the output string *)
-fun valuate :: "('x + 'b) list => 'b list" where
-  "valuate []           = []" |
-  "valuate (Inl x#rest) = valuate rest" |
-  "valuate (Inr b#rest) = b # valuate rest"
-
-lemma valuate_distrib[simp]: "valuate (as @ bs) == valuate as @ valuate bs"
-  by (induction as rule: xa_induct, simp_all)
-
-lemma valuate_map_Inr[simp]: "valuate (map Inr as) = as"
-  by (induction as, simp_all)
-
 
 (* if the output is undefined, return None, or return some output *)
 definition run :: "('q, 'x, 'a, 'b, 'e) SST_scheme \<Rightarrow> 'a list \<Rightarrow> 'b list option" where

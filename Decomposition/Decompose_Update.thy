@@ -100,8 +100,9 @@ fun seek :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
   "seek y0 [] = []" |
   "seek y0 (y#ys) = (if y = y0 then ys else seek y0 ys)"
 
-definition calc_position_rows where
-  "calc_position_rows s ys x = sum_list (map (\<lambda>y. count_list (s y) x) ys)"
+fun calc_position_rows where
+  "calc_position_rows s [] x = 0" |
+  "calc_position_rows s (y#ys) x = count_list (s y) x + calc_position_rows s ys x"
 
 definition calc_position where
   "calc_position s ys xs x = count_list xs x + calc_position_rows s ys x"
@@ -362,7 +363,7 @@ qed
 
 
 
-lemma my_great_lemma:
+lemma there_exists_corresponding_string:
   assumes "Inr (x0, Some k0) \<in> set (give_index_row s y ys (extract_variables_pair xas))"
   shows "\<exists>as. lookup_row s x0 k0 ys xas = Some as"
   using assms unfolding resolve_shuffle_def
@@ -375,21 +376,80 @@ lemma do_not_look_back:
        = lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0))"
 proof -
   have "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
-    using assms by (rule my_great_lemma)
+    using assms by (rule there_exists_corresponding_string)
   then show ?thesis
     by auto
 qed
 
+
+lemma give_index_row_position_ge:
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
+  shows "k0 \<ge> calc_position_rows s ys x0"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons x xs)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_position_def)
+qed
+
+lemma give_index_row_position_lt:
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
+  shows "k0 < calc_position s ys xs x0"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons x xs)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_position_def)
+qed
+
+lemma give_index_row_contain:
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
+  shows "x0 \<in> set xs"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons x xs)
+  then show ?case by (cases "x = x0", simp_all)
+qed
+
+lemma calc_position_seek:
+  assumes "y0 \<in> set ys"
+  shows "calc_position (resolve_shuffle m) (seek y0 ys) (extract_variables_pair (scan_pair (m y0))) x0
+       \<le> calc_position_rows (resolve_shuffle m) ys x0"
+  apply (simp add: calc_position_def) thm calc_position_rows.simps calc_position_def
+  using assms proof (induct ys)
+
 lemma previous_row_does_not_have_same_variable:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) ()"
+  assumes "y0 \<in> set ys"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
+                                      (extract_variables_pair (scan_pair (m y0))))"
+  shows "lookup_row s x0 k0 ys xs = None"
+proof -
+  have "k0 < calc_position (resolve_shuffle m) (seek y0 ys) (extract_variables_pair (scan_pair (m y0))) x0"
+    using assms(2) by (rule give_index_row_position_lt)
+  
+
+
+lemma previous_row_does_not_have_same_variable:
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) xs1)"
   assumes "y0 \<in> set ys"
   shows "lookup_row s x0 k0 ys xs2 = None"
 using assms proof (induct ys)
   case Nil
   then show ?case by simp
 next
-  case (Cons a ys)
-  show ?case apply simp
+  case (Cons y ys)
+  show ?case proof (cases "y = y0")
+    case True
+    then show ?thesis sorry
+  next
+    case False
+    then have "y0 \<in> set ys" using Cons.prems by simp
+    then show ?thesis using Cons False apply auto
+  qed
 qed
 
 
@@ -408,7 +468,7 @@ next
   show ?case proof (auto)
     assume a: "y = y0"
     then have "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
-      using Cons by (simp add: my_great_lemma)
+      using Cons by (simp add: there_exists_corresponding_string)
     then show "orElse (lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0))) (lookup_rec m x0 k0 ys)
              = lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0))"
       by auto

@@ -332,38 +332,7 @@ qed
 
 
 fun var_mark_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Rightarrow> bool" where
-  "var_mark_less_than K (Inl x0) = True" |
-  "var_mark_less_than K (Inr (x0, None)) = True" |
-  "var_mark_less_than K (Inr (x0, Some k0)) = (k0 < K)"
-
-
-lemma concat_map_store_resolve_nat:
-  fixes B :: "'k::enum boundedness"
-  assumes "list_all (under_boundedness B) u"
-  shows "concat (map (store_resolve B m) (hat_alpha (enum_convert B) u))
- = concat (map (store_resolve_nat m) u)"
-using assms proof (induct u rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case by simp
-next
-  case (Alpha yi xs)
-  then show ?case proof (cases yi)
-    case (Pair y kn)
-    then show ?thesis proof (cases kn)
-      case None
-      then show ?thesis using Pair Alpha by simp
-    next
-      case (Some k)
-      have "(k < card (UNIV::'k set))" using Alpha Pair Some by simp
-      then have "enum_to_nat (nat_to_enum k :: 'k) = k" by (rule nat_enum_iso_UNIV)
-      then show ?thesis using Alpha by (simp add: Some Pair)
-    qed
-  qed
-qed
-
+  "var_mark_less_than K yk = (\<forall>x0 k0. yk = Inr (x0, Some k0) \<longrightarrow> k0 < K)"
 
 
 lemma there_exists_corresponding_string_inner:
@@ -527,17 +496,84 @@ proof -
   finally show ?thesis .
 qed
 
+lemma bounded_shuffle_var_mark_less_than:
+  fixes s :: "'y::enum shuffle"
+  assumes "bounded_shuffle K s"
+  shows "list_all (var_mark_less_than K) (give_index_row s y0 (seek y0 (Enum.enum :: 'y list)) (s y0))"
+proof (simp only: list_all_iff, rule ballI)
+  fix yk
+  assume contain: "yk \<in> set (give_index_row s y0 (seek y0 enum_class.enum) (s y0))"
+  show "var_mark_less_than K yk" proof (auto)
+    fix x0 k0
+    assume "yk = Inr (x0, Some k0)"
+    then have "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 enum_class.enum) (s y0))"
+      using contain by simp
+    then show "k0 < K" using bounded_shuffle_less_than_position[OF assms] by simp
+  qed
+qed
+
+
+lemma concat_map_store_resolve_nat:
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "list_all (var_mark_less_than K) u"
+  shows "concat (map (store_resolve B m) (hat_alpha (enum_convert B) u))
+ = concat (map (store_resolve_nat m) u)"
+using assms(2) proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case by simp
+next
+  case (Alpha yi xs)
+  then show ?case proof (cases yi)
+    case (Pair y kn)
+    then show ?thesis proof (cases kn)
+      case None
+      then show ?thesis using Pair Alpha by simp
+    next
+      case (Some k)
+      have "(k < length (Enum.enum :: 'k list))" using Alpha Pair Some assms(1)
+        unfolding boundedness_def by simp
+      then have "enum_to_nat (nat_to_enum k :: 'k) = k" by (rule nat_enum_iso)
+      then show ?thesis using Alpha by (simp add: Some Pair)
+    qed
+  qed
+qed
+
+lemma concat_map_store_resolve_give_index_row:
+  fixes B :: "'k::enum boundedness"
+  fixes m :: "('y::enum, 'b) update"
+  assumes "boundedness B K"
+  assumes "bounded K m"
+  shows "concat (map (store_resolve B m) (hat_alpha (enum_convert B)
+            (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list))
+                            (resolve_shuffle m y0))))
+       = concat (map (store_resolve_nat m) 
+            (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list))
+                            (resolve_shuffle m y0)))"
+proof -
+  have "bounded_shuffle K (resolve_shuffle m)"
+    using assms(2) by (rule resolve_bounded)
+  then have "list_all (var_mark_less_than K) (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list)) ((resolve_shuffle m) y0))"
+    by (rule bounded_shuffle_var_mark_less_than)
+  then show ?thesis
+    using assms(1) using concat_map_store_resolve_nat by blast
+qed
+
+
+
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"
-  assumes "bounded k m"
   assumes "boundedness B k"
+  assumes "bounded k m"
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
   apply (rule ext)
   apply (simp add: synthesize_def)
-  apply (simp add: compU_apply store_resolve_eq del: give_index_row.simps add: resolve_shuffle_def)
-
-
+  apply (simp add: compU_apply store_resolve_eq del: give_index_row.simps)
+  apply (simp add: concat_map_store_resolve_give_index_row[OF assms] del: give_index_row.simps)
 
 lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"
   by (induct u rule: xa_induct, simp_all add: synthesize_store_def)

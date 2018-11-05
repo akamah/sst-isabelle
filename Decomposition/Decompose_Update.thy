@@ -107,6 +107,12 @@ fun calc_position_rows where
   "calc_position_rows s [] x = 0" |
   "calc_position_rows s (y#ys) x = count_list (s y) x + calc_position_rows s ys x"
 
+lemma calc_position_rows_eq_sum:
+  assumes "distinct ys"
+  shows "calc_position_rows s ys x = (\<Sum>y\<in>set ys. count_list (s y) x)"
+  using assms by (induct ys, simp_all)
+
+
 definition calc_position where
   "calc_position s ys xs x = count_list xs x + calc_position_rows s ys x"
 
@@ -330,20 +336,6 @@ fun var_mark_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Right
   "var_mark_less_than K (Inr (x0, None)) = True" |
   "var_mark_less_than K (Inr (x0, Some k0)) = (k0 < K)"
 
-lemma all_variable_mark_less_than_position_row:
-  fixes s :: "'y shuffle"
-  assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) (s y0))"
-  shows "k0 < calc_position_rows s ys x0"
-  oops
-
-lemma
-  fixes s :: "'y::enum shuffle"
-  assumes "bounded_shuffle K s"
-  assumes "boundedness B K"
-  shows "list_all (var_mark_less_than K) 
-                   (give_index_row s y0 (seek y0 (Enum.enum :: 'y list)) (s y0))"
-  oops
 
 lemma concat_map_store_resolve_nat:
   fixes B :: "'k::enum boundedness"
@@ -374,11 +366,20 @@ qed
 
 
 
-lemma there_exists_corresponding_string:
+lemma there_exists_corresponding_string_inner:
   assumes "Inr (x0, Some k0) \<in> set (give_index_row s y ys (extract_variables_pair xas))"
   shows "\<exists>as. lookup_row s x0 k0 ys xas = Some as"
   using assms unfolding resolve_shuffle_def
   by (induct xas rule: pair_induct, auto)
+
+lemma there_exists_corresponding_string:
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 ys (resolve_shuffle m y0))"
+  shows "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
+  apply (rule there_exists_corresponding_string_inner)
+  using assms
+  apply (simp add: extract_variables_pair_scan_pair)
+  apply (simp add: resolve_shuffle_def)
+  done
 
 
 lemma give_index_row_position_ge:
@@ -423,9 +424,8 @@ qed
 
 lemma calc_position_rows_seek:
   assumes "y0 \<in> set ys"
-  shows "calc_position (resolve_shuffle m) (seek y0 ys)
-                                           (extract_variables_pair (scan_pair (m y0))) x0
-       \<le> calc_position_rows (resolve_shuffle m) ys x0"
+  shows "calc_position s (seek y0 ys) (s y0) x0
+       \<le> calc_position_rows s ys x0"
 using assms proof (induct ys)
   case Nil
   then show ?case by simp
@@ -433,8 +433,7 @@ next
   case (Cons y ys)
   show ?case proof (cases "y = y0")
     case True
-    then show ?thesis unfolding calc_position_def
-      by (simp add: extract_variables_pair_scan_pair, simp add: resolve_shuffle_def)
+    then show ?thesis unfolding calc_position_def by simp
   next
     case False
     then have "y0 \<in> set ys" using Cons.prems by simp
@@ -445,10 +444,10 @@ qed
 lemma previous_row_does_not_have_same_variable:
   assumes "y0 \<in> set ys"
   assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
-                                      (extract_variables_pair (scan_pair (m y0))))"
+                                      (resolve_shuffle m y0))"
   shows "lookup_row (resolve_shuffle m) x0 k0 ys xs = None"
 proof -
-  let ?xs0 = "extract_variables_pair (scan_pair (m y0))"
+  let ?xs0 = "resolve_shuffle m y0"
   have "k0 < calc_position (resolve_shuffle m) (seek y0 ys) ?xs0 x0"
     using assms(2) by (rule give_index_row_position_lt)
   also have "... \<le> calc_position_rows (resolve_shuffle m) ys x0"
@@ -461,7 +460,7 @@ qed
 lemma inspect_only_this_row:
   assumes "y0 \<in> set ys"
   assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys)
-                                                    (extract_variables_pair (scan_pair (m y0))))"
+                                                    (resolve_shuffle m y0))"
   shows "lookup_rec m x0 k0 ys
        = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
   using assms 
@@ -481,7 +480,7 @@ next
     assume y: "y \<noteq> y0"
     then have y0: "y0 \<in> set ys" using Cons(2) by simp
     moreover have in_row: "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
-                                                           (extract_variables_pair (scan_pair (m y0))))"
+                                                           (resolve_shuffle m y0))"
       using Cons(3) y by simp 
     ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
       using Cons by simp
@@ -491,6 +490,41 @@ next
             =  lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
       using * by simp
   qed
+qed
+
+lemma all_var_mark_less_than_position:
+  fixes s :: "'y shuffle"
+  assumes "y0 \<in> set ys"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) (s y0))"
+  shows "k0 < calc_position_rows s ys x0"
+proof -
+  have "k0 < calc_position s (seek y0 ys) (s y0) x0"
+    using assms(2)
+    by (rule give_index_row_position_lt)
+  also have "... \<le> calc_position_rows s ys x0"
+    using assms(1) by (rule calc_position_rows_seek)
+  finally show ?thesis .
+qed
+
+lemma bounded_shuffle_less_than_position:
+  fixes s :: "'y::enum shuffle"
+  assumes "bounded_shuffle K s"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 (Enum.enum :: 'y list)) (s y0))"
+  shows "k0 < K"
+proof -
+  let ?enum = "Enum.enum :: 'y list"
+  have "y0 \<in> set ?enum"
+    by (simp add: enum_UNIV)
+  then have "k0 < calc_position_rows s ?enum x0"
+    using assms(2) by (rule all_var_mark_less_than_position)
+  also have "... = (\<Sum>y::'y\<in>UNIV. count_list (s y) x0)" proof -
+    have "distinct ?enum" using enum_distinct by simp
+    moreover have "set ?enum = UNIV" using enum_UNIV by simp
+    ultimately show ?thesis by (simp add: calc_position_rows_eq_sum)
+  qed
+  also have "... \<le> K"
+    using assms(1) unfolding bounded_shuffle_def by simp
+  finally show ?thesis .
 qed
 
 theorem resolve_inverse:

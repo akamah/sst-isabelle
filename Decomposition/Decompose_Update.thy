@@ -96,6 +96,11 @@ lemma option_if_None_Some_eq_None:
 using assms by (cases cond, simp_all)
 
 
+fun orNil :: "'a list option \<Rightarrow> 'a list" where
+  "orNil (Some xs) = xs" |
+  "orNil None      = []"
+
+
 lemma extract_variables_pair_scan_pair: "extract_variables_pair (scan_pair u) = extract_variables u"
   by (induct u rule: xw_induct, simp_all)
 
@@ -129,9 +134,7 @@ fun lookup_rec where
                                        (lookup_rec m x0 k0 ys)"
 
 fun lookup :: "('y, 'x, 'b) update' \<Rightarrow> 'x \<Rightarrow> nat \<Rightarrow>'y list \<Rightarrow> 'b list" where
-  "lookup m x0 k0 ys = (case lookup_rec m x0 k0 ys of
-                          Some as \<Rightarrow> as |
-                          None    \<Rightarrow> [])"
+  "lookup m x0 k0 ys = orNil (lookup_rec m x0 k0 ys)"
 
 
 fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" where  
@@ -247,13 +250,10 @@ proof (rule ext_prod, auto simp add: option.case_eq_if)
   fix y :: "'y"
   show "fst (scan (idU y)) = []" unfolding idU_def by simp
 next
-  fix y :: "'y"
-  show "fst (scan (idU y)) = []" unfolding idU_def by simp
-next
   let ?idU = "idU :: ('y, 'b) update"
   fix y :: "'y" and k :: "'k" and as :: "'b list"
-  assume "lookup_rec idU y (enum_to_nat k) enum_class.enum = Some as"
-  then show "as = []" by (rule lookup_rec_idU)
+  show "orNil (lookup_rec idU y (enum_to_nat k) enum_class.enum) = []"
+    by (metis lookup_rec_idU orNil.elims)
 qed
 
 
@@ -300,24 +300,24 @@ qed
 
 
 
-fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where
-  "store_resolve B m (Inl y) = [Inl y]" |
-  "store_resolve B m (Inr (y, None))   = map Inr (fst (scan (m y)))" |
-  "store_resolve B m (Inr (y, Some k)) = map Inr (lookup m y (enum_to_nat k) (Enum.enum :: 'y list))"
+fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where
+  "store_resolve B m ys (Inl y) = [Inl y]" |
+  "store_resolve B m ys (Inr (y, None))   = map Inr (fst (scan (m y)))" |
+  "store_resolve B m ys (Inr (y, Some k)) = map Inr (lookup m y (enum_to_nat k) ys)"
 
-fun store_resolve_nat :: "('y::enum, 'b) update \<Rightarrow> ('y + 'y \<times> nat option) \<Rightarrow> ('y + 'b) list" where
-  "store_resolve_nat m (Inl y) = [Inl y]" |
-  "store_resolve_nat m (Inr (y, None))   = map Inr (fst (scan (m y)))" |
-  "store_resolve_nat m (Inr (y, Some n)) = map Inr (lookup m y n (Enum.enum :: 'y list))"
+fun store_resolve_nat :: "('y, 'b) update \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> nat option) \<Rightarrow> ('y + 'b) list" where
+  "store_resolve_nat m ys (Inl y) = [Inl y]" |
+  "store_resolve_nat m ys (Inr (y, None))   = map Inr (fst (scan (m y)))" |
+  "store_resolve_nat m ys (Inr (y, Some n)) = map Inr (lookup m y n ys)"
 
 
-lemma store_resolve_eq: "synthesize_store B (resolve_store B m) = store_resolve B m"
+lemma store_resolve_eq: "synthesize_store B (resolve_store B m) = store_resolve B m Enum.enum"
 proof (rule ext_sum)
-  show "\<And>l. synthesize_store B (resolve_store B m) (Inl l) = store_resolve B m (Inl l)"
+  show "\<And>l. synthesize_store B (resolve_store B m) (Inl l) = store_resolve B m Enum.enum (Inl l)"
     unfolding resolve_store_def by simp
 next
   fix r
-  show "synthesize_store B (resolve_store B m) (Inr r) = store_resolve B m (Inr r)"
+  show "synthesize_store B (resolve_store B m) (Inr r) = store_resolve B m Enum.enum (Inr r)"
   proof (cases "r")
     case (Pair a b)
     then show ?thesis proof (cases "b")
@@ -329,6 +329,12 @@ next
     qed
   qed
 qed
+
+fun store_resolve_row where
+  "store_resolve_row s ys u (Inl x)           = [Inl x]" |
+  "store_resolve_row s ys u (Inr (x, None))   = map Inr (fst (scan u))" |
+  "store_resolve_row s ys u (Inr (x, Some k)) =
+     map Inr (orNil (lookup_row s x k ys (scan_pair u)))"
 
 
 fun var_mark_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Rightarrow> bool" where
@@ -461,6 +467,7 @@ next
   qed
 qed
 
+
 lemma all_var_mark_less_than_position:
   fixes s :: "'y shuffle"
   assumes "y0 \<in> set ys"
@@ -517,8 +524,8 @@ lemma concat_map_store_resolve_nat:
   fixes B :: "'k::enum boundedness"
   assumes "boundedness B K"
   assumes "list_all (var_mark_less_than K) u"
-  shows "concat (map (store_resolve B m) (hat_alpha (enum_convert B) u))
- = concat (map (store_resolve_nat m) u)"
+  shows "concat (map (store_resolve B m Enum.enum) (hat_alpha (enum_convert B) u))
+ = concat (map (store_resolve_nat m Enum.enum) u)"
 using assms(2) proof (induct u rule: xa_induct)
   case Nil
   then show ?case by simp
@@ -547,10 +554,10 @@ lemma concat_map_store_resolve_give_index_row:
   fixes m :: "('y::enum, 'b) update"
   assumes "boundedness B K"
   assumes "bounded K m"
-  shows "concat (map (store_resolve B m) (hat_alpha (enum_convert B)
+  shows "concat (map (store_resolve B m Enum.enum) (hat_alpha (enum_convert B)
             (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list))
                             (resolve_shuffle m y0))))
-       = concat (map (store_resolve_nat m) 
+       = concat (map (store_resolve_nat m Enum.enum) 
             (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list))
                             (resolve_shuffle m y0)))"
 proof -
@@ -563,6 +570,75 @@ proof -
 qed
 
 
+lemma give_index_row_None:
+  assumes "Inr (y, None) \<in> set (give_index_row (resolve_shuffle m) y0 ys xs)"
+  shows "y = y0"
+using assms by (induct xs, simp_all)
+
+
+lemma hoge:
+  fixes y0 :: "'y::enum"
+  assumes "y0 \<in> set ys"
+  assumes "yk \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys)
+                                                          (resolve_shuffle m y0))"
+  shows "store_resolve_nat m ys yk
+       = store_resolve_row (resolve_shuffle m) (seek y0 ys) (m y0) yk"
+proof (cases yk)
+  case (Inl y)
+  then show ?thesis by simp
+next
+  case (Inr yk)
+  then show ?thesis proof (cases yk)
+    case (Pair x0 k)
+    then show ?thesis proof (cases k)
+      case None
+      then have "Inr (x0, None) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) (resolve_shuffle m y0))"
+        using Inr Pair assms by simp
+      then have "x0 = y0"
+        by (rule give_index_row_None)
+      then show ?thesis using assms Inr Pair None by simp
+    next
+      case (Some k0)
+      then have "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) (resolve_shuffle m y0))"
+        using assms Inr Pair by simp
+      then have "lookup_rec m x0 k0 ys
+               = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+        using assms by (simp add: inspect_only_this_row)
+      then show ?thesis using Inr Pair Some by simp
+    qed
+  qed
+qed
+
+
+lemma piyo:
+  fixes y0 :: "'y::enum"
+  shows "map (store_resolve_nat m Enum.enum) 
+             (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))
+       = map (store_resolve_row (resolve_shuffle m) (seek y0 Enum.enum) (m y0))
+              (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum)
+                                                          (resolve_shuffle m y0))"
+proof -
+  have y0: "y0 \<in> set Enum.enum" by (simp add: enum_UNIV)
+  show ?thesis
+    apply (rule list.map_cong0)
+    apply (rule hoge[OF y0])
+    apply simp
+    done
+qed
+
+lemma homu:
+  "concat (map (store_resolve_row s (seek x enum_class.enum) u)
+            (give_index_row s x (seek x enum_class.enum)
+              (extract_variables u))) =
+         (flat (scan u))"
+proof (induct u rule: xw_induct)
+  case (Word w)
+  then show ?case by simp
+next
+  case (VarWord x w u)
+  then show ?case apply simp
+qed
+
 
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
@@ -574,6 +650,10 @@ theorem resolve_inverse:
   apply (simp add: synthesize_def)
   apply (simp add: compU_apply store_resolve_eq del: give_index_row.simps)
   apply (simp add: concat_map_store_resolve_give_index_row[OF assms] del: give_index_row.simps)
+  apply (simp add: piyo del: give_index_row.simps)
+
+
+
 
 lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"
   by (induct u rule: xa_induct, simp_all add: synthesize_store_def)

@@ -230,30 +230,13 @@ lemma iota_alpha0_remove:
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
 
-lemma map_alpha_resolve_store_aux: 
-  "hat_hom t (nth_string (scan u) k)
- = nth_string (scan (hat_alpha (update2hom t) u)) k"
-proof (induct u arbitrary: k rule: xw_induct)
-  case (Word w)
-  then show ?case by (simp add: hat_alpha_right_map nth_string_Nil hat_hom_def)
-next
-  case (VarWord x w u)
-  then show ?case
-    by (auto simp add: hat_alpha_right_map nth_string_append_last length_scanned_hat_alpha hat_hom_def)
-qed
-
-lemma map_alpha_resolve_store:
-  "(t \<bullet> resolve_store B \<theta>) (y, k) = resolve_store B (update2hom t \<star> \<theta>) (y, k)"
-  by (cases "enum_to_nat k", simp_all add: resolve_store_def compU_apply map_alpha_def map_alpha_resolve_store_aux)
-
-
 lemma scan_valuate: "fst (scan (hat_alpha retain_right u)) = valuate (fst (scan u))"
 proof (induct u rule: xw_induct)
-  case (Word w)
-  then show ?case by (simp add: hat_alpha_right_map valuate_retain_right)
+  case (Word w)                      
+  then show ?case by (simp add:  valuate_retain_right)
 next
   case (VarWord x w u)
-  then show ?case by (simp add: hat_alpha_right_map)
+  then show ?case by (simp add: )
 qed
 
 
@@ -276,7 +259,7 @@ lemma length_map_scanned: "length_scanned (map_scanned f sc) = length_scanned sc
   by (induct sc rule: scanned_induct, simp_all add: append_scanned_simp map_scanned_def)
 
 lemma map_scanned_hat_alpha: "scan (hat_alpha f u) = map_scanned f (scan u)"
-  by (induct u rule: xw_induct, simp_all add: hat_alpha_right_map)
+  by (induct u rule: xw_induct, simp_all)
 
 
 lemma nth_string_valuate: 

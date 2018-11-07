@@ -306,6 +306,26 @@ lemma synthesize_idU: "synthesize B (idS :: 'x shuffle, empty_store) = (idU :: (
   by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply)
 
 
+lemma compS_resolve_store:
+  "s \<odot> resolve_store B \<theta> = resolve_store B (s \<star> \<theta>)"
+proof
+  fix yk
+  show "(s \<odot> resolve_store B \<theta>) yk = resolve_store B (s \<star> \<theta>) yk"
+  proof (cases yk rule: index_cases)
+    case (VarNone y)
+    then show ?thesis apply (simp add: compS_apply resolve_store_def map_alpha_apply) sorry
+  next
+    case (VarSome y k)
+    then show ?thesis apply (simp add: compS_apply resolve_store_def map_alpha_apply) sorry
+  qed
+qed
+
+
+lemma map_alpha_resolve_store:
+  "t \<bullet> resolve_store B \<theta> = resolve_store B (update2hom t \<star> \<theta>)"
+  by (simp add: update2hom_compS_compU[symmetric] compS_resolve_store)
+
+
 subsection \<open>Proof of inverse of Resolve\<close>
 
 fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where

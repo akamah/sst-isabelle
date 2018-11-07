@@ -174,7 +174,7 @@ lemma map_alpha_concatU: "t \<star> concatU us = concatU (map (map_alpha t) us)"
   by (induct us, simp_all add: map_alpha_distrib)
 
 lemma map_alpha_lem: "hat_alpha s (hat_alpha t u) = hat_alpha (s \<odot> t) u"
-  by (induct u rule: xa_induct, simp_all add: compS_apply hat_alpha_right_map)
+  by (induct u rule: xa_induct, simp_all add: compS_apply)
 
 lemma map_alpha_assoc: "s \<star> (t \<star> f) = (s \<odot> t) \<star> f"
   by (rule ext, simp add: map_alpha_apply map_alpha_lem)

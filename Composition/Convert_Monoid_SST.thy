@@ -247,10 +247,6 @@ lemma map_alpha_resolve_store:
   by (cases "enum_to_nat k", simp_all add: resolve_store_def compU_apply map_alpha_def map_alpha_resolve_store_aux)
 
 
-lemma [simp]: "scan [Inl y] = ([], [(y, [])])"
-  by (simp add: scan_def)
-
-
 lemma scan_valuate: "fst (scan (hat_alpha retain_right u)) = valuate (fst (scan u))"
 proof (induct u rule: xw_induct)
   case (Word w)

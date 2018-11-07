@@ -152,17 +152,17 @@ definition scan :: "('y + 'b) list \<Rightarrow> ('y, 'b) scanned" where
 definition scan_pair :: "('y + 'b) list \<Rightarrow> ('y \<times> 'b list) list" where
   "scan_pair u = snd (scan u)"
 
-definition extract_variables_pair :: "('y \<times> 'b list) list \<Rightarrow> 'y list" where
-  "extract_variables_pair ps = map fst ps"
+definition keys_pair :: "('y \<times> 'b list) list \<Rightarrow> 'y list" where
+  "keys_pair ps = map fst ps"
 
-lemma extract_variables_pair_Nil[simp]: "extract_variables_pair [] = []" 
-  unfolding extract_variables_pair_def by simp
+lemma keys_pair_Nil[simp]: "keys_pair [] = []" 
+  unfolding keys_pair_def by simp
 
-lemma extract_variables_pair_Cons[simp]: "extract_variables_pair ((x, as)#xas) = x # extract_variables_pair xas"
-  unfolding extract_variables_pair_def by simp
+lemma keys_pair_Cons[simp]: "keys_pair ((x, as)#xas) = x # keys_pair xas"
+  unfolding keys_pair_def by simp
 
-lemma extract_variables_pair_snoc[simp]: "extract_variables_pair (xas @ [(x, as)]) = extract_variables_pair xas @ [x]"
-  unfolding extract_variables_pair_def by simp
+lemma keys_pair_snoc[simp]: "keys_pair (xas @ [(x, as)]) = keys_pair xas @ [x]"
+  unfolding keys_pair_def by simp
 
 
 

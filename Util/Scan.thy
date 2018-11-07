@@ -223,6 +223,9 @@ lemma scan_pair_last_simp[simp]:
   unfolding scan_pair_def
   by (cases "scan u", simp add: append_scanned_simp)
 
+lemma snd_scan[simp]:
+  "snd (scan u) = scan_pair u"
+  unfolding scan_pair_def by simp
 
 subsubsection \<open>Flat\<close>
 

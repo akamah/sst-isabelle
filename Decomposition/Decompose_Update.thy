@@ -190,11 +190,8 @@ lemma map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle B s = synthesi
 lemma map_alpha_synthesize_store: "t \<star> synthesize_store B p = synthesize_store B (t \<odot> p)"
   by (rule ext_sum, simp add: map_alpha_apply, rule prod.induct, simp add: map_alpha_apply compS_apply)
 
-
 lemma map_alpha_synthesize: "t \<star> synthesize B (s, a) = synthesize B (s, t \<odot> a)"
-  apply (rule ext, simp add: synthesize_def map_alpha_distrib)
-  apply (simp add:  map_alpha_synthesize_shuffle map_alpha_synthesize_store)
-  done
+  by (rule ext, simp add: synthesize_def map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store)
 
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (auto simp add: idU_def idS_def resolve_shuffle_def)
@@ -272,34 +269,6 @@ proof -
 qed
 
 
-
-lemma length_scanned_of_variable_count:
-  fixes u :: "('x::finite + 'a) list"
-  assumes "length (extract_variables u) = k"
-  shows "length_scanned (scan u) = k + 1"
-using assms proof (induct u arbitrary: k rule: xw_induct)
-  case (Word w)
-  then show ?case by simp
-next
-  case (VarWord x w u)
-  then show ?case by (simp del: length_scanned.simps)
-qed
-
-
-lemma bounded_copy_length_scanned:
-  fixes m :: "('x::finite, 'a) update"
-  assumes "bounded k m"
-  shows "length_scanned (scan (m x)) \<le> Suc (card (UNIV::'x set) * k)"
-proof -
-  have "length (extract_variables (m x)) \<le> card (UNIV::'x set) * k"
-    using assms by (simp add: variable_count_in_bounded_update)
-  then show ?thesis
-    by (simp add: length_scanned_of_variable_count)
-qed
-
-
-
-
 fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where
   "store_resolve B m ys (Inl y) = [Inl y]" |
   "store_resolve B m ys (Inr (y, None))   = map Inr (fst (scan (m y)))" |
@@ -330,11 +299,13 @@ next
   qed
 qed
 
+
 fun store_resolve_row where
-  "store_resolve_row s ys u (Inl x)           = [Inl x]" |
-  "store_resolve_row s ys u (Inr (x, None))   = map Inr (fst (scan u))" |
-  "store_resolve_row s ys u (Inr (x, Some k)) =
-     map Inr (orNil (lookup_row s x k ys (scan_pair u)))"
+  "store_resolve_row s ys as xas (Inl x)           = [Inl x]" |
+  "store_resolve_row s ys as xas (Inr (x, None))   = map Inr as" |
+  "store_resolve_row s ys as xas (Inr (x, Some k)) =
+     map Inr (orNil (lookup_row s x k ys xas))"
+
 
 
 fun var_mark_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Rightarrow> bool" where
@@ -577,12 +548,13 @@ using assms by (induct xs, simp_all)
 
 
 lemma hoge:
+  fixes m :: "('y::enum, 'b) update"
   fixes y0 :: "'y::enum"
   assumes "y0 \<in> set ys"
   assumes "yk \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys)
                                                           (resolve_shuffle m y0))"
   shows "store_resolve_nat m ys yk
-       = store_resolve_row (resolve_shuffle m) (seek y0 ys) (m y0) yk"
+       = store_resolve_row (resolve_shuffle m) (seek y0 ys) (fst (scan (m y0))) (snd (scan (m y0))) yk"
 proof (cases yk)
   case (Inl y)
   then show ?thesis by simp
@@ -614,9 +586,8 @@ lemma piyo:
   fixes y0 :: "'y::enum"
   shows "map (store_resolve_nat m Enum.enum) 
              (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))
-       = map (store_resolve_row (resolve_shuffle m) (seek y0 Enum.enum) (m y0))
-              (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum)
-                                                          (resolve_shuffle m y0))"
+       = map (store_resolve_row (resolve_shuffle m) (seek y0 Enum.enum) (fst (scan (m y0))) (snd (scan (m y0))))
+              (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))"
 proof -
   have y0: "y0 \<in> set Enum.enum" by (simp add: enum_UNIV)
   show ?thesis
@@ -626,19 +597,25 @@ proof -
     done
 qed
 
+
+
 lemma homu:
-  "concat (map (store_resolve_row s (seek x enum_class.enum) u)
-            (give_index_row s x (seek x enum_class.enum)
-              (extract_variables u))) =
-         (flat (scan u))"
-proof (induct u rule: xw_induct)
-  case (Word w)
+  "concat (map (store_resolve_row s (seek y0 enum_class.enum) as xas)
+            (give_index_row s y0 (seek y0 enum_class.enum)
+              (extract_variables_pair xas))) =
+         (flat (as, xas))"
+proof (simp add: flat_def, induct xas rule: pair_induct)
+  case Nil
   then show ?case by simp
 next
-  case (VarWord x w u)
-  then show ?case apply simp
+  case (PairCons x as xas)
+  then show ?case sorry
 qed
 
+lemma resolve_shuffle_extract_variables_pair_scan_pair:
+  "resolve_shuffle m x = extract_variables_pair (scan_pair (m x))"
+  unfolding resolve_shuffle_def
+  by  (simp add: extract_variables_pair_scan_pair)
 
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
@@ -651,7 +628,12 @@ theorem resolve_inverse:
   apply (simp add: compU_apply store_resolve_eq del: give_index_row.simps)
   apply (simp add: concat_map_store_resolve_give_index_row[OF assms] del: give_index_row.simps)
   apply (simp add: piyo del: give_index_row.simps)
-
+  apply (simp add: resolve_shuffle_extract_variables_pair_scan_pair del: give_index_row.simps)
+  apply (simp add: homu del: give_index_row.simps)
+  apply (subst scan_pair_def)
+  apply (subst prod.collapse)
+  apply (rule scan_inverse)
+  done
 
 
 

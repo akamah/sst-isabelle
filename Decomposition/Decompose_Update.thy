@@ -100,7 +100,6 @@ fun orNil :: "'a list option \<Rightarrow> 'a list" where
   "orNil (Some xs) = xs" |
   "orNil None      = []"
 
-
 lemma extract_variables_pair_scan_pair: "extract_variables_pair (scan_pair u) = extract_variables u"
   by (induct u rule: xw_induct, simp_all)
 
@@ -157,7 +156,7 @@ fun give_index_row_rec :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Ri
   "give_index_row_rec s ys Nil    = []" |
   "give_index_row_rec s ys (x#xs) = Inl x # Inr (x, Some (calc_position s ys xs x)) # give_index_row_rec s ys xs"
 
-fun give_index_row where
+definition give_index_row where
   "give_index_row s y ys xs = Inr (y, None) # give_index_row_rec s ys xs"
 
 
@@ -316,7 +315,7 @@ lemma there_exists_corresponding_string_inner:
   assumes "Inr (x0, Some k0) \<in> set (give_index_row s y ys (extract_variables_pair xas))"
   shows "\<exists>as. lookup_row s x0 k0 ys xas = Some as"
   using assms unfolding resolve_shuffle_def
-  by (induct xas rule: pair_induct, auto)
+  by (induct xas rule: pair_induct, auto simp add: give_index_row_def)
 
 lemma there_exists_corresponding_string:
   assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 ys (resolve_shuffle m y0))"
@@ -333,10 +332,10 @@ lemma give_index_row_position_ge:
   shows "k0 \<ge> calc_position_rows s ys x0"
 using assms proof (induct xs)
   case Nil
-  then show ?case by simp
+  then show ?case by (simp add: give_index_row_def)
 next
   case (Cons x xs)
-  then show ?case using Cons by (cases "x = x0", auto simp add: calc_position_def)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_position_def give_index_row_def)
 qed
 
 lemma give_index_row_position_lt:
@@ -344,10 +343,10 @@ lemma give_index_row_position_lt:
   shows "k0 < calc_position s ys xs x0"
 using assms proof (induct xs)
   case Nil
-  then show ?case by simp
+  then show ?case by (simp add: give_index_row_def)
 next
   case (Cons x xs)
-  then show ?case using Cons by (cases "x = x0", auto simp add: calc_position_def)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_position_def give_index_row_def)
 qed
 
 lemma lookup_row_position_lt_None:
@@ -504,7 +503,7 @@ next
   case (Var x xs)
   then show ?case by simp
 next
-  case (Alpha yi xs)
+  case (Alpha yi xs) 
   then show ?case proof (cases yi)
     case (Pair y kn)
     then show ?thesis proof (cases kn)
@@ -544,7 +543,7 @@ qed
 lemma give_index_row_None:
   assumes "Inr (y, None) \<in> set (give_index_row (resolve_shuffle m) y0 ys xs)"
   shows "y = y0"
-using assms by (induct xs, simp_all)
+using assms by (induct xs, simp_all add: give_index_row_def)
 
 
 lemma hoge:
@@ -587,7 +586,7 @@ lemma piyo:
   shows "map (store_resolve_nat m Enum.enum) 
              (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))
        = map (store_resolve_row (resolve_shuffle m) (seek y0 Enum.enum) (fst (scan (m y0))) (snd (scan (m y0))))
-              (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))"
+             (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))"
 proof -
   have y0: "y0 \<in> set Enum.enum" by (simp add: enum_UNIV)
   show ?thesis
@@ -606,7 +605,7 @@ lemma homu:
          (flat (as, xas))"
 proof (simp add: flat_def, induct xas rule: pair_induct)
   case Nil
-  then show ?case by simp
+  then show ?case by (simp add: give_index_row_def)
 next
   case (PairCons x as xas)
   then show ?case sorry
@@ -625,71 +624,79 @@ theorem resolve_inverse:
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
   apply (rule ext)
   apply (simp add: synthesize_def)
-  apply (simp add: compU_apply store_resolve_eq del: give_index_row.simps)
-  apply (simp add: concat_map_store_resolve_give_index_row[OF assms] del: give_index_row.simps)
-  apply (simp add: piyo del: give_index_row.simps)
-  apply (simp add: resolve_shuffle_extract_variables_pair_scan_pair del: give_index_row.simps)
-  apply (simp add: homu del: give_index_row.simps)
+  apply (simp add: compU_apply store_resolve_eq)
+  apply (simp add: concat_map_store_resolve_give_index_row[OF assms])
+  apply (simp add: piyo)
+  apply (simp add: resolve_shuffle_extract_variables_pair_scan_pair)
+  apply (simp add: homu)
   apply (subst scan_pair_def)
   apply (subst prod.collapse)
   apply (rule scan_inverse)
   done
 
 
-
-lemma extract_variables_synthesize_store: "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"
-  by (induct u rule: xa_induct, simp_all add: synthesize_store_def)
-
-lemma extract_variables_padding_scan: "extract_variables (padding B x (scan (map Inl u))) = u"
-proof (induct u rule: rev_induct)
-  case Nil
-  then show ?case by (simp add: scan_def synthesize_store_def)
-next
-  case (snoc x xs)
-  then show ?case by (simp add: )
+theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
+proof -
+  { fix u
+    have "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"
+    proof (induct u rule: xa_induct)
+      case Nil
+      then show ?case by simp
+    next
+      case (Var x xs)
+      then show ?case by simp
+    next
+      case (Alpha yk xs)
+      then show ?case proof (cases yk)
+        case (Pair y k)
+        then show ?thesis using Alpha by (cases k, simp_all)
+      qed 
+    qed
+  } note 1 = this
+  { fix x xs
+    have "extract_variables (hat_alpha (enum_convert B) (give_index_row s x (seek x enum_class.enum) xs)) = xs"
+      unfolding give_index_row_def by (induct xs, simp_all)
+  } note 2 = this
+  show ?thesis
+    by (rule ext, simp add: synthesize_def compU_apply resolve_shuffle_def 1 2)
 qed
 
 
-theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
-  by (auto simp add: synthesize_def resolve_shuffle_def compU_apply
-                     extract_variables_synthesize_store extract_variables_padding_scan)
-
-lemma synthesize_prepend_idU: "synthesize_prepend B empty_store = idU"
-  by (rule ext, simp add: idU_def)
-
-lemma synthesize_idU: "synthesize B (idS :: 'x \<Rightarrow> 'x list, empty_store) = (idU :: ('x::enum, 'a) update)"
-  apply (auto simp add: synthesize_def idU_def idS_def scan_def compU_apply synthesize_prepend_idU)
+lemma synthesize_idU: "synthesize B (idS :: 'x shuffle, empty_store) = (idU :: ('x::enum, 'a) update)"
+  by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply give_index_row_def)
 
 subsection \<open>Example\<close>
 
-definition poyo :: "(bool, char) update" where
-  "poyo = (%z. if z = False then [Inr (CHR ''P''), Inl False, Inr (CHR ''Q''), Inl False, Inr (CHR ''R'')]
-        else if z = True then [Inr (CHR ''A''), Inl False, Inr (CHR ''B''), Inl True, Inr (CHR ''C'')]
-        else [])"
-
-declare poyo_def [simp]
+fun poyo :: "(bool, char) update" where
+  "poyo False = [Inr (CHR ''A''), Inl True, Inr (CHR ''B''), Inl False, Inr (CHR ''C'')]" |
+  "poyo True  = [Inr (CHR ''D''), Inl False, Inr (CHR ''E''), Inl True,  Inr (CHR ''F'')]"
 
 definition testB :: "bool boundedness" where
   "testB = Type_Nat"
 
+lemmas resolve_store_poyo_expand =
+  resolve_store_def resolve_shuffle_def
+  scan_def scan_pair_def
+  enum_to_nat_def calc_position_def
+  enum_bool_def
 
-lemma "resolve_store testB poyo (False, None) = ''P''"
-  by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
+lemma "resolve_store testB poyo (False, None) = ''A''"
+  by (simp add: resolve_store_poyo_expand)
   
-lemma "resolve_store testB poyo (False, Some (False, False)) = ''Q''"
-  by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
+lemma "resolve_store testB poyo (False, Some False) = ''E''"
+  by (simp add: resolve_store_poyo_expand)
 
-lemma "resolve_store testB poyo (False, Some (False, True)) = ''R''" 
-  by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
+lemma "resolve_store testB poyo (False, Some True) = ''C''" 
+  by (simp add: resolve_store_poyo_expand)
 
-lemma "resolve_store testB poyo (True, None) = ''A''"
-  by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
+lemma "resolve_store testB poyo (True, None) = ''D''"
+  by (simp add: resolve_store_poyo_expand)
 
-lemma "resolve_store testB poyo (True, Some (False, False)) = ''B''"
-  by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
+lemma "resolve_store testB poyo (True, Some False) = ''F''"
+  by (simp add: resolve_store_poyo_expand)
 
-lemma "resolve_store testB poyo (True, Some (False, True)) = ''C''" 
-  by (simp add: resolve_store_def scan_def enum_to_nat_def enum_option_def enum_prod_def enum_bool_def)
+lemma "resolve_store testB poyo (True, Some True) = ''B''" 
+  by (simp add: resolve_store_poyo_expand)
 
 
 end

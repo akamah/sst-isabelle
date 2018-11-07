@@ -12,22 +12,32 @@ theory Decompose_Update
     "../Decomposition/Shuffle"
 begin
 
-(* an Update can be divided into two objects:
- * Shuffle (M\<^sup>1): shuffle and concatenate variables.
- * Store   (M\<^sup>2): stores strings which'll be concatenated to variables:
- *)
+text \<open>
+  An Update can be divided into two objects:
+ - Shuffle (M1): shuffle and concatenate variables.
+ - Store   (M2): stores strings which'll be concatenated to variables:
+\<close>
 
-(* This is a type of max scanned length given bounded count 'k.
- * if 'k is instance of enum class, this type represents type-level natural number
- * |'k| + 1
- *)
-
-(* an index of string in Store.
- * (y, k) means the position of a k-th variable used in the assignment to y.
- *)
+text \<open>
+  An index of string in Store.
+  Both 'y and 'k are required to be an enum class.
+  - 'y is the type of variables, and should be enumerated.
+  - 'k is the type-level natural number, the boundedness of an update.
+\<close>
 type_synonym ('y, 'k) index = "'y \<times> 'k option"
 
-(* Store object is an array of string indexed with ('y, 'i) index *)
+
+text \<open>
+  Consider an update which has k occurrences of each variable, 
+  it also has k + 1 strings between variables.
+  So the type "'k option" is used to specify (k+1) indexes of strings.
+  - (y, None) means the first string of the assignment to y.
+  - (y, Some k) means the following string of k-th occurrence of x.
+  Note that the occurrence is counted along bottom-up direction from zero.
+  Example: 
+    x \<mapsto> (x, None) x (x, Some 2) x (x, Some 1)
+    y \<mapsto> (y, None) x (y, Some 0) y (y, Some 0)
+\<close>
 type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
 

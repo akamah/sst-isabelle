@@ -238,6 +238,9 @@ fun flat_rec where
 definition flat where
   "flat = (\<lambda>(b0, xas). map Inr b0 @ flat_rec xas)"
 
+lemma flat_simp:
+  "flat (b0, xas) = map Inr b0 @ flat_rec xas"
+  unfolding flat_def by simp
 
 lemma flat_rec_append[simp]: "flat_rec (xs @ ys) = flat_rec xs @ flat_rec ys"
   by (induct xs arbitrary: ys rule: pair_rev_induct, simp_all)

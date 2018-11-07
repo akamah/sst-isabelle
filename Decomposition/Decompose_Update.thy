@@ -141,12 +141,10 @@ fun lookup :: "('y, 'x, 'b) update' \<Rightarrow> 'x \<Rightarrow> nat \<Rightar
   "lookup m x0 k0 ys = orNil (lookup_rec m x0 k0 ys)"
 
 
-fun give_index_row_rec :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Rightarrow> 'x list \<Rightarrow> ('x + 'x \<times> nat option) list" where
-  "give_index_row_rec s ys Nil    = []" |
-  "give_index_row_rec s ys (x#xs) = Inl x # Inr (x, Some (calc_index s ys xs x)) # give_index_row_rec s ys xs"
+fun give_index_row :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Rightarrow> 'x list \<Rightarrow> ('x + 'x \<times> nat option) list" where
+  "give_index_row s ys Nil    = []" |
+  "give_index_row s ys (x#xs) = Inl x # Inr (x, Some (calc_index s ys xs x)) # give_index_row s ys xs"
 
-definition give_index_row where
-  "give_index_row s y ys xs = Inr (y, None) # give_index_row_rec s ys xs"
 
 
 fun enum_convert :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
@@ -174,7 +172,7 @@ fun empty_store :: "('y::enum, 'k, 'b) store" where
 
 
 fun synthesize_shuffle_nat :: "'y::enum shuffle \<Rightarrow> 'y \<Rightarrow> ('y + 'y \<times> nat option) list" where
-  "synthesize_shuffle_nat s y = give_index_row s y (seek y (Enum.enum :: 'y list)) (s y)"
+  "synthesize_shuffle_nat s y = Inr (y, None) # give_index_row s (seek y (Enum.enum :: 'y list)) (s y)"
 
 fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y + 'y \<times> 'k option, 'b) update'" where
   "synthesize_shuffle B s y = map Inl (hat_alpha (enum_convert B) (synthesize_shuffle_nat s y))"
@@ -300,8 +298,8 @@ proof -
     qed
   } note 1 = this
   { fix x xs
-    have "extract_variables (hat_alpha (enum_convert B) (give_index_row s x (seek x enum_class.enum) xs)) = xs"
-      unfolding give_index_row_def by (induct xs, simp_all)
+    have "extract_variables (hat_alpha (enum_convert B) (give_index_row s (seek x enum_class.enum) xs)) = xs"
+      by (induct xs, simp_all)
   } note 2 = this
   show ?thesis
     by (rule ext, simp add: synthesize_def compU_apply resolve_shuffle_def 1 2)
@@ -309,7 +307,7 @@ qed
 
 
 lemma synthesize_idU: "synthesize B (idS :: 'x shuffle, empty_store) = (idU :: ('x::enum, 'a) update)"
-  by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply give_index_row_def)
+  by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply)
 
 
 subsection \<open>Proof of inverse of Resolve\<close>
@@ -357,13 +355,13 @@ fun var_mark_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Right
 
 
 lemma there_exists_corresponding_string_inner:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y ys (keys_pair xas))"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s ys (keys_pair xas))"
   shows "\<exists>as. lookup_row s x0 k0 ys xas = Some as"
   using assms unfolding resolve_shuffle_def
-  by (induct xas rule: pair_induct, auto simp add: give_index_row_def)
+  by (induct xas rule: pair_induct, auto)
 
 lemma there_exists_corresponding_string:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 ys (resolve_shuffle m y0))"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) ys (resolve_shuffle m y0))"
   shows "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
   apply (rule there_exists_corresponding_string_inner)
   using assms
@@ -373,25 +371,25 @@ lemma there_exists_corresponding_string:
 
 
 lemma give_index_row_position_ge:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s ys xs)"
   shows "k0 \<ge> calc_index_rows s ys x0"
 using assms proof (induct xs)
   case Nil
-  then show ?case by (simp add: give_index_row_def)
+  then show ?case by (simp)
 next
   case (Cons x xs)
-  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def give_index_row_def)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def)
 qed
 
 lemma give_index_row_position_lt:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 ys xs)"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s ys xs)"
   shows "k0 < calc_index s ys xs x0"
 using assms proof (induct xs)
   case Nil
-  then show ?case by (simp add: give_index_row_def)
+  then show ?case by (simp)
 next
   case (Cons x xs)
-  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def give_index_row_def)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def)
 qed
 
 lemma lookup_row_position_lt_None:
@@ -433,7 +431,7 @@ qed
 
 lemma previous_row_does_not_have_same_variable:
   assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys) 
                                       (resolve_shuffle m y0))"
   shows "lookup_row (resolve_shuffle m) x0 k0 ys xs = None"
 proof -
@@ -449,7 +447,7 @@ qed
 
 lemma inspect_only_this_row:
   assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys)
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys)
                                                     (resolve_shuffle m y0))"
   shows "lookup_rec m x0 k0 ys
        = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
@@ -469,7 +467,7 @@ next
   next
     assume y: "y \<noteq> y0"
     then have y0: "y0 \<in> set ys" using Cons(2) by simp
-    moreover have in_row: "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) 
+    moreover have in_row: "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys) 
                                                            (resolve_shuffle m y0))"
       using Cons(3) y by simp 
     ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
@@ -486,7 +484,7 @@ qed
 lemma all_var_mark_less_than_position:
   fixes s :: "'y shuffle"
   assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 ys) (s y0))"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s (seek y0 ys) (s y0))"
   shows "k0 < calc_index_rows s ys x0"
 proof -
   have "k0 < calc_index s (seek y0 ys) (s y0) x0"
@@ -500,7 +498,7 @@ qed
 lemma bounded_shuffle_less_than_position:
   fixes s :: "'y::enum shuffle"
   assumes "bounded_shuffle K s"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 (Enum.enum :: 'y list)) (s y0))"
+  assumes "Inr (x0, Some k0) \<in> set (give_index_row s (seek y0 (Enum.enum :: 'y list)) (s y0))"
   shows "k0 < K"
 proof -
   let ?enum = "Enum.enum :: 'y list"
@@ -521,14 +519,14 @@ qed
 lemma bounded_shuffle_var_mark_less_than:
   fixes s :: "'y::enum shuffle"
   assumes "bounded_shuffle K s"
-  shows "list_all (var_mark_less_than K) (give_index_row s y0 (seek y0 (Enum.enum :: 'y list)) (s y0))"
+  shows "list_all (var_mark_less_than K) (give_index_row s (seek y0 (Enum.enum :: 'y list)) (s y0))"
 proof (simp only: list_all_iff, rule ballI)
   fix yk
-  assume contain: "yk \<in> set (give_index_row s y0 (seek y0 enum_class.enum) (s y0))"
+  assume contain: "yk \<in> set (give_index_row s (seek y0 enum_class.enum) (s y0))"
   show "var_mark_less_than K yk" proof (auto)
     fix x0 k0
     assume "yk = Inr (x0, Some k0)"
-    then have "Inr (x0, Some k0) \<in> set (give_index_row s y0 (seek y0 enum_class.enum) (s y0))"
+    then have "Inr (x0, Some k0) \<in> set (give_index_row s (seek y0 enum_class.enum) (s y0))"
       using contain by simp
     then show "k0 < K" using bounded_shuffle_less_than_position[OF assms] by simp
   qed
@@ -570,15 +568,15 @@ lemma concat_map_store_resolve_give_index_row:
   assumes "boundedness B K"
   assumes "bounded K m"
   shows "concat (map (store_resolve B m Enum.enum) (hat_alpha (enum_convert B)
-            (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list))
+            (give_index_row (resolve_shuffle m) (seek y0 (Enum.enum :: 'y list))
                             (resolve_shuffle m y0))))
        = concat (map (store_resolve_nat m Enum.enum) 
-            (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list))
+            (give_index_row (resolve_shuffle m) (seek y0 (Enum.enum :: 'y list))
                             (resolve_shuffle m y0)))"
 proof -
   have "bounded_shuffle K (resolve_shuffle m)"
     using assms(2) by (rule resolve_bounded)
-  then have "list_all (var_mark_less_than K) (give_index_row (resolve_shuffle m) y0 (seek y0 (Enum.enum :: 'y list)) ((resolve_shuffle m) y0))"
+  then have "list_all (var_mark_less_than K) (give_index_row (resolve_shuffle m) (seek y0 (Enum.enum :: 'y list)) ((resolve_shuffle m) y0))"
     by (rule bounded_shuffle_var_mark_less_than)
   then show ?thesis
     using assms(1) using concat_map_store_resolve_nat by blast
@@ -586,17 +584,16 @@ qed
 
 
 lemma give_index_row_None:
-  assumes "Inr (y, None) \<in> set (give_index_row (resolve_shuffle m) y0 ys xs)"
+  assumes "Inr (y, None) \<in> set (give_index_row (resolve_shuffle m) ys xs)"
   shows "y = y0"
-using assms by (induct xs, simp_all add: give_index_row_def)
+using assms by (induct xs, simp_all)
 
 
 lemma hoge:
   fixes m :: "('y::enum, 'b) update"
   fixes y0 :: "'y::enum"
   assumes "y0 \<in> set ys"
-  assumes "yk \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys)
-                                                          (resolve_shuffle m y0))"
+  assumes "yk \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys) (resolve_shuffle m y0))"
   shows "store_resolve_nat m ys yk
        = store_resolve_row (resolve_shuffle m) (seek y0 ys) (fst (scan (m y0))) (snd (scan (m y0))) yk"
 proof (cases yk)
@@ -608,14 +605,14 @@ next
     case (Pair x0 k)
     then show ?thesis proof (cases k)
       case None
-      then have "Inr (x0, None) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) (resolve_shuffle m y0))"
+      then have "Inr (x0, None) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys) (resolve_shuffle m y0))"
         using Inr Pair assms by simp
       then have "x0 = y0"
         by (rule give_index_row_None)
       then show ?thesis using assms Inr Pair None by simp
     next
       case (Some k0)
-      then have "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) y0 (seek y0 ys) (resolve_shuffle m y0))"
+      then have "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys) (resolve_shuffle m y0))"
         using assms Inr Pair by simp
       then have "lookup_rec m x0 k0 ys
                = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
@@ -629,9 +626,9 @@ qed
 lemma piyo:
   fixes y0 :: "'y::enum"
   shows "map (store_resolve_nat m Enum.enum) 
-             (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))
+             (give_index_row (resolve_shuffle m) (seek y0 Enum.enum) (resolve_shuffle m y0))
        = map (store_resolve_row (resolve_shuffle m) (seek y0 Enum.enum) (fst (scan (m y0))) (snd (scan (m y0))))
-             (give_index_row (resolve_shuffle m) y0 (seek y0 Enum.enum) (resolve_shuffle m y0))"
+             (give_index_row (resolve_shuffle m) (seek y0 Enum.enum) (resolve_shuffle m y0))"
 proof -
   have y0: "y0 \<in> set Enum.enum" by (simp add: enum_UNIV)
   show ?thesis
@@ -666,8 +663,8 @@ qed
 
 
 lemma store_resolve_row_induct_lemma:
-  assumes "yk \<in> set (give_index_row_rec s ys (keys_pair xas))"
-  shows "store_resolve_row s ys as ((x0, as) # xas) yk = store_resolve_row s ys as xas yk"
+  assumes "yk \<in> set (give_index_row s ys (keys_pair xas))"
+  shows "store_resolve_row s ys as ((x0, bs) # xas) yk = store_resolve_row s ys as xas yk"
 proof (cases yk rule: var_mark_cases)
   case (Var y)
   then show ?thesis by simp
@@ -678,24 +675,34 @@ next
   case (VarSome y k)
   then show ?thesis proof (cases "y = x0")
     case True
-    then show ?thesis using assms apply (simp add: VarSome add: dual_order.strict_implies_not_eq give_index_row_position_lt)
+    then show ?thesis using assms by (simp add: VarSome dual_order.strict_implies_not_eq give_index_row_position_lt)
   next
     case False
     then show ?thesis by (simp add: VarSome)
   qed
 qed
 
+find_theorems "map ?f ?xs = map ?g ?xs"
+
+
 lemma homu:
-  "concat (map (store_resolve_row s (seek y0 enum_class.enum) as xas)
-            (give_index_row s y0 (seek y0 enum_class.enum)
+  "concat (map (store_resolve_row s ys as xas)
+            (give_index_row s ys
               (keys_pair xas))) =
-         (flat (as, xas))"
-proof (simp add: flat_def, induct xas rule: pair_induct)
+         (flat_rec xas)"
+proof (induct xas rule: pair_induct)
   case Nil
-  then show ?case by (simp add: give_index_row_def)
+  then show ?case by (simp)
 next
-  case (PairCons x as xas)
-  then show ?case apply (simp add: give_index_row_def ) sorry
+  case (PairCons x bs xas)
+  show ?case proof (simp)
+    have "concat (map (store_resolve_row s ys as ((x, bs) # xas)) (give_index_row s ys (keys_pair xas)))
+        = concat (map (store_resolve_row s ys as xas) (give_index_row s ys (keys_pair xas)))"
+      by (rule arg_cong, simp add: store_resolve_row_induct_lemma)
+    then show "concat (map (store_resolve_row s ys as ((x, bs) # xas)) (give_index_row s ys (keys_pair xas)))
+            = flat_rec xas"
+      using PairCons by simp
+  qed
 qed
 
 lemma resolve_shuffle_keys_pair_scan_pair:
@@ -717,7 +724,8 @@ theorem resolve_inverse:
   apply (simp add: resolve_shuffle_keys_pair_scan_pair)
   apply (simp add: homu)
   apply (subst scan_pair_def)
-  apply (subst prod.collapse)
+  apply (simp only: flat_simp[symmetric])
+  apply (simp only: prod.collapse)
   apply (rule scan_inverse)
   done
 

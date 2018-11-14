@@ -240,97 +240,27 @@ next
 qed
 
 
-fun map_scanned' :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('y \<times> 'a list) list \<Rightarrow> ('y \<times> 'b list) list" where
-  "map_scanned' f [] = []" |
-  "map_scanned' f ((y, as) # yas) = (y, concat (map f as)) # map_scanned' f yas"
-
-definition map_scanned :: "('a \<Rightarrow> 'b list) \<Rightarrow> 'a list \<times> ('y \<times> 'a list) list \<Rightarrow> 'b list \<times> ('y \<times> 'b list) list" where
-  "map_scanned f = (\<lambda>(w, xas). (concat (map f w), map_scanned' f xas))"
-
-lemma map_scanned_Nil_simp[simp]: "map_scanned f (w, []) = (concat (map f w), [])"
-  by (simp add: map_scanned_def)
-
-lemma map_scanned_pair_simp[simp]:
-  "map_scanned f (sc @@@ [(x, as)])
- = map_scanned f sc @@@ [(x, concat (map f as))]"
-  by (induct sc rule: scanned_induct, simp_all add: append_scanned_simp map_scanned_def)
-
-lemma length_map_scanned: "length_scanned (map_scanned f sc) = length_scanned sc"
-  by (induct sc rule: scanned_induct, simp_all add: append_scanned_simp map_scanned_def)
-
-lemma map_scanned_hat_alpha: "scan (hat_alpha f u) = map_scanned f (scan u)"
-  by (induct u rule: xw_induct, simp_all)
+lemma list_all_isl_valuate:
+  assumes "list_all isl bs"
+  shows "valuate bs = []"
+  using assms by (induct bs rule: xa_induct, simp_all)
 
 
-lemma nth_string_valuate: 
-  "valuate (nth_string (scan u) n)
- = nth_string (map_scanned retain_right (scan u)) n"
-proof (induct u arbitrary: n rule: xw_induct)
-  case (Word w)
-  then show ?case proof (cases n)
-    case 0
-    then show ?thesis by (simp add: valuate_retain_right)
-  next
-    case (Suc nat)
-    then show ?thesis by (simp add: hat_alpha_right_map nth_string_pos_Nil)
-  qed
-next
-  case (VarWord x w u)
-  then show ?case proof (cases n)
-    case 0
-    then show ?thesis using VarWord
-      by (simp add: valuate_retain_right nth_string_append_first)
-  next
-    case (Suc nat)
-    then show ?thesis using VarWord
-      by (auto simp add: valuate_retain_right nth_string_append_last length_scanned_hat_alpha length_map_scanned)
-  qed
-qed
-
-lemma hat_alpha_synthesize:
-  "hat_alpha t (synthesize B (s, a) y) = synthesize B (s, t \<odot> a) y"
-proof -
-  have "\<And>y'. (hat_alpha t \<circ> synthesize B (s, a)) y = synthesize B (s, t \<odot> a) y"
-    by (simp add: map_alpha_synthesize[simplified map_alpha_def])
-  then show ?thesis by simp
-qed
-
-
-lemma cm_synthesize_store_const_is_inl: "list_all isl (concat (map (synthesize_store B empty_store) ps))"
-  apply (induct ps rule: xa_induct, simp_all add: synthesize_store_def)
-  by auto
-
-lemma list_all_is_inl_map_Inr:
-  assumes "list_all isl (map Inr bs)"
-  shows "bs = []"
-  using assms by (induct bs, simp_all)
-
-lemma nth_string_scan_is_inl:
-  assumes "list_all isl u"
-  shows "nth_string (scan u) k = []"
-using assms proof (induct u arbitrary: k rule: xw_induct)
-  case (Word w)
-  then have "w = []" by (simp add: list_all_is_inl_map_Inr)
-  then show ?case by (cases k, simp_all)
-next
-  case (VarWord x w u)
-  have "w = []" using VarWord.prems list_all_is_inl_map_Inr by auto
-  then show ?case using VarWord by (simp add: nth_string_append_last)
-qed
-
-
-lemma nth_string_map_scanned_retain_right:
-  "nth_string (map_scanned retain_right (scan (\<iota> B \<alpha> x y))) k = []"
-  apply (simp add: compU_apply map_scanned_hat_alpha[symmetric] \<iota>_def hat_alpha_synthesize retain_right_embed)
-  apply (simp add: synthesize_def synthesize_store_def synthesize_shuffle_def compU_apply)
-  apply (simp add: nth_string_scan_is_inl cm_synthesize_store_const_is_inl)
-  done
+find_theorems "list_all isl"
 
 lemma valuate_H'_Nil_var: "valuate (H' B (\<alpha>, idU) (x, y, k)) = []"
-  apply (simp add: H'_def idU_def)
-  apply (simp add: resolve_store_def nth_string_valuate nth_string_map_scanned_retain_right)
-  done
-
+proof (simp add: H'_def idU_def \<iota>_def)
+  let ?beta = "Rep_bc_shuffle (\<alpha> x)"
+  let ?m = "synthesize B (Rep_bc_shuffle (\<alpha> x), embed x)"
+  have "\<forall>y k. list_all isl (embed x (y, k))"
+    by simp
+  then have "\<forall>y. list_all isl (valuate (?m y))"
+    by (rule synthesize_preserve_prop_on_string)
+  then have "list_all isl (resolve_store B ?m (y, k))"
+    using resolve_store_preserve_prop_on_string by blast
+  then show "valuate (resolve_store B ?m (y, k)) = []"
+    by (rule list_all_isl_valuate)
+qed
 
 lemma valuate_H'_Nil: "valuate (hat_hom (H' B (\<alpha>, idU)) u) = valuate u"
 proof (induct u rule: xa_induct)
@@ -358,9 +288,10 @@ lemma map_alpha_H'_iota_\<Delta>:
   shows "map_alpha (update2hom (H' B (\<beta>, SST.eta_hat msst (q, w)))) o \<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)))) 
        = hat_homU (\<iota> B (Rep_alpha B \<beta>)) o SST.eta_hat msst (q, w)"
   apply (rule ext)
-  apply (simp add: \<iota>_def map_alpha_synthesize compU_apply hat_hom_def[symmetric] H'_embed \<Delta>'_def)
+  apply (simp add: \<iota>_def map_alpha_synthesize compU_apply hat_hom_def[symmetric] H'_embed \<Delta>'_def update2hom_compS_compU)
   apply (simp only: resolve_shuffle_hat_homU_inverse[OF assms])
   apply (rule resolve_inverse)
+  apply (rule assms(1))
   apply (rule hat_homU_iota_bounded_copy)
   apply (rule assms)+
   done

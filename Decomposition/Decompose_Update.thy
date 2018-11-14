@@ -82,6 +82,11 @@ next
   then show ?thesis using assms by simp
 qed
 
+lemma map_option_orElse:
+  "map_option f (orElse a b) = orElse (map_option f a) (map_option f b)"
+  by (cases a, simp_all)
+
+
 lemma option_if_Some_None_eq_Some:
   assumes "(if cond then Some a else None) = Some b"
   shows "a = b"
@@ -105,7 +110,6 @@ using assms by (cases cond, simp_all)
 fun orNil :: "'a list option \<Rightarrow> 'a list" where
   "orNil (Some xs) = xs" |
   "orNil None      = []"
-
 
 fun seek :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
   "seek y0 [] = []" |
@@ -157,6 +161,8 @@ subsection \<open>Resolve & Synthesize\<close>
 lemma keys_pair_scan_pair: "keys_pair (scan_pair u) = extract_variables u"
   by (induct u rule: xw_induct, simp_all)
 
+lemma concat_value_scanned_scan: "concat_value_scanned (scan u) = valuate u"
+  by (induct u rule: xw_induct, simp_all)
 
 fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" where  
   "resolve_store_nat m (y, None) = fst (scan (m y))" |
@@ -301,24 +307,145 @@ proof -
     by (rule ext, simp add: synthesize_def compU_apply resolve_shuffle_def 1 2)
 qed
 
-
 lemma synthesize_idU: "synthesize B (idS :: 'x shuffle, empty_store) = (idU :: ('x::enum, 'a) update)"
   by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply)
 
 
 lemma compS_resolve_store:
-  "s \<odot> resolve_store B \<theta> = resolve_store B (s \<star> \<theta>)"
+  fixes \<theta> :: "('y::enum, 'b) update"
+  shows "s \<odot> resolve_store B \<theta> = resolve_store B (s \<star> \<theta>)"
 proof
   fix yk
   show "(s \<odot> resolve_store B \<theta>) yk = resolve_store B (s \<star> \<theta>) yk"
   proof (cases yk rule: index_cases)
     case (VarNone y)
-    then show ?thesis apply (simp add: compS_apply resolve_store_def map_alpha_apply) sorry
+    show ?thesis proof (simp add: compS_apply resolve_store_def map_alpha_apply VarNone)
+      fix u :: "('y + 'b) list"
+      show "concat (map s (fst (scan u))) = fst (scan (hat_alpha s u))"
+        by (induct u rule: xw_induct, simp_all)
+    qed
   next
     case (VarSome y k)
-    then show ?thesis apply (simp add: compS_apply resolve_store_def map_alpha_apply) sorry
+    then show ?thesis proof (simp add: compS_apply resolve_store_def map_alpha_apply)
+      fix ys k
+      show "concat (map s (orNil (lookup_rec \<theta> y k ys)))
+          = orNil (lookup_rec (s \<star> \<theta>) y k ys)" proof -
+        have "concat (map s (orNil (lookup_rec \<theta> y k ys)))
+            = orNil (map_option (concat o map s) (lookup_rec \<theta> y k ys))"
+          by (cases "(lookup_rec \<theta> y k ys)", simp_all)
+        also have "... = orNil (lookup_rec (s \<star> \<theta>) y k ys)"
+        proof (rule arg_cong[where f="orNil"], induct ys)
+          case Nil
+          then show ?case by simp
+        next
+          case (Cons a ys)
+          show ?case proof -
+            { fix xas
+              have "map_option (concat o map s) (lookup_row (resolve_shuffle \<theta>) y k ys xas)
+                  = lookup_row (resolve_shuffle (s \<star> \<theta>)) y k ys (map_value_pair s xas)"
+              proof (induct xas rule: pair_induct)
+                case Nil
+                then show ?case by simp
+              next
+                case (PairCons x as xas)
+                then show ?case by (auto simp add: resolve_shuffle_map_alpha keys_pair_map_value_pair)
+              qed
+            } note map_option_lookup_rec = this
+            { fix u :: "('y + 'b) list"
+              have "map_value_pair s (scan_pair u) = scan_pair (hat_alpha s u)"
+                by (induct u rule: xw_induct, simp_all)
+            } note map_value_pair_scan_pair = this
+            show ?thesis
+              by (simp add: map_option_orElse map_option_lookup_rec Cons map_value_pair_scan_pair map_alpha_apply[symmetric] del: comp_apply)
+          qed
+        qed
+        finally show ?thesis .
+      qed
+    qed
   qed
 qed
+
+lemma resolve_store_preserve_prop_on_string:
+  fixes m :: "('x::enum, 'b) update"
+  assumes "\<forall>x. list_all P (valuate (m x))"
+  shows "\<forall>x k. list_all P (resolve_store B m (x, k))"
+proof (intro allI)
+  fix x0 k0
+  have *: "\<forall>x. list_all P (concat_value_scanned (scan (m x)))"
+    using assms by (simp add: concat_value_scanned_scan)
+
+  show "list_all P (resolve_store B m (x0, k0))" proof (cases k0)
+    case None
+    have "list_all P (concat_value_scanned (scan (m x0)))"
+      using * by simp
+    then show ?thesis proof (simp add: None resolve_store_def)
+      fix sc :: "('x, 'b) scanned"
+      assume "list_all P (concat_value_scanned sc)"
+      then show "list_all P (fst sc)"
+       by (induct sc rule: scanned_rev_induct, simp_all)
+    qed
+  next
+    case (Some k)
+    then show ?thesis proof (simp add: resolve_store_def) 
+      fix ys n
+      show "list_all P (orNil (lookup_rec m x0 n ys))" proof (induct ys)
+        case Nil
+        then show ?case by simp
+      next
+        case (Cons y ys)
+        then show ?case 
+        proof (cases "lookup_row (resolve_shuffle m) x0 n ys (scan_pair (m y))")
+          case None
+          then show ?thesis using Cons by simp
+        next
+          case (Some as)
+          have "list_all P (concat_value_pair (scan_pair (m y)))"
+            using * unfolding concat_value_scanned_def by simp
+          then show ?thesis using Some proof (simp)
+            fix xas :: "('x \<times> 'b list) list" and s
+            assume "list_all P (concat_value_pair xas)"
+            moreover assume "lookup_row s x0 n ys xas = Some as"
+            ultimately show "list_all P as" proof (induct xas rule: pair_induct)
+              case Nil
+              then show ?case by simp
+            next
+              case (PairCons x bs xas)
+              then show ?case proof (cases "x = x0 \<and> calc_index s ys (keys_pair xas) x = n")
+                case True
+                then show ?thesis using PairCons by (simp add: True)
+              next
+                case False
+                then show ?thesis using PairCons by (simp add: False)
+              qed
+            qed
+          qed
+        qed
+      qed
+    qed
+  qed
+qed
+
+lemma synthesize_preserve_prop_on_string:
+  assumes "\<forall>x k. list_all P (a (x, k))"
+  shows "\<forall>x. list_all P (valuate (synthesize B (s, a) x))"
+proof (auto simp add: synthesize_def compU_def)
+  fix x
+  show "list_all P (a (x, None))" using assms by simp
+next
+  fix x u
+  show "list_all P (valuate (concat (map (synthesize_store B a) u)))"
+  proof (induct u rule: xa_induct)
+    case Nil
+    then show ?case by simp
+  next
+    case (Var x xs)
+    then show ?case by simp
+  next
+    case (Alpha a xs)
+    then show ?case using assms by (cases a, simp)
+  qed
+qed
+
 
 
 lemma map_alpha_resolve_store:
@@ -327,6 +454,7 @@ lemma map_alpha_resolve_store:
 
 
 subsection \<open>Proof of inverse of Resolve\<close>
+
 
 fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where
   "store_resolve B m ys (Inl y) = [Inl y]" |

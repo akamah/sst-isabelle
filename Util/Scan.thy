@@ -155,6 +155,47 @@ definition scan_pair :: "('y + 'b) list \<Rightarrow> ('y \<times> 'b list) list
 definition keys_pair :: "('y \<times> 'b list) list \<Rightarrow> 'y list" where
   "keys_pair ps = map fst ps"
 
+fun map_value_pair :: "('b \<Rightarrow> 'c list) \<Rightarrow> ('y \<times> 'b list) list \<Rightarrow> ('y \<times> 'c list) list" where
+  "map_value_pair f Nil = []" |
+  "map_value_pair f ((y, bs)#ybs) = (y, concat (map f bs)) # map_value_pair f ybs"
+
+definition map_value_scanned where
+  "map_value_scanned f scanned = (map f (fst scanned), map_value_pair f (snd scanned))"
+
+fun concat_value_pair where
+  "concat_value_pair Nil = []" |
+  "concat_value_pair ((x, as)#xas) = as @ concat_value_pair xas"
+
+lemma concat_value_pair_last_simp[simp]:
+  "concat_value_pair (xas @ [(x, as)]) = concat_value_pair xas @ as"
+  by (induct xas rule: pair_induct, simp_all)
+
+definition concat_value_scanned where
+  "concat_value_scanned scanned = fst scanned @ concat_value_pair (snd scanned)"
+
+lemma concat_value_scanned_Nil[simp]:
+  "concat_value_scanned (as, []) = as"
+  unfolding concat_value_scanned_def by simp
+
+lemma concat_value_scanned_last_simp[simp]:
+  "concat_value_scanned (sc @@@ [(x, as)]) = concat_value_scanned sc @ as"
+proof (induct sc rule: scanned_induct)
+  case (Nil w)
+  then show ?case by (simp add: concat_value_scanned_def append_scanned_def)
+next
+  case (PairCons w x as xas)
+  then show ?case by (simp add: concat_value_scanned_def append_scanned_def)
+qed
+
+
+lemma map_value_pair_last_simp[simp]:
+  "map_value_pair f (ybs @ [(y, bs)]) = map_value_pair f ybs @ [(y, concat (map f bs))]"
+  by (induct ybs rule: pair_induct, simp_all)
+
+lemma keys_pair_map_value_pair:
+  "keys_pair (map_value_pair f xas) = keys_pair xas"
+  by (induct xas rule: pair_induct, simp_all add: keys_pair_def)
+
 lemma keys_pair_Nil[simp]: "keys_pair [] = []" 
   unfolding keys_pair_def by simp
 
@@ -214,6 +255,14 @@ lemma scan_pair_nil_simp[simp]: "scan_pair [] = []"
 
 lemma scan_pair_var_simp[simp]: "scan_pair [Inl x] = [(x, [])]"
   unfolding scan_pair_def by simp
+
+lemma scan_pair_alpha_simp[simp]: "scan_pair (Inr a#u) = scan_pair u"
+  unfolding scan_pair_def scan_def
+proof (simp)
+  fix as bs
+  show "snd (scan_head as u) = snd (scan_head bs u)"
+    by (induct u arbitrary: as bs rule: xa_induct, simp_all)
+qed
 
 lemma scan_pair_word_simp[simp]: "scan_pair (map Inr as) = []"
   unfolding scan_pair_def by simp

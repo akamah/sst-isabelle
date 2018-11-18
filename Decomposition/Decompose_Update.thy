@@ -488,6 +488,20 @@ lemma there_exists_corresponding_string:
   apply (simp add: resolve_shuffle_def)
   done
 
+lemma there_doesnt_exist_corresponding_string_inner:
+  assumes "Inr (x0, Some k0) \<notin> set (give_index_row s ys (keys_pair xas))"
+  shows "lookup_row s x0 k0 ys xas = None"
+  using assms unfolding resolve_shuffle_def
+  by (induct xas rule: pair_induct, auto)
+
+lemma there_doesnt_exist_corresponding_string:
+  assumes "Inr (x0, Some k0) \<notin> set (give_index_row (resolve_shuffle m) ys (resolve_shuffle m y0))"
+  shows "lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = None"  
+  apply (rule there_doesnt_exist_corresponding_string_inner)
+  using assms
+  apply (simp add: keys_pair_scan_pair)
+  apply (simp add: resolve_shuffle_def)
+  done
 
 lemma give_index_row_position_ge:
   assumes "Inr (x0, Some k0) \<in> set (give_index_row s ys xs)"
@@ -592,6 +606,45 @@ next
     have "lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y)) = None"
       using y0 in_row by (rule previous_row_does_not_have_same_variable)
     then show ?thesis using * False by simp
+  qed
+qed
+
+lemma lookup_rec_distinct:
+  assumes "distinct ys"
+  assumes "ys \<noteq> []"
+  shows "\<exists>y0 \<in> set ys.
+     lookup_rec m x0 k0 ys
+   = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+using assms proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons y ys)
+  then show ?case proof (cases "ys = []")
+    case True
+    then show ?thesis by simp
+  next
+    case False
+    then show ?thesis
+    proof (cases "lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y))")
+      case None
+      have "distinct ys" using Cons.prems by simp
+      then obtain y0 where
+        y0: "y0 \<in> set ys \<and> lookup_rec m x0 k0 ys
+                         = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+        using Cons False by blast
+      then have y: "y \<noteq> y0" using Cons.prems by auto
+      show ?thesis proof (rule bexI)
+        show "lookup_rec m x0 k0 (y # ys) 
+            = lookup_row (resolve_shuffle m) x0 k0 (seek y0 (y # ys)) (scan_pair (m y0))"
+          by (simp add: None y y0)
+      next
+        show "y0 \<in> set (y # ys)" using y0 by simp
+      qed
+    next
+      case (Some a)
+      then show ?thesis by simp
+    qed
   qed
 qed
 
@@ -834,6 +887,18 @@ theorem resolve_inverse:
   apply (simp only: prod.collapse)
   apply (rule scan_inverse)
   done
+
+subsection \<open>Lemmas for counting alphabet\<close>
+
+lemma count_list_resolve_store:
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  fixes a :: "'b"
+  assumes "boundedness B k"
+  assumes "bounded k m"
+  shows "(\<Sum>yk::'y \<times> 'k option\<in>UNIV. count_list (resolve_store B m yk) a)
+       = (\<Sum>y::'y \<in>UNIV. count_list (m y) (Inr a))"
+  sorry
 
 subsection \<open>Example\<close>
 

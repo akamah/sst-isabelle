@@ -4,135 +4,6 @@ theory Bounded_Copy_Convert
           "../Composition/Convert_Monoid_SST_Def" "../Type/Monoid_SST_Type"
 begin
 
-lemma count_list_flat:
-  fixes a :: "'a"
-  fixes sc :: "('y, 'a) scanned"
-  assumes "length_scanned sc \<le> length (Enum.enum :: 'e::enum list)"
-  shows "(\<Sum>k\<in>(UNIV::'e set). count_list (nth_string sc (enum_to_nat k)) a)
-       = count_list (flat sc) (Inr a)"
-using assms proof (induct sc rule: scanned_rev_induct)
-  case (Nil w)
-  then show ?case proof (simp)
-    assume a0: "Suc 0 \<le> length (enum_class.enum :: 'e list)"
-    have enum_nat_0: "enum_to_nat (nat_to_enum 0 :: 'e) = 0"
-      by (rule nat_enum_iso, simp only: Suc_le_lessD a0)
-    let ?g = "\<lambda>k::'e. count_list (nth_string ((w, []) :: ('y, 'a) scanned) (enum_to_nat k)) a"
-    let ?k0 = "nat_to_enum 0 :: 'e"
-    have "\<forall>k\<in>UNIV - {?k0}. ?g k = 0" proof
-      fix k :: 'e
-      assume a1: "k \<in> UNIV - {?k0}"
-      have "0 < enum_to_nat k" proof (rule ccontr)
-        assume "\<not> 0 < enum_to_nat k"
-        then have "0 = enum_to_nat k" by simp
-        then have k2: "?k0 = (nat_to_enum (enum_to_nat k))" by simp
-        then have "?k0 = k" apply (simp add: k2) by (rule enum_nat_iso, simp add: UNIV_enum[symmetric])
-        then have "k \<in> {?k0}" by simp
-        then show False using a1 by simp
-      qed
-      then show "count_list (nth_string ((w, []) :: ('x, 'a) scanned) (enum_to_nat k)) a = 0"
-        by (simp add: nth_string_pos_Nil)
-    qed
-    then have sum_0: "sum ?g ((UNIV::'e set) - {?k0}) = 0" by simp
-    have "sum ?g (UNIV::'e set) = sum ?g ((UNIV::'e set) - {?k0}) + sum ?g {?k0}"
-      by (rule sum.subset_diff, simp_all)
-    also have "... = sum ?g {?k0}" using sum_0 by simp
-    also have "... = count_list (map Inr w) (Inr a)" by (simp add: count_list_Inr nat_enum_iso enum_nat_0)
-    finally show "sum ?g (UNIV::'e set) = count_list (map Inr w) (Inr a)" .
-  qed
-next
-  case (PairSnoc x as sc)
-  then show ?case proof simp
-    let ?kn = "nat_to_enum (length_scanned sc) :: 'e"
-    let ?Kn_1 = "{k::'e. length_scanned sc < enum_to_nat k}"
-    assume "(\<Sum>k\<in>UNIV. count_list (nth_string sc (enum_to_nat k)) a) = count_list (flat sc) (Inr a)"
-    assume "Suc (length_scanned sc) \<le> length (Enum.enum :: 'e list)"
-    then have sc_len: "length_scanned sc < length (Enum.enum :: 'e list)" by simp
-    then have kn: "enum_to_nat ?kn = length_scanned sc" by (simp add: nat_enum_iso)
-    have kn_Kn_1: "?kn \<notin> ?Kn_1" by (simp add: nat_enum_iso sc_len)
-
-    let ?f = "\<lambda>k::'e. count_list (nth_string (sc @@@ [(x, as)]) (enum_to_nat k)) a"
-    let ?g = "\<lambda>k::'e. count_list (nth_string sc (enum_to_nat k)) a"
-
-    have sum_fg: "sum ?f (UNIV - {?kn}) = sum ?g (UNIV - {?kn})" proof (rule sum.cong, auto)
-      fix k :: "'e"
-      have enum_nat_k: "nat_to_enum (enum_to_nat k) = k" by (rule enum_nat_iso, simp add: enum_UNIV)
-      assume a0: "k \<noteq> ?kn"
-      have a1: "enum_to_nat k \<noteq> length_scanned sc" proof (rule ccontr, simp)
-        assume "enum_to_nat k = length_scanned sc"
-        then have "nat_to_enum (enum_to_nat k) = ?kn" by simp
-        then have "k = ?kn" by (simp add: enum_nat_k)
-        then show False using a0 by simp
-      qed
-      then show "count_list (nth_string (sc @@@ [(x, as)]) (enum_to_nat k)) a 
-               = count_list (nth_string sc (enum_to_nat k)) a" 
-      proof (cases "enum_to_nat k < length_scanned sc")
-        case True
-        then show ?thesis by (simp add: nth_string_lt_length)
-      next
-        case False
-        then have "length_scanned sc < enum_to_nat k" using a1 by simp
-        then show ?thesis by (simp add: nth_string_ge_length)
-      qed
-    qed
-
-    have sum_gn: "sum ?g {?kn} = 0" proof (simp add: kn nth_string_length)
-      have "nth_string sc (length_scanned sc) = []" by (simp add: nth_string_ge_length)
-      then show "count_list (nth_string sc (length_scanned sc)) a = 0" by simp
-    qed
-
-    have sum5: "sum ?g (UNIV - {?kn}) = sum ?g UNIV" proof -
-      have            "sum ?g (UNIV - {?kn}) = sum ?g (UNIV - {?kn}) + sum ?g {?kn}" using sum_gn by simp
-      also have "... = sum ?g UNIV" by (rule sum.subset_diff[symmetric], simp_all)
-      finally show ?thesis .
-    qed
-
-    have            "sum ?f UNIV = sum ?f (UNIV - {?kn}) + sum ?f {?kn}" (is "?lhs = _")
-      by (rule sum.subset_diff, simp_all)
-    also have "... = sum ?g (UNIV - {?kn}) + sum ?f {?kn}"               
-      using sum_fg by simp
-    also have "... = sum ?g UNIV           + sum ?f {?kn}"              
-      using sum5 by simp
-    also have "... = count_list (flat sc) (Inr a :: 'y + 'a) + count_list (map Inr as) (Inr a :: 'y + 'a)" (is "_ = ?rhs")
-      using PairSnoc by (simp add: kn count_list_Inr nth_string_append_last)
-    finally show "?lhs = ?rhs" .
-  qed
-qed
-
-lemma count_list_scan_flat:
-  fixes a :: "'a"
-  fixes m :: "('y::enum, 'a) update"
-  fixes B :: "'k::enum boundedness"
-  assumes "bounded k m"
-  assumes "boundedness B k"
-  shows "(\<Sum>y::'y\<in>UNIV. \<Sum>k\<in>(UNIV::('y, 'k) type_mult_suc set). count_list (nth_string (scan (m y)) (enum_to_nat k)) a)
-       = (\<Sum>y::'y\<in>UNIV. count_list (m y) (Inr a))"
-proof (rule sum.cong, simp_all)
-  fix x :: "'y"
-  have sc_len: "length_scanned (scan (m x)) \<le> length (Enum.enum :: ('y, 'k) type_mult_suc list)"
-    using assms by (simp add: length_scanned_boundedness)
-  show "(\<Sum>k::('y, 'k) type_mult_suc\<in>UNIV. count_list (nth_string (scan (m x)) (enum_to_nat k)) a)
-      = count_list (m x) (Inr a)"
-    by (simp add: count_list_flat sc_len scan_inverse)
-qed
-
-lemma sum_decompose:
-  fixes m :: "('y::enum, 'b) update"
-  fixes B :: "'k::enum boundedness"
-  fixes a :: "'b"
-  assumes "boundedness B k"
-  assumes "bounded k m"
-  shows "(\<Sum>yi\<in>(UNIV::('y, 'k) index set). count_list (resolve_store B m yi) a)
-       = (\<Sum>y\<in>(UNIV::'y set). count_list (m y) (Inr a))"
-proof -
-  have "(\<Sum>yi\<in>(UNIV::('y, 'k) index set). count_list (resolve_store B m yi) a)
-      = (\<Sum>y\<in>(UNIV::'y set). 
-           \<Sum>k\<in>(UNIV::('y, 'k) type_mult_suc set). count_list (nth_string (scan (m y)) (enum_to_nat k)) a)"
-    by (simp add: sum.Sigma resolve_store_def prod.case_eq_if)
-  also have "... = (\<Sum>y\<in>(UNIV::'y set). count_list (m y) (Inr a))"
-    using assms by (simp add: count_list_scan_flat)
-  finally show ?thesis .
-qed
-
 
 lemma exist_only_list:
   assumes "count_list w x = 1"
@@ -156,8 +27,6 @@ next
     qed
   qed
 qed
-
-thm padding_x
 
 lemma "set (concat (map f u)) = (\<Union>x\<in>set u. set (f x))"
   by simp
@@ -277,40 +146,7 @@ lemma count_alpha_iota_le_1:
   assumes "boundedness (B :: 'k::enum boundedness) k"
   assumes "bounded_shuffle k (\<alpha> x)"
   shows "count_alpha (\<iota> B \<alpha> x :: ('y, 'x \<times> ('y, 'k::enum) index + 'b) update) (Inl (x0, y0, z0) :: 'x \<times> ('y, 'k::enum) index + 'b) \<le> 1"
-  unfolding count_alpha_def
-proof (simp add:)
-  let ?f = "\<lambda>y. count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0)  :: 'x \<times> ('y::enum, 'k::enum) index + 'b))"
-  let ?g = "\<lambda>y. if y = y0 then count_list (\<iota> B \<alpha> x y) (Inr (Inl (x0, y0, z0) :: 'x \<times> ('y::enum, 'k::enum) index + 'b)) else 0"
-  have "sum ?f UNIV = sum ?g UNIV"
-    by (rule sum.cong, simp_all add: iota_x_y y_neq_y0_count_list_zero)
-  also have "... = ?f y0" 
-    by simp
-  also have "... \<le> Suc 0" proof (cases "x0 = x")
-    case True
-    then show ?thesis proof -
-      have "length (extract_variables (map Inl (\<alpha> x y0))) \<le> card (UNIV::'y set) * k"
-        by (simp, rule variable_count_in_bounded_shuffle[OF assms(2)])
-      then have "length_scanned (scan (map Inl (\<alpha> x y0))) \<le> Suc (card (UNIV::'y set) * k)"
-        by (simp add: length_scanned_of_variable_count)
-      also have "Suc (card (UNIV::'y set) * k) = length (Enum.enum::('y::enum, 'k) type_mult_suc list)"
-        using assms unfolding boundedness_def
-        by (simp add: card_UNIV_length_enum[symmetric] card_cartesian_product[symmetric] card_UNIV_option)
-      finally have *:"length_scanned (scan (map Inl (\<alpha> x y0))) \<le> length (Enum.enum::('y::enum, 'k) type_mult_suc list)" .
-      show ?thesis
-        by (simp add: \<iota>_def synthesize_def synthesize_shuffle_def comp_def True count_list_synthesize[OF *])
-    qed
-  next
-    case False
-    then show ?thesis proof -
-      have w: "\<forall>yi\<in>set (\<iota> B \<alpha> x y0). pred_only_x_y x y0 yi"
-        by (simp add: iota_x_y Ball_set_list_all)
-      show ?thesis
-        by (metis False count_notin le_SucI le_zero_eq pred_only_x_y_apply w)
-    qed
-  qed
-  finally show "sum ?f UNIV \<le> Suc 0" .
-qed
-
+  sorry
 
 lemma count_alpha_iota_x_neq_x0_eq_0:
   fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
@@ -478,5 +314,70 @@ proof (intro allI, rule impI)
     qed
   qed
 qed
+
+lemma count_list_in_set_distinct:
+  assumes "\<forall>a\<in>set xs. count_list xs a \<le> 1"
+  shows "distinct xs"
+  using assms proof (induct xs)
+case Nil
+  then show ?case by simp
+next
+  case (Cons x xs)
+  then show ?case proof (auto)
+    assume 0: "count_list xs x = 0"
+    moreover assume 1: "x \<in> set xs"
+    ultimately show False
+      using count_list_append split_list_last by force
+  next
+    assume xs_zero: "count_list xs x = 0"
+    have "\<forall>a\<in>set xs. count_list xs a \<le> Suc 0" proof
+      fix a
+      assume a: "a \<in> set xs"
+      then show "count_list xs a \<le> Suc 0" using xs_zero Cons.prems by (cases "a = x", auto)
+    qed
+    then show "distinct xs" using Cons.hyps by simp
+  qed
+qed
+
+lemma count_list_distinct:
+  assumes "\<forall>a. count_list xs a \<le> 1"
+  shows "distinct xs"
+  using assms by (simp add: count_list_in_set_distinct)
+
+
+thm sum.mono_neutral_left sum.mono_neutral_right
+
+term "\<Union>y\<in>set ys. set (valuate (give_index_row s ys (s y)))"
+
+lemma 
+  assumes "distinct ys"
+  assumes "Inr (x0, Some k0) \<notin> 
+                 (\<Union>y0\<in>set ys. set (give_index_row (resolve_shuffle m)
+                                           (seek y0 ys) (resolve_shuffle m y0)))"
+  shows "lookup_rec m x0 k0 ys = None"
+  oops
+
+
+
+lemma 
+  assumes "distinct ys"
+  assumes "y0 \<in> set ys"  
+  assumes "Inr (x0, Some k0) \<notin> set (give_index_row (resolve_shuffle m)
+                                           (seek y0 ys) (resolve_shuffle m y0))"
+  shows "lookup_rec m x0 k0 ys = None"
+proof -
+  have "lookup_rec m x0 k0 ys
+      = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+
+
+
+lemma sum_subset:
+  assumes "A \<subseteq> B"
+  assumes "\<forall>x \<in> B - A. f x = 0"
+  shows "sum f A = sum f B"
+  find_theorems "sum ?f ?P = sum ?f ?Q"
+
+
+
 
 end

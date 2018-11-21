@@ -349,35 +349,87 @@ thm sum.mono_neutral_left sum.mono_neutral_right
 
 term "\<Union>y\<in>set ys. set (valuate (give_index_row s ys (s y)))"
 
+
+lemma lookup_rec_all_not_in:
+  assumes "distinct ys"
+  assumes "\<forall>y0 \<in> set ys.   
+           Inr (x0, Some k0) \<notin> set (give_index_row (resolve_shuffle m)
+                                           (seek y0 ys) (resolve_shuffle m y0))"
+  shows "lookup_rec m x0 k0 ys = None"
+proof (cases ys)
+  case Nil
+  then show ?thesis using assms by simp
+next
+  case (Cons a list)
+  then obtain y0 where
+    y0: "y0 \<in> set ys \<and> lookup_rec m x0 k0 ys = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+    using assms(1) lookup_rec_distinct by fast
+  then show ?thesis
+    apply (simp add: y0)
+    apply (rule there_doesnt_exist_corresponding_string)
+    using assms(2)
+    apply (simp add: y0)
+    done
+qed
+
+
 lemma 
   assumes "distinct ys"
   assumes "Inr (x0, Some k0) \<notin> 
                  (\<Union>y0\<in>set ys. set (give_index_row (resolve_shuffle m)
-                                           (seek y0 ys) (resolve_shuffle m y0)))"
+                                      (seek y0 ys) (resolve_shuffle m y0)))"
   shows "lookup_rec m x0 k0 ys = None"
+  using assms by (simp add: lookup_rec_all_not_in)
+
+lemma
+  shows "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
+       = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y)))).
+            count_list (resolve_store B m xk) a)"
+proof (rule sum.mono_neutral_right, simp_all, rule ballI)
+  fix xk
+  assume *: "xk \<in> UNIV - (\<Union>x. insert (x, None) (set (valuate (hat_alpha (enum_convert B) (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))))))"
+  show "count_list (resolve_store B m xk) a = 0"
+  proof (cases xk rule: index_cases)
+    case (VarNone y)
+    then show ?thesis using * unfolding resolve_store_def apply simp
+  next
+    case (VarSome y k)
+    then show ?thesis sorry
+  qed
   oops
 
+fun count_pair where
+  "count_pair [] a = 0" |
+  "count_pair ((x, as)#xas) a = count_list as a + count_pair xas a"
 
+fun count_scanned where
+  "count_scanned (w, xas) a = count_list w a + count_pair xas a"
 
-lemma 
-  assumes "distinct ys"
-  assumes "y0 \<in> set ys"  
-  assumes "Inr (x0, Some k0) \<notin> set (give_index_row (resolve_shuffle m)
-                                           (seek y0 ys) (resolve_shuffle m y0))"
-  shows "lookup_rec m x0 k0 ys = None"
+lemma count_pair_last[simp]:
+  "count_pair (xas @ [(x, as)]) a = count_pair xas a + count_list as a"
+  by (induct xas rule: pair_induct, simp_all)
+
+lemma count_scanned_last[simp]:
+  "count_scanned (sc @@@ [(x, as)]) a = count_scanned sc a + count_list as a"
+  by (induct sc rule: scanned_induct, simp_all add: append_scanned_simp)
+
+lemma sum_decompose:
+  fixes m :: "('y::enum, 'b) update"
+  shows "(\<Sum>yk\<in>UNIV. count_list (resolve_store B m yk) a)
+       = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))"
 proof -
-  have "lookup_rec m x0 k0 ys
-      = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
-
-
-
-lemma sum_subset:
-  assumes "A \<subseteq> B"
-  assumes "\<forall>x \<in> B - A. f x = 0"
-  shows "sum f A = sum f B"
-  find_theorems "sum ?f ?P = sum ?f ?Q"
-
-
-
+  have "(\<Sum>yk\<in>UNIV. count_list (resolve_store B m yk) a)
+      = (\<Sum>y\<in>UNIV. count_scanned (scan (m y)) a)"
+  proof (cases yk rule: index_cases)
+    sorry
+  also have "... = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))"
+  proof (rule sum.cong, simp_all)
+    fix u :: "('y + 'b) list"
+    show "count_scanned (scan u) a
+          = count_list u (Inr a)"
+      by (induct u rule: xw_induct, simp_all add: count_list_Inr)
+  qed
+  finally show ?thesis .
+qed
 
 end

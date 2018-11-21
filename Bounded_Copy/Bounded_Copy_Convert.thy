@@ -373,6 +373,14 @@ next
 qed
 
 
+lemma valuate_hat_alpha:
+  "valuate (hat_alpha t u) = concat (map t (valuate u))"
+  by (induct u rule: xa_induct, simp_all)
+
+lemma valuate_map_alpha:
+  "valuate o (t \<star> m) = t \<odot> (valuate o m)"
+  by (rule ext, simp_all add: valuate_hat_alpha map_alpha_apply compS_apply)
+
 lemma 
   assumes "distinct ys"
   assumes "Inr (x0, Some k0) \<notin> 
@@ -382,19 +390,23 @@ lemma
   using assms by (simp add: lookup_rec_all_not_in)
 
 lemma
+  assumes "boundedness B K"
+  assumes "bounded K m"
   shows "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
        = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y)))).
             count_list (resolve_store B m xk) a)"
 proof (rule sum.mono_neutral_right, simp_all, rule ballI)
+  have bs: "bounded_shuffle K (resolve_shuffle m)"
+    by (simp add: assms(2) resolve_bounded)
   fix xk
   assume *: "xk \<in> UNIV - (\<Union>x. insert (x, None) (set (valuate (hat_alpha (enum_convert B) (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))))))"
   show "count_list (resolve_store B m xk) a = 0"
   proof (cases xk rule: index_cases)
     case (VarNone y)
-    then show ?thesis using * unfolding resolve_store_def apply simp
+    then show ?thesis using * unfolding resolve_store_def by auto
   next
-    case (VarSome y k)
-    then show ?thesis sorry
+    case (VarSome y k) find_theorems "set (map ?f ?u)"
+    then show ?thesis using * unfolding resolve_store_def apply (simp add: valuate_hat_alpha)
   qed
   oops
 

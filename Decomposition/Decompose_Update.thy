@@ -7,7 +7,7 @@ section \<open>Decomposition of an Update\<close>
 theory Decompose_Update
   imports Main HOL.Enum HOL.List
     "../Util/Enum_Nat" "../Util/Scan"
-    "../Core/Update" "../Core/SST" 
+    "../Core/Update" "../Core/SST"
     "../Single_Use/Single_Use"
     "../Decomposition/Shuffle"
 begin
@@ -149,11 +149,20 @@ fun give_index_row :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Righta
   "give_index_row s ys Nil    = []" |
   "give_index_row s ys (x#xs) = Inl x # Inr (x, Some (calc_index s ys xs x)) # give_index_row s ys xs"
 
+fun post_index_vars :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Rightarrow> 'x list \<Rightarrow> ('x \<times> nat) list" where
+  "post_index_vars s ys Nil    = []" |
+  "post_index_vars s ys (x#xs) = (x, calc_index s ys xs x) # post_index_vars s ys xs"
 
 
 fun enum_convert :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
   "enum_convert B (y, None)   = [(y, None)]" |
   "enum_convert B (y, Some k) = [(y, Some (nat_to_enum k))]"
+
+
+lemma give_index_row_post_index_vars[iff]:
+  "Inr (x0, Some k0) \<in> set (give_index_row s ys xs) \<longleftrightarrow>
+       (x0, k0) \<in> set (post_index_vars s ys xs)"
+  by (induct xs, auto)
 
 subsection \<open>Resolve & Synthesize\<close>
 
@@ -474,13 +483,13 @@ fun var_index_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Righ
 
 
 lemma there_exists_corresponding_string_inner:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s ys (keys_pair xas))"
+  assumes "(x0, k0) \<in> set (post_index_vars s ys (keys_pair xas))"
   shows "\<exists>as. lookup_row s x0 k0 ys xas = Some as"
   using assms unfolding resolve_shuffle_def
   by (induct xas rule: pair_induct, auto)
 
 lemma there_exists_corresponding_string:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) ys (resolve_shuffle m y0))"
+  assumes "(x0, k0) \<in> set (post_index_vars (resolve_shuffle m) ys (resolve_shuffle m y0))"
   shows "\<exists>as. lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = Some as"
   apply (rule there_exists_corresponding_string_inner)
   using assms
@@ -489,13 +498,13 @@ lemma there_exists_corresponding_string:
   done
 
 lemma there_doesnt_exist_corresponding_string_inner:
-  assumes "Inr (x0, Some k0) \<notin> set (give_index_row s ys (keys_pair xas))"
+  assumes "(x0, k0) \<notin> set (post_index_vars s ys (keys_pair xas))"
   shows "lookup_row s x0 k0 ys xas = None"
   using assms unfolding resolve_shuffle_def
   by (induct xas rule: pair_induct, auto)
 
 lemma there_doesnt_exist_corresponding_string:
-  assumes "Inr (x0, Some k0) \<notin> set (give_index_row (resolve_shuffle m) ys (resolve_shuffle m y0))"
+  assumes "(x0, k0) \<notin> set (post_index_vars (resolve_shuffle m) ys (resolve_shuffle m y0))"
   shows "lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y0)) = None"  
   apply (rule there_doesnt_exist_corresponding_string_inner)
   using assms
@@ -504,7 +513,7 @@ lemma there_doesnt_exist_corresponding_string:
   done
 
 lemma give_index_row_position_ge:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s ys xs)"
+  assumes "(x0, k0) \<in> set (post_index_vars s ys xs)"
   shows "k0 \<ge> calc_index_rows s ys x0"
 using assms proof (induct xs)
   case Nil
@@ -515,7 +524,7 @@ next
 qed
 
 lemma give_index_row_position_lt:
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s ys xs)"
+  assumes "(x0, k0) \<in> set (post_index_vars s ys xs)"
   shows "k0 < calc_index s ys xs x0"
 using assms proof (induct xs)
   case Nil
@@ -564,8 +573,8 @@ qed
 
 lemma previous_row_does_not_have_same_variable:
   assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys) 
-                                      (resolve_shuffle m y0))"
+  assumes "(x0, k0) \<in> set (post_index_vars (resolve_shuffle m) (seek y0 ys) 
+                                           (resolve_shuffle m y0))"
   shows "lookup_row (resolve_shuffle m) x0 k0 ys xs = None"
 proof -
   let ?xs0 = "resolve_shuffle m y0"
@@ -580,8 +589,8 @@ qed
 
 lemma inspect_only_this_row:
   assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys)
-                                                    (resolve_shuffle m y0))"
+  assumes "(x0, k0) \<in> set (post_index_vars (resolve_shuffle m) (seek y0 ys)
+                                           (resolve_shuffle m y0))"
   shows "lookup_rec m x0 k0 ys
        = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
   using assms 
@@ -598,8 +607,8 @@ next
   next
     case False
     then have y0: "y0 \<in> set ys" using Cons(2) by simp
-    moreover have in_row: "Inr (x0, Some k0) \<in> set (give_index_row (resolve_shuffle m) (seek y0 ys) 
-                                                                   (resolve_shuffle m y0))"
+    moreover have in_row: "(x0, k0) \<in> set (post_index_vars (resolve_shuffle m) (seek y0 ys) 
+                                                           (resolve_shuffle m y0))"
       using Cons(3) False by simp 
     ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (resolve_shuffle m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
       using Cons by simp
@@ -652,7 +661,7 @@ qed
 lemma all_var_index_less_than:
   fixes s :: "'y shuffle"
   assumes "y0 \<in> set ys"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s (seek y0 ys) (s y0))"
+  assumes "(x0, k0) \<in> set (post_index_vars s (seek y0 ys) (s y0))"
   shows "k0 < calc_index_rows s ys x0"
 proof -
   have "k0 < calc_index s (seek y0 ys) (s y0) x0"
@@ -666,7 +675,7 @@ qed
 lemma bounded_shuffle_less_than:
   fixes s :: "'y::enum shuffle"
   assumes "bounded_shuffle K s"
-  assumes "Inr (x0, Some k0) \<in> set (give_index_row s (seek y0 (Enum.enum :: 'y list)) (s y0))"
+  assumes "(x0, k0) \<in> set (post_index_vars s (seek y0 (Enum.enum :: 'y list)) (s y0))"
   shows "k0 < K"
 proof -
   let ?enum = "Enum.enum :: 'y list"

@@ -35,10 +35,9 @@ lemma list_nat_iso:
 using assms by (induct xs arbitrary: e, auto)
 
 lemma enum_nat_iso:
-  assumes "e \<in> set Enum.enum"
   shows "nat_to_enum (enum_to_nat e) = e"
   unfolding nat_to_enum_def enum_to_nat_def
-  by (rule list_nat_iso, rule assms(1))
+  by (rule list_nat_iso, simp add: enum_UNIV)
 
 lemma nat_list_iso:
   assumes "n < length xs"
@@ -137,6 +136,9 @@ proof -
   then show ?thesis    
     by (simp add: card_UNIV_length_enum)
 qed
+
+lemma enum_ne_Nil: "(Enum.enum :: 'e::enum list) \<noteq> []"
+  using length_enum_gt_0 by simp
 
 lemma nat_enum_zero:
   shows "enum_to_nat (nat_to_enum 0 :: 'e::enum) = 0"

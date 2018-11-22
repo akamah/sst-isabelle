@@ -373,13 +373,6 @@ next
 qed
 
 
-lemma valuate_hat_alpha:
-  "valuate (hat_alpha t u) = concat (map t (valuate u))"
-  by (induct u rule: xa_induct, simp_all)
-
-lemma valuate_map_alpha:
-  "valuate o (t \<star> m) = t \<odot> (valuate o m)"
-  by (rule ext, simp_all add: valuate_hat_alpha map_alpha_apply compS_apply)
 
 lemma 
   assumes "distinct ys"
@@ -389,11 +382,14 @@ lemma
   shows "lookup_rec m x0 k0 ys = None"
   using assms by (simp add: lookup_rec_all_not_in)
 
-lemma
+
+lemma sum_decompose_first_step:
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
   assumes "boundedness B K"
   assumes "bounded K m"
   shows "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
-       = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y)))).
+       = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list)))).
             count_list (resolve_store B m xk) a)"
 proof (rule sum.mono_neutral_right, simp_all, rule ballI)
   have bs: "bounded_shuffle K (resolve_shuffle m)"
@@ -406,9 +402,66 @@ proof (rule sum.mono_neutral_right, simp_all, rule ballI)
     then show ?thesis using * unfolding resolve_store_def by auto
   next
     case (VarSome y k) find_theorems "set (map ?f ?u)"
-    then show ?thesis using * unfolding resolve_store_def apply (simp add: valuate_hat_alpha)
+    then show ?thesis using * unfolding resolve_store_def proof (simp add: valuate_hat_alpha)
+      have "distinct (Enum.enum :: 'y list)" by (rule enum_distinct)
+      moreover have "(Enum.enum :: 'y list) \<noteq> []" by (rule enum_ne_Nil)
+      ultimately obtain y0 where
+        y0: "lookup_rec m y (enum_to_nat k) Enum.enum 
+           = lookup_row (resolve_shuffle m) y (enum_to_nat k) (seek y0 Enum.enum) (scan_pair (m y0))"
+        using lookup_rec_distinct by fast
+      assume asm: "\<forall>x. \<forall>yk\<in>set (valuate (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))).
+                          (y, Some k) \<notin> set (enum_convert B yk)"
+      have "(y, enum_to_nat k) \<notin> set (post_index_vars (resolve_shuffle m) (seek y0 Enum.enum) (resolve_shuffle m y0))"
+      proof 
+        assume "(y, enum_to_nat k) \<in> set (post_index_vars (resolve_shuffle m) (seek y0 enum_class.enum) (resolve_shuffle m y0))"
+        then have "(y, Some (enum_to_nat k)) \<in> set (valuate (give_index_row (resolve_shuffle m) (seek y0 enum_class.enum) (resolve_shuffle m y0)))"
+          by simp
+        then have "(y, Some k) \<notin> set (enum_convert B (y, Some (enum_to_nat k)))"
+          by (rule asm[rule_format])
+        then have "k \<noteq> nat_to_enum (enum_to_nat k)"
+          by simp
+        moreover have "k = nat_to_enum (enum_to_nat k)" by (simp add: enum_nat_iso)
+        ultimately show False by simp
+      qed
+      then have "lookup_row (resolve_shuffle m) y (enum_to_nat k) (seek y0 Enum.enum) (scan_pair (m y0)) = None"
+        by (simp add: there_doesnt_exist_corresponding_string)
+      then show "count_list (orNil (lookup_rec m y (enum_to_nat k) enum_class.enum)) a = 0"
+        using y0 by simp
+    qed
   qed
-  oops
+qed
+
+
+lemma distinct_concat_map:
+  assumes "distinct (concat (map f xs))"
+  shows "\<forall>i\<in>set xs. \<forall>j\<in>set xs. i \<noteq> j \<longrightarrow> set (f i) \<inter> set (f j) = {}"
+  using assms by (induct xs, auto)
+
+
+lemma sum_decompose_second_step:
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "bounded K m"
+  shows "(\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y  :: (('y + ('y, 'k) index) + 'b) list)))).
+            count_list (resolve_store B m xk) a)
+       = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))" (is "?lhs = ?rhs")
+proof -
+  have "?lhs = (\<Sum>y\<in>UNIV. \<Sum>xk\<in>set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))).
+                   count_list (resolve_store B m xk) a)"
+    apply (rule sum.UNION_disjoint, simp, simp)
+    apply (simp only: UNIV_enum)
+    apply (rule distinct_concat_map)
+    apply (simp add: valuate_hat_alpha)
+    sorry
+  also have "... = ?rhs" apply (rule sum.cong, auto simp add: valuate_hat_alpha)
+
+    thm sum.UNION_disjoint
+    term distinct
+
+
+
+
 
 fun count_pair where
   "count_pair [] a = 0" |

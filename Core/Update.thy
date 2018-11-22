@@ -185,4 +185,15 @@ lemma idS_map_alpha[simp]: "idS \<star> m = m"
 lemma alpha_hom_compS_map_alpha: "alpha_hom t \<odot> m = t \<star> m"
   by (rule ext, simp add: compS_apply map_alpha_apply hat_alpha_def)
 
+
+
+lemma valuate_hat_alpha:
+  "valuate (hat_alpha t u) = concat (map t (valuate u))"
+  by (induct u rule: xa_induct, simp_all)
+
+lemma valuate_map_alpha:
+  "valuate o (t \<star> m) = t \<odot> (valuate o m)"
+  by (rule ext, simp_all add: valuate_hat_alpha map_alpha_apply compS_apply)
+
+
 end

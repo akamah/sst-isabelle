@@ -164,6 +164,12 @@ lemma give_index_row_post_index_vars[iff]:
        (x0, k0) \<in> set (post_index_vars s ys xs)"
   by (induct xs, auto)
 
+lemma valuate_give_index_row_post_index_vars[iff]:
+  "(x0, Some k0) \<in> set (valuate (give_index_row s ys xs)) \<longleftrightarrow>
+   (x0, k0) \<in> set (post_index_vars s ys xs)"
+ by (induct xs, auto)
+
+
 subsection \<open>Resolve & Synthesize\<close>
 
 
@@ -186,7 +192,7 @@ fun empty_store :: "('y::enum, 'k, 'b) store" where
   "empty_store (y, k) = []"
 
 
-fun synthesize_shuffle_nat :: "'y::enum shuffle \<Rightarrow> 'y \<Rightarrow> ('y + 'y \<times> nat option) list" where
+definition synthesize_shuffle_nat :: "'y::enum shuffle \<Rightarrow> 'y \<Rightarrow> ('y + 'y \<times> nat option) list" where
   "synthesize_shuffle_nat s y = Inr (y, None) # give_index_row s (seek y (Enum.enum :: 'y list)) (s y)"
 
 fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y + 'y \<times> 'k option, 'b) update'" where
@@ -313,11 +319,11 @@ proof -
       by (induct xs, simp_all)
   } note 2 = this
   show ?thesis
-    by (rule ext, simp add: synthesize_def compU_apply resolve_shuffle_def 1 2)
+    by (rule ext, simp add: synthesize_def compU_apply resolve_shuffle_def 1 2 synthesize_shuffle_nat_def)
 qed
 
 lemma synthesize_idU: "synthesize B (idS :: 'x shuffle, empty_store) = (idU :: ('x::enum, 'a) update)"
-  by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply)
+  by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply synthesize_shuffle_nat_def)
 
 
 lemma compS_resolve_store:
@@ -437,7 +443,7 @@ qed
 lemma synthesize_preserve_prop_on_string:
   assumes "\<forall>x k. list_all P (a (x, k))"
   shows "\<forall>x. list_all P (valuate (synthesize B (s, a) x))"
-proof (auto simp add: synthesize_def compU_def)
+proof (auto simp add: synthesize_def compU_def synthesize_shuffle_nat_def)
   fix x
   show "list_all P (a (x, None))" using assms by simp
 next
@@ -878,6 +884,13 @@ lemma resolve_shuffle_keys_pair_scan_pair:
   unfolding resolve_shuffle_def
   by  (simp add: keys_pair_scan_pair)
 
+lemma
+  "concat
+     (map (resolve_store B m)
+       (concat (map (enum_convert B) (valuate (synthesize_shuffle_nat (resolve_shuffle m) y0)))))
+ = valuate (m x)"
+  apply (simp add: )
+
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"
@@ -886,7 +899,7 @@ theorem resolve_inverse:
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
   apply (rule ext)
   apply (simp add: synthesize_def)
-  apply (simp add: compU_apply store_resolve_eq)
+  apply (simp add: compU_apply store_resolve_eq synthesize_shuffle_nat_def)
   apply (simp add: concat_map_store_resolve_give_index_row[OF assms])
   apply (simp add: map_store_resolve_nat)
   apply (simp add: resolve_shuffle_keys_pair_scan_pair)

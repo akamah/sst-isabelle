@@ -471,19 +471,6 @@ lemma map_alpha_resolve_store:
 subsection \<open>Proof of inverse of Resolve\<close>
 
 
-fun store_resolve :: "'k::enum boundedness \<Rightarrow> ('y, 'b) update \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> 'k option) \<Rightarrow> ('y + 'b) list" where
-  "store_resolve B m ys (Inl y) = [Inl y]" |
-  "store_resolve B m ys (Inr (y, None))   = map Inr (fst (scan (m y)))" |
-  "store_resolve B m ys (Inr (y, Some k)) = map Inr (lookup m y (enum_to_nat k) ys)"
-
-lemma store_resolve_eq: "synthesize_store B (resolve_store B m) = store_resolve B m Enum.enum"
-proof (rule ext)
-  fix yk
-  show "synthesize_store B (resolve_store B m) yk = store_resolve B m Enum.enum yk"
-    by (cases yk rule: var_index_cases, simp_all add: resolve_store_def)
-qed
-
-
 fun var_index_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Rightarrow> bool" where
   "var_index_less_than K yk = (\<forall>x0 k0. yk = Inr (x0, Some k0) \<longrightarrow> k0 < K)"
 
@@ -727,7 +714,7 @@ lemma concat_map_store_resolve_nat:
   fixes B :: "'k::enum boundedness"
   assumes "boundedness B K"
   assumes "list_all (var_index_less_than K) u"
-  shows "concat (map (store_resolve B m Enum.enum) (hat_alpha (enum_convert B) u))
+  shows "concat (map (synthesize_store B (resolve_store B m)) (hat_alpha (enum_convert B) u))
        = concat (map (store_resolve_nat m Enum.enum) u)"
 using assms(2) proof (induct u rule: xa_induct)
   case Nil
@@ -737,18 +724,14 @@ next
   then show ?case by simp
 next
   case (Alpha yi xs) 
-  then show ?case proof (cases yi)
-    case (Pair y kn)
-    then show ?thesis proof (cases kn)
-      case None
-      then show ?thesis using Pair Alpha by simp
-    next
-      case (Some k)
-      have "(k < length (Enum.enum :: 'k list))" using Alpha Pair Some assms(1)
-        unfolding boundedness_def by simp
-      then have "enum_to_nat (nat_to_enum k :: 'k) = k" by (rule nat_enum_iso)
-      then show ?thesis using Alpha by (simp add: Some Pair)
-    qed
+  then show ?case proof (cases yi rule: index_cases)
+    case (VarNone y)
+    then show ?thesis using Alpha unfolding resolve_store_def by auto
+  next
+    case (VarSome y k)
+    then have "k < length (Enum.enum :: 'k list)" using Alpha assms(1) unfolding boundedness_def by simp
+    then have "enum_to_nat (nat_to_enum k :: 'k) = k" by (rule nat_enum_iso)
+    then show ?thesis using Alpha by (auto simp add: VarSome resolve_store_def )
   qed
 qed
 
@@ -757,7 +740,7 @@ lemma concat_map_store_resolve_give_index_row:
   fixes m :: "('y::enum, 'b) update"
   assumes "boundedness B K"
   assumes "bounded K m"
-  shows "concat (map (store_resolve B m Enum.enum) (hat_alpha (enum_convert B)
+  shows "concat (map (synthesize_store B (resolve_store B m)) (hat_alpha (enum_convert B)
             (give_index_row (resolve_shuffle m) (seek y0 (Enum.enum :: 'y list))
                             (resolve_shuffle m y0))))
        = concat (map (store_resolve_nat m Enum.enum) 
@@ -884,12 +867,57 @@ lemma resolve_shuffle_keys_pair_scan_pair:
   unfolding resolve_shuffle_def
   by  (simp add: keys_pair_scan_pair)
 
-lemma
-  "concat
-     (map (resolve_store B m)
-       (concat (map (enum_convert B) (valuate (synthesize_shuffle_nat (resolve_shuffle m) y0)))))
- = valuate (m x)"
-  apply (simp add: )
+lemma resolve_store_one_row:
+  fixes B :: "'k::enum boundedness"
+  fixes m :: "('y::enum, 'b) update"
+  assumes "boundedness B k"
+  assumes "bounded k m"
+  shows "concat (map (synthesize_store B (resolve_store B m))
+                  (hat_alpha (enum_convert B) (synthesize_shuffle_nat (resolve_shuffle m) x))) =
+         m x"
+  apply (simp add: synthesize_shuffle_nat_def concat_map_store_resolve_give_index_row[OF assms])
+  apply (simp add: map_store_resolve_nat)
+  apply (simp add: resolve_shuffle_keys_pair_scan_pair)
+  apply (simp add: concat_map_store_resolve_row_flat_rec resolve_store_def)
+  apply (subst scan_pair_def)
+  apply (simp only: flat_simp[symmetric])
+  apply (simp only: prod.collapse)
+  apply (rule scan_inverse)
+  done
+
+lemma valuate_concat_map: "valuate (concat (map f xs)) = concat (map valuate (map f xs))"
+  by (induct xs, simp_all)
+
+lemma resolve_store_one_row_valuate:
+  fixes B :: "'k::enum boundedness"
+  fixes m :: "('y::enum, 'b) update"
+  assumes "boundedness B k"
+  assumes "bounded k m"
+  shows "concat (map (resolve_store B m)
+                  (valuate (hat_alpha (enum_convert B) (synthesize_shuffle_nat (resolve_shuffle m) x)))) =
+         valuate (m x)" (is "?l = ?r")
+proof -
+  have "?l = valuate (concat (map (synthesize_store B (resolve_store B m))
+                     (hat_alpha (enum_convert B) (synthesize_shuffle_nat (resolve_shuffle m) x))))"
+  proof -
+    fix u
+    show "concat (map (resolve_store B m) (valuate u))
+      = valuate (concat (map (synthesize_store B (resolve_store B m)) u))"
+    proof (induct u rule: xa_induct)
+      case Nil
+      then show ?case by simp
+    next
+      case (Var x xs)
+      then show ?case by simp
+    next
+      case (Alpha yk xs)
+      then show ?case by (cases yk rule: index_cases, simp_all)
+    qed
+  qed
+  also have "... = ?r"
+    using resolve_store_one_row[OF assms] by simp
+  finally show ?thesis .
+qed
 
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
@@ -897,18 +925,7 @@ theorem resolve_inverse:
   assumes "boundedness B k"
   assumes "bounded k m"
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
-  apply (rule ext)
-  apply (simp add: synthesize_def)
-  apply (simp add: compU_apply store_resolve_eq synthesize_shuffle_nat_def)
-  apply (simp add: concat_map_store_resolve_give_index_row[OF assms])
-  apply (simp add: map_store_resolve_nat)
-  apply (simp add: resolve_shuffle_keys_pair_scan_pair)
-  apply (simp add: concat_map_store_resolve_row_flat_rec)
-  apply (subst scan_pair_def)
-  apply (simp only: flat_simp[symmetric])
-  apply (simp only: prod.collapse)
-  apply (rule scan_inverse)
-  done
+  by (rule ext, simp add: synthesize_def compU_apply resolve_store_one_row[OF assms])
 
 subsection \<open>Lemmas for counting alphabet\<close>
 

@@ -153,10 +153,13 @@ fun post_index_vars :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Right
   "post_index_vars s ys Nil    = []" |
   "post_index_vars s ys (x#xs) = (x, Some (calc_index s ys xs x)) # post_index_vars s ys xs"
 
+fun to_nat :: "'k::enum boundedness \<Rightarrow> 'y \<times> 'k option \<Rightarrow> 'y \<times> nat option" where
+  "to_nat B (y, None)   = (y, None)" |
+  "to_nat B (y, Some k) = (y, Some (enum_to_nat k))"
 
-fun enum_convert :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
-  "enum_convert B (y, None)   = [(y, None)]" |
-  "enum_convert B (y, Some k) = [(y, Some (nat_to_enum k))]"
+fun to_enum :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
+  "to_enum B (y, None)   = [(y, None)]" |
+  "to_enum B (y, Some k) = [(y, Some (nat_to_enum k))]"
 
 lemma give_index_row_post_index_vars[simp]:
   "valuate (give_index_row s ys xs) = post_index_vars s ys xs"
@@ -181,9 +184,7 @@ fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) stor
   "resolve_store_nat m (y, Some k) = lookup m y k (Enum.enum :: 'y list)"
 
 definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y, 'k::enum, 'b) store" where  
-  "resolve_store B m yi = (case yi of
-     (y, None)   \<Rightarrow> resolve_store_nat m (y, None) | 
-     (y, Some k) \<Rightarrow> resolve_store_nat m (y, Some (enum_to_nat k)))"
+  "resolve_store B m yi = resolve_store_nat m (to_nat B yi)"
 
 fun empty_store :: "('y::enum, 'k, 'b) store" where
   "empty_store (y, k) = []"
@@ -193,7 +194,7 @@ definition synthesize_shuffle_nat :: "'y::enum shuffle \<Rightarrow> 'y \<Righta
   "synthesize_shuffle_nat s y = Inr (y, None) # give_index_row s (seek y (Enum.enum :: 'y list)) (s y)"
 
 fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y + 'y \<times> 'k option, 'b) update'" where
-  "synthesize_shuffle B s y = map Inl (hat_alpha (enum_convert B) (synthesize_shuffle_nat s y))"
+  "synthesize_shuffle B s y = map Inl (hat_alpha (to_enum B) (synthesize_shuffle_nat s y))"
 
 
 fun synthesize_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y + 'y \<times> 'k option, 'y, 'b) update'" where
@@ -312,7 +313,7 @@ proof -
     qed
   } note 1 = this
   { fix x xs
-    have "extract_variables (hat_alpha (enum_convert B) (give_index_row s (seek x enum_class.enum) xs)) = xs"
+    have "extract_variables (hat_alpha (to_enum B) (give_index_row s (seek x enum_class.enum) xs)) = xs"
       by (induct xs, simp_all)
   } note 2 = this
   show ?thesis
@@ -711,7 +712,7 @@ lemma concat_map_store_resolve_nat:
   fixes B :: "'k::enum boundedness"
   assumes "boundedness B K"
   assumes "list_all (var_index_less_than K) u"
-  shows "concat (map (synthesize_store B (resolve_store B m)) (hat_alpha (enum_convert B) u))
+  shows "concat (map (synthesize_store B (resolve_store B m)) (hat_alpha (to_enum B) u))
        = concat (map (store_resolve_nat m Enum.enum) u)"
 using assms(2) proof (induct u rule: xa_induct)
   case Nil
@@ -737,7 +738,7 @@ lemma concat_map_store_resolve_give_index_row:
   fixes m :: "('y::enum, 'b) update"
   assumes "boundedness B K"
   assumes "bounded K m"
-  shows "concat (map (synthesize_store B (resolve_store B m)) (hat_alpha (enum_convert B)
+  shows "concat (map (synthesize_store B (resolve_store B m)) (hat_alpha (to_enum B)
             (give_index_row (resolve_shuffle m) (seek y0 (Enum.enum :: 'y list))
                             (resolve_shuffle m y0))))
        = concat (map (store_resolve_nat m Enum.enum) 
@@ -870,7 +871,7 @@ lemma resolve_store_one_row:
   assumes "boundedness B k"
   assumes "bounded k m"
   shows "concat (map (synthesize_store B (resolve_store B m))
-                  (hat_alpha (enum_convert B) (synthesize_shuffle_nat (resolve_shuffle m) x))) =
+                  (hat_alpha (to_enum B) (synthesize_shuffle_nat (resolve_shuffle m) x))) =
          m x"
   apply (simp add: synthesize_shuffle_nat_def concat_map_store_resolve_give_index_row[OF assms])
   apply (simp add: map_store_resolve_nat)
@@ -888,11 +889,11 @@ lemma resolve_store_one_row_valuate:
   assumes "boundedness B k"
   assumes "bounded k m"
   shows "concat (map (resolve_store B m)
-                  (valuate (hat_alpha (enum_convert B) (synthesize_shuffle_nat (resolve_shuffle m) x)))) =
+                  (valuate (hat_alpha (to_enum B) (synthesize_shuffle_nat (resolve_shuffle m) x)))) =
          valuate (m x)" (is "?l = ?r")
 proof -
   have "?l = valuate (concat (map (synthesize_store B (resolve_store B m))
-                     (hat_alpha (enum_convert B) (synthesize_shuffle_nat (resolve_shuffle m) x))))"
+                     (hat_alpha (to_enum B) (synthesize_shuffle_nat (resolve_shuffle m) x))))"
   proof -
     fix u
     show "concat (map (resolve_store B m) (valuate u))

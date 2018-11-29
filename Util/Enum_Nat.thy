@@ -116,6 +116,25 @@ lemma inj_enum_to_nat:
   apply (rule enum_distinct)
   done
 
+lemma inj_nat_to_enum':
+  assumes "distinct xs"
+  shows "inj_on (nat_to_enum' xs) {i. i < length xs}"
+proof -
+  show ?thesis unfolding inj_on_def using assms
+  proof (induct xs)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons a xs)
+    then show ?case by (auto, case_tac x; case_tac y, auto simp add: nat_to_enum'_in)
+  qed
+qed  
+
+lemma inj_nat_to_enum:
+  "inj_on (nat_to_enum :: nat \<Rightarrow> 'k::enum) {i. i < length (Enum.enum :: 'k list)}"
+  unfolding nat_to_enum_def
+  using enum_distinct 
+  by (rule inj_nat_to_enum')
 
 text \<open>Type-level natural number\<close>
 datatype ('i::enum) type_nat = Type_Nat

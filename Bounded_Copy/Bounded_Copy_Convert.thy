@@ -395,26 +395,24 @@ proof (rule sum.mono_neutral_right, simp_all add: synthesize_shuffle_nat_def, ru
   have bs: "bounded_shuffle K (resolve_shuffle m)"
     by (simp add: assms(2) resolve_bounded)
   fix xk
-  assume *: "xk \<in> UNIV - (\<Union>x. insert (x, None) (set (valuate (hat_alpha (enum_convert B) (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))))))"
+  assume *: "xk \<in> UNIV - (\<Union>x. insert (x, None) (set (valuate (hat_alpha (to_enum_list B) (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))))))"
   show "count_list (resolve_store B m xk) a = 0"
   proof (cases xk rule: index_cases)
     case (VarNone y)
     then show ?thesis using * unfolding resolve_store_def by auto
   next
-    case (VarSome y k) find_theorems "set (map ?f ?u)"
+    case (VarSome y k)
     then show ?thesis using * unfolding resolve_store_def proof (simp add: valuate_hat_alpha)
       obtain y0 where
         y0: "lookup_rec m y (enum_to_nat k) Enum.enum 
            = lookup_row (resolve_shuffle m) y (enum_to_nat k) (seek y0 Enum.enum) (scan_pair (m y0))"
         using enum_distinct enum_ne_Nil lookup_rec_distinct by fast
-      assume asm: "\<forall>x. \<forall>yk\<in>set (valuate (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))).
-                          (y, Some k) \<notin> set (enum_convert B yk)"
-      have "(y, enum_to_nat k) \<notin> set (post_index_vars (resolve_shuffle m) (seek y0 Enum.enum) (resolve_shuffle m y0))"
-      proof 
-        assume "(y, enum_to_nat k) \<in> set (post_index_vars (resolve_shuffle m) (seek y0 enum_class.enum) (resolve_shuffle m y0))"
-        then have "(y, Some (enum_to_nat k)) \<in> set (valuate (give_index_row (resolve_shuffle m) (seek y0 enum_class.enum) (resolve_shuffle m y0)))"
-          by simp
-        then have "(y, Some k) \<notin> set (enum_convert B (y, Some (enum_to_nat k)))"
+      assume asm: "\<forall>x. \<forall>yk\<in>set (post_index_vars (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x)).
+                          (y, Some k) \<noteq> to_enum B yk"
+      have "(y, Some (enum_to_nat k)) \<notin> set (post_index_vars (resolve_shuffle m) (seek y0 Enum.enum) (resolve_shuffle m y0))"
+      proof
+        assume "(y, Some (enum_to_nat k)) \<in> set (post_index_vars (resolve_shuffle m) (seek y0 enum_class.enum) (resolve_shuffle m y0))"
+        then have "(y, Some k) \<noteq> to_enum B (y, Some (enum_to_nat k))"
           by (rule asm[rule_format])
         then have "k \<noteq> nat_to_enum (enum_to_nat k)"
           by simp
@@ -442,38 +440,65 @@ next
 qed
 
 
-fun ascending :: "'a::order list \<Rightarrow> bool" where
-  "ascending [] = True" |
-  "ascending (x#xs) = (list_all (\<lambda>y. x < y) xs \<and> ascending xs)"
-
-lemma "ascending xs \<Longrightarrow> distinct xs"
-proof (induct xs)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a xs)
-  then show ?case by (induct xs, auto)
-qed
-
-
 lemma distinct_enum_convert:
-  assumes "distinct xs"
-  shows "distinct (concat (map (enum_convert B) xs))"
-  using assms proof (induct xs)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a xs)
-  then show ?case proof (cases a rule: index_cases)
-    case (VarNone y)
-    then show ?thesis using Cons 
+  fixes u :: "('y \<times> nat option) list"
+  assumes "boundedness (B::'k::enum boundedness) K"
+  assumes "list_all (\<lambda>yk. \<forall>x0 k0. yk = (x0, Some k0) \<longrightarrow> k0 < K) u"
+  assumes "distinct u"
+  shows "distinct (concat (map (to_enum_list B) u))"
+proof -
+  have "distinct (map (to_enum B) u)"
+  proof (simp add: distinct_map assms inj_on_def, auto)
+    fix x1 x2 k1 k2
+    assume hoge: "(x1, k1) \<in> set u" "(x2, k2) \<in> set u"
+    assume piyo: "to_enum B (x1, k1) = to_enum B (x2, k2)"
+    then show "x1 = x2" by (cases k1; cases k2, simp_all)
+    show "k1 = k2" using assms hoge piyo proof (cases k1; cases k2; simp)
+      fix k1' k2'
+      assume "k1 = Some k1'"
+      then have k1: "k1' < length (Enum.enum :: 'k list)"
+        using hoge assms unfolding boundedness_def by (auto simp add: list_all_length in_set_conv_nth)
+      assume "k2 = Some k2'"
+      then have k2: "k2' < length (Enum.enum :: 'k list)"
+        using hoge assms unfolding boundedness_def by (auto simp add: list_all_length in_set_conv_nth)
+      assume en: "x1 = x2 \<and> (nat_to_enum k1' :: 'k) = nat_to_enum k2'"
+      show "k1' = k2'"
+        using en k1 k2 inj_nat_to_enum unfolding inj_on_def by auto
+    qed
+  qed
+  then show ?thesis proof (induct u)
+    case Nil
+    then show ?case by simp
   next
-    case (VarSome y k)
-    then show ?thesis sorry
+    case (Cons a u)
+    then show ?case using Cons by (cases a rule: index_cases, simp_all)
   qed
 qed
 
-
+lemma distinct_post_index_vars:
+  fixes u :: "('y \<times> nat option) list"
+  assumes "boundedness (B::'k::enum boundedness) K"
+  shows "distinct (valuate (synthesize_shuffle_nat s y))"
+proof (auto simp add: synthesize_shuffle_nat_def)
+  fix xs
+  assume "(y, None) \<in> set (post_index_vars s (seek y enum_class.enum) xs)"
+  then show "False" by(induct xs, simp_all)
+next
+  fix xs
+  show "distinct (post_index_vars s (seek y enum_class.enum) xs)"
+  proof (induct xs)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons a xs)
+    then show ?case proof (auto)
+      assume "(a, Some (calc_index s (seek y enum_class.enum) xs a)) \<in> set (post_index_vars s (seek y enum_class.enum) xs)"
+      then have "calc_index s (seek y enum_class.enum) xs a < calc_index s (seek y enum_class.enum) xs a"
+        by (rule give_index_row_position_lt)
+      then show False by simp
+    qed
+  qed
+qed
 
 lemma distinct_synthesize_shuffle:
   fixes m :: "('y::enum, 'b) update"
@@ -500,7 +525,7 @@ lemma
        = (\<Sum>xk\<leftarrow>concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))) Enum.enum). count_list (resolve_store B m xk) a)"
   apply (simp only: UNIV_enum)
   apply (rule sum_UNION_eq_sum_list_concat_map)
-  apply (simp add: synthesize_shuffle_nat_def)
+  apply (simp add: synthesize_shuffle_nat_def valuate_hat_alpha)
 
 lemma distinct_concat_map:
   assumes "distinct (concat (map f xs))"

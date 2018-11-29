@@ -1,7 +1,7 @@
 theory Bounded_Copy_Convert
   imports Main HOL.Finite_Set
           "../Util/Enum_Nat" "../Core/Update" "../Single_Use/Single_Use" "../Decomposition/Decompose_Update"
-          "../Composition/Convert_Monoid_SST_Def" "../Type/Monoid_SST_Type"
+          "../Composition/Convert_Monoid_SST" "../Type/Monoid_SST_Type"
 begin
 
 
@@ -391,7 +391,7 @@ lemma sum_decompose_first_step:
   shows "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
        = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list)))).
             count_list (resolve_store B m xk) a)"
-proof (rule sum.mono_neutral_right, simp_all, rule ballI)
+proof (rule sum.mono_neutral_right, simp_all add: synthesize_shuffle_nat_def, rule ballI)
   have bs: "bounded_shuffle K (resolve_shuffle m)"
     by (simp add: assms(2) resolve_bounded)
   fix xk
@@ -403,12 +403,10 @@ proof (rule sum.mono_neutral_right, simp_all, rule ballI)
   next
     case (VarSome y k) find_theorems "set (map ?f ?u)"
     then show ?thesis using * unfolding resolve_store_def proof (simp add: valuate_hat_alpha)
-      have "distinct (Enum.enum :: 'y list)" by (rule enum_distinct)
-      moreover have "(Enum.enum :: 'y list) \<noteq> []" by (rule enum_ne_Nil)
-      ultimately obtain y0 where
+      obtain y0 where
         y0: "lookup_rec m y (enum_to_nat k) Enum.enum 
            = lookup_row (resolve_shuffle m) y (enum_to_nat k) (seek y0 Enum.enum) (scan_pair (m y0))"
-        using lookup_rec_distinct by fast
+        using enum_distinct enum_ne_Nil lookup_rec_distinct by fast
       assume asm: "\<forall>x. \<forall>yk\<in>set (valuate (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))).
                           (y, Some k) \<notin> set (enum_convert B yk)"
       have "(y, enum_to_nat k) \<notin> set (post_index_vars (resolve_shuffle m) (seek y0 Enum.enum) (resolve_shuffle m y0))"
@@ -432,6 +430,78 @@ proof (rule sum.mono_neutral_right, simp_all, rule ballI)
 qed
 
 
+lemma sum_UNION_eq_sum_list_concat_map:
+  assumes "distinct (concat (map g xs))"
+  shows "sum f (\<Union>y\<in>set xs. set (g y)) = sum_list (map f (concat (map g xs)))"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons x xs)
+  then show ?case by (simp add: sum.union_disjoint sum.distinct_set_conv_list)
+qed
+
+
+fun ascending :: "'a::order list \<Rightarrow> bool" where
+  "ascending [] = True" |
+  "ascending (x#xs) = (list_all (\<lambda>y. x < y) xs \<and> ascending xs)"
+
+lemma "ascending xs \<Longrightarrow> distinct xs"
+proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case by (induct xs, auto)
+qed
+
+
+lemma distinct_enum_convert:
+  assumes "distinct xs"
+  shows "distinct (concat (map (enum_convert B) xs))"
+  using assms proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case proof (cases a rule: index_cases)
+    case (VarNone y)
+    then show ?thesis using Cons 
+  next
+    case (VarSome y k)
+    then show ?thesis sorry
+  qed
+qed
+
+
+
+lemma distinct_synthesize_shuffle:
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "bounded K m"
+  assumes "distinct ys"
+  shows "distinct (concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y))) ys))"
+using assms(3) proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a ys)
+  then show ?case apply (simp add: valuate_hat_alpha)
+qed
+
+
+lemma 
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "bounded K m"
+  shows "(\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list)))). count_list (resolve_store B m xk) a)
+       = (\<Sum>xk\<leftarrow>concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))) Enum.enum). count_list (resolve_store B m xk) a)"
+  apply (simp only: UNIV_enum)
+  apply (rule sum_UNION_eq_sum_list_concat_map)
+  apply (simp add: synthesize_shuffle_nat_def)
+
 lemma distinct_concat_map:
   assumes "distinct (concat (map f xs))"
   shows "\<forall>i\<in>set xs. \<forall>j\<in>set xs. i \<noteq> j \<longrightarrow> set (f i) \<inter> set (f j) = {}"
@@ -452,12 +522,33 @@ proof -
     apply (rule sum.UNION_disjoint, simp, simp)
     apply (simp only: UNIV_enum)
     apply (rule distinct_concat_map)
-    apply (simp add: valuate_hat_alpha)
+    apply (simp)
     sorry
-  also have "... = ?rhs" apply (rule sum.cong, auto simp add: valuate_hat_alpha)
-
-    thm sum.UNION_disjoint
+  also have "... = ?rhs" apply (rule sum.cong)
+    apply auto
     term distinct
+
+
+lemma sum_decompose_second_step:
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "bounded K m"
+  shows "(\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y  :: (('y + ('y, 'k) index) + 'b) list)))).
+            count_list (resolve_store B m xk) a)
+       = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))" (is "?lhs = ?rhs")
+proof -
+  have "?lhs = (\<Sum>y\<in>UNIV. \<Sum>xk\<in>set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))).
+                   count_list (resolve_store B m xk) a)"
+    apply (rule sum.UNION_disjoint, simp, simp)
+    apply (simp only: UNIV_enum)
+    apply (rule distinct_concat_map)
+    apply (simp)
+    sorry
+  also have "... = ?rhs" apply (rule sum.cong)
+    apply auto
+    term distinct
+
 
 
 

@@ -885,9 +885,6 @@ lemma resolve_store_one_row:
   apply (rule scan_inverse)
   done
 
-lemma valuate_concat_map: "valuate (concat (map f xs)) = concat (map valuate (map f xs))"
-  by (induct xs, simp_all)
-
 lemma resolve_store_one_row_valuate:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"

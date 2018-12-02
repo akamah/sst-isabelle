@@ -443,7 +443,7 @@ qed
 lemma distinct_enum_convert:
   fixes u :: "('y \<times> nat option) list"
   assumes "boundedness (B::'k::enum boundedness) K"
-  assumes "list_all (\<lambda>yk. \<forall>x0 k0. yk = (x0, Some k0) \<longrightarrow> k0 < K) u"
+  assumes "list_all (index_less_than K) u"
   assumes "distinct u"
   shows "distinct (concat (map (to_enum_list B) u))"
 proof -
@@ -475,6 +475,7 @@ proof -
   qed
 qed
 
+
 lemma distinct_post_index_vars:
   fixes u :: "('y \<times> nat option) list"
   assumes "boundedness (B::'k::enum boundedness) K"
@@ -500,6 +501,20 @@ next
   qed
 qed
 
+abbreviation var_marks :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> 'y \<Rightarrow> ('y, 'k) index list" where
+  "var_marks B s y \<equiv> valuate (extract_variables (synthesize_shuffle B s y) :: )"
+
+lemma distinct_synthesize_shuffle_one_row:
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "bounded K m"
+  shows "distinct (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y)))"
+proof -
+  have "valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y))
+      = map (to_enum B) (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
+  
+
 lemma distinct_synthesize_shuffle:
   fixes m :: "('y::enum, 'b) update"
   fixes B :: "'k::enum boundedness"
@@ -511,9 +526,13 @@ using assms(3) proof (induct ys)
   case Nil
   then show ?case by simp
 next
-  case (Cons a ys)
-  then show ?case apply (simp add: valuate_hat_alpha)
+  case (Cons y ys)
+  have "distinct ys" using Cons.prems by simp
+  then have "distinct (concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y))) ys))"
+    using Cons.hyps by simp
+  then show ?case proof (simp add: valuate_hat_alpha Cons synthesize_shuffle_nat_def)
 qed
+
 
 
 lemma 
@@ -525,12 +544,16 @@ lemma
        = (\<Sum>xk\<leftarrow>concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))) Enum.enum). count_list (resolve_store B m xk) a)"
   apply (simp only: UNIV_enum)
   apply (rule sum_UNION_eq_sum_list_concat_map)
-  apply (simp add: synthesize_shuffle_nat_def valuate_hat_alpha)
+  apply (simp add: )
 
 lemma distinct_concat_map:
   assumes "distinct (concat (map f xs))"
   shows "\<forall>i\<in>set xs. \<forall>j\<in>set xs. i \<noteq> j \<longrightarrow> set (f i) \<inter> set (f j) = {}"
   using assms by (induct xs, auto)
+
+lemma distinct_map_cong:
+  "distinct (map f xs) \<Longrightarrow> distinct xs"
+  by (induct xs, auto)
 
 
 lemma sum_decompose_second_step:
@@ -612,5 +635,12 @@ proof -
   qed
   finally show ?thesis .
 qed
+
+fun synthesize_shuffle2 :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y \<times> 'k option) update" where
+  "synthesize_shuffle2 B s = to_enum_list B \<star> synthesize_shuffle_nat s"
+
+definition synthesize2 :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, 'k, 'b) store
+                      \<Rightarrow> ('y, 'b) update" where
+  "synthesize2 B sa = (case sa of (s, a) \<Rightarrow> a \<star> synthesize_shuffle2 B s)"
 
 end

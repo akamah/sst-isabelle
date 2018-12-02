@@ -161,8 +161,8 @@ fun to_enum :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Righ
   "to_enum B (y, None)   = (y, None)" |
   "to_enum B (y, Some k) = (y, Some (nat_to_enum k))"
 
-fun to_enum_list :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
-  "to_enum_list B yk = [to_enum B yk]"
+abbreviation to_enum_list :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
+  "to_enum_list B yk \<equiv> [to_enum B yk]"
 
 
 lemma give_index_row_post_index_vars[simp]:
@@ -472,6 +472,8 @@ lemma map_alpha_resolve_store:
 
 subsection \<open>Proof of inverse of Resolve\<close>
 
+fun index_less_than :: "nat \<Rightarrow> 'x \<times> nat option \<Rightarrow> bool" where
+  "index_less_than K yk = (\<forall>x0 k0. yk = (x0, Some k0) \<longrightarrow> k0 < K)"
 
 fun var_index_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Rightarrow> bool" where
   "var_index_less_than K yk = (\<forall>x0 k0. yk = Inr (x0, Some k0) \<longrightarrow> k0 < K)"

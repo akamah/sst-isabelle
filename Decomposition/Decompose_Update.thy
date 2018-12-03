@@ -197,18 +197,15 @@ fun empty_store :: "('y::enum, 'k, 'b) store" where
 definition synthesize_shuffle_nat :: "'y::enum shuffle \<Rightarrow> 'y \<Rightarrow> ('y + 'y \<times> nat option) list" where
   "synthesize_shuffle_nat s y = Inr (y, None) # give_index_row s (seek y (Enum.enum :: 'y list)) (s y)"
 
-fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y + 'y \<times> 'k option, 'b) update'" where
-  "synthesize_shuffle B s y = map Inl (hat_alpha (to_enum_list B) (synthesize_shuffle_nat s y))"
-
-
-fun synthesize_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'k, 'b) store \<Rightarrow> ('y + 'y \<times> 'k option, 'y, 'b) update'" where
-  "synthesize_store B store (Inl y)      = [Inl y]" |
-  "synthesize_store B store (Inr (y, k)) = map Inr (store (y, k))"
+fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y \<times> 'k option) update" where
+  "synthesize_shuffle B s = to_enum_list B \<star> synthesize_shuffle_nat s"
 
 definition synthesize :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, 'k, 'b) store
                       \<Rightarrow> ('y, 'b) update" where
-  "synthesize B sa = (case sa of (s, a) \<Rightarrow> synthesize_store B a \<bullet> synthesize_shuffle B s)"
+  "synthesize B sa = (case sa of (s, a) \<Rightarrow> a \<star> synthesize_shuffle B s)"
 
+lemma synthesize_simp: "synthesize B (s, a) = a \<star> synthesize_shuffle B s"
+  unfolding synthesize_def by simp
 
 lemma index_cases [case_names VarNone VarSome]:
   assumes "\<And>y. yk = (y, None) \<Longrightarrow> P"
@@ -247,15 +244,7 @@ subsection \<open>Properties of Resolve & Synthesize\<close>
 
 lemma map_alpha_synthesize:
   "t \<star> synthesize B (s, a) = synthesize B (s, t \<odot> a)"
-proof -
-  have map_alpha_synthesize_shuffle: "t \<star> synthesize_shuffle B s = synthesize_shuffle B s"
-    by (rule ext, simp add: map_alpha_apply)
-  have map_alpha_synthesize_store: "t \<star> synthesize_store B a = synthesize_store B (t \<odot> a)"
-    by (rule ext_sum, simp add: map_alpha_apply, rule prod.induct, simp add: map_alpha_apply compS_apply)
-  show ?thesis
-    by (rule ext, simp add: synthesize_def map_alpha_distrib map_alpha_synthesize_shuffle map_alpha_synthesize_store)
-qed
-
+  by (simp add: synthesize_simp map_alpha_assoc del: synthesize_shuffle.simps)
 
 lemma resolve_idU_idS: "resolve_shuffle idU = idS"
   by (rule ext, simp add: idU_def idS_def resolve_shuffle_def)
@@ -300,32 +289,17 @@ qed
 
 theorem synthesize_inverse_shuffle: "resolve_shuffle (synthesize B (s, a)) = s"
 proof -
-  { fix u
-    have "extract_variables (concat (map (synthesize_store B a) u)) = extract_variables u"
-    proof (induct u rule: xa_induct)
-      case Nil
-      then show ?case by simp
-    next
-      case (Var x xs)
-      then show ?case by simp
-    next
-      case (Alpha yk xs)
-      then show ?case proof (cases yk)
-        case (Pair y k)
-        then show ?thesis using Alpha by (cases k, simp_all)
-      qed 
-    qed
-  } note 1 = this
-  { fix x xs
-    have "extract_variables (hat_alpha (to_enum_list B) (give_index_row s (seek x enum_class.enum) xs)) = xs"
+  { fix xs ys
+    have "extract_variables (give_index_row s ys xs) = xs"
       by (induct xs, simp_all)
-  } note 2 = this
-  show ?thesis
-    by (rule ext, simp add: synthesize_def compU_apply resolve_shuffle_def 1 2 synthesize_shuffle_nat_def)
+  } note it = this
+  show ?thesis 
+    by (rule ext, simp add: synthesize_simp resolve_shuffle_map_alpha,
+                  simp add: resolve_shuffle_def synthesize_shuffle_nat_def it)
 qed
 
 lemma synthesize_idU: "synthesize B (idS :: 'x shuffle, empty_store) = (idU :: ('x::enum, 'a) update)"
-  by (rule ext, simp add: synthesize_def idU_def idS_def scan_def compU_apply synthesize_shuffle_nat_def)
+  by (rule ext, simp add: synthesize_def idU_def idS_def scan_def map_alpha_apply synthesize_shuffle_nat_def)
 
 
 lemma compS_resolve_store:
@@ -445,25 +419,14 @@ qed
 lemma synthesize_preserve_prop_on_string:
   assumes "\<forall>x k. list_all P (a (x, k))"
   shows "\<forall>x. list_all P (valuate (synthesize B (s, a) x))"
-proof (auto simp add: synthesize_def compU_def synthesize_shuffle_nat_def)
+proof (auto simp add: synthesize_def map_alpha_apply valuate_hat_alpha synthesize_shuffle_nat_def)
   fix x
   show "list_all P (a (x, None))" using assms by simp
 next
-  fix x u
-  show "list_all P (valuate (concat (map (synthesize_store B a) u)))"
-  proof (induct u rule: xa_induct)
-    case Nil
-    then show ?case by simp
-  next
-    case (Var x xs)
-    then show ?case by simp
-  next
-    case (Alpha a xs)
-    then show ?case using assms by (cases a, simp)
-  qed
+  fix x xs ys
+  show "list_all P (concat (map (a \<circ> to_enum B) (post_index_vars s ys xs)))"
+    using assms by (induct xs, simp_all)
 qed
-
-
 
 lemma map_alpha_resolve_store:
   "t \<bullet> resolve_store B \<theta> = resolve_store B (update2hom t \<star> \<theta>)"
@@ -926,7 +889,8 @@ theorem resolve_inverse:
   assumes "boundedness B k"
   assumes "bounded k m"
   shows "synthesize B (resolve_shuffle m, resolve_store B m) = m"
-  by (rule ext, simp add: synthesize_def compU_apply resolve_store_one_row[OF assms])
+
+  apply (rule ext, simp add: synthesize_def)
 
 subsection \<open>Lemmas for counting alphabet\<close>
 

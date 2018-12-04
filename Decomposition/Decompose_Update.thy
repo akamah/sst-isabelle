@@ -115,7 +115,6 @@ fun seek :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
   "seek y0 [] = []" |
   "seek y0 (y#ys) = (if y = y0 then ys else seek y0 ys)"
 
-
 subsection \<open>Auxiliary functions\<close>
 
 fun calc_index_rows where
@@ -757,6 +756,7 @@ proof -
     by (simp add: scan_inverse del: snd_scan)
   finally show ?thesis .
 qed
+
 
 lemma resolve_inverse_remove_enum:
   fixes B :: "'k::enum boundedness"

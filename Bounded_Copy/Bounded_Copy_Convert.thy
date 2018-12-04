@@ -345,10 +345,6 @@ lemma count_list_distinct:
   using assms by (simp add: count_list_in_set_distinct)
 
 
-thm sum.mono_neutral_left sum.mono_neutral_right
-
-term "\<Union>y\<in>set ys. set (valuate (give_index_row s ys (s y)))"
-
 
 lemma lookup_rec_all_not_in:
   assumes "distinct ys"
@@ -383,264 +379,278 @@ lemma
   using assms by (simp add: lookup_rec_all_not_in)
 
 
+definition iterate_range :: "'k::enum boundedness \<Rightarrow> ('y::enum \<times> nat option) set"  where
+  "iterate_range B = range (to_nat B)"
+
+lemma iterate_range_finite[simp]:
+  "finite (iterate_range B)"
+  unfolding iterate_range_def by simp
+
+lemma iterate_range_None[simp]:
+  "(y::'y::enum, None) \<in> iterate_range (B :: 'k::enum boundedness)"
+proof -
+  have "(y, None :: 'k option) \<in> UNIV" by simp
+  moreover have "(y, None) = to_nat B (y, None)" by simp
+  ultimately show ?thesis unfolding iterate_range_def by blast
+qed
+
+lemma iterate_range_Some[simp]:
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "k < K"
+  shows "(y::'y::enum, Some k) \<in> iterate_range B"
+proof -
+  have "(y, Some (nat_to_enum k :: 'k)) \<in> UNIV" by simp
+  moreover have "(y, Some k) = to_nat B (y, Some (nat_to_enum k :: 'k))"
+    using assms unfolding boundedness_def by (simp add: nat_enum_iso)
+  ultimately show ?thesis unfolding iterate_range_def by blast
+qed
+
+
+lemma inj_to_nat:
+  "inj (to_nat B :: 'y::enum \<times> 'k::enum option \<Rightarrow> 'y \<times> nat option)"
+  unfolding inj_on_def
+proof (auto)
+  fix x0 k0 x1 k1
+  assume "to_nat B (x0 :: 'y, k0) = to_nat B (x1 :: 'y, k1)"
+  then have *: "x0 = x1 \<and> k0 = k1"
+    using inj_enum_to_nat by (cases k0; cases k1, auto simp add: inj_on_def)
+  show "x0 = x1" using * by simp
+  show "k0 = k1" using * by simp
+qed
+
+lemma sum_decompose_to_nat:
+  fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  shows "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
+       = (\<Sum>(x, k)\<in>iterate_range B. count_list (resolve_store_nat m (x, k)) a)"
+  by (simp add: resolve_store_def compS_apply iterate_range_def inj_to_nat sum.reindex)
+
 lemma sum_decompose_first_step:
   fixes m :: "('y::enum, 'b) update"
   fixes B :: "'k::enum boundedness"
   assumes "boundedness B K"
   assumes "bounded K m"
-  shows "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
-       = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list)))).
-            count_list (resolve_store B m xk) a)"
-proof (rule sum.mono_neutral_right, simp_all add: synthesize_shuffle_nat_def, rule ballI)
-  have bs: "bounded_shuffle K (resolve_shuffle m)"
-    by (simp add: assms(2) resolve_bounded)
-  fix xk
-  assume *: "xk \<in> UNIV - (\<Union>x. insert (x, None) (set (valuate (hat_alpha (to_enum_list B) (give_index_row (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x))))))"
-  show "count_list (resolve_store B m xk) a = 0"
-  proof (cases xk rule: index_cases)
-    case (VarNone y)
-    then show ?thesis using * unfolding resolve_store_def by auto
+  shows "(\<Sum>(x, k)\<in>iterate_range B. count_list (resolve_store_nat m (x, k)) a)
+       = (\<Sum>(x, k)\<in>(\<Union>y\<in>UNIV. set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))).
+            count_list (resolve_store_nat m (x, k)) a)"
+proof (rule sum.mono_neutral_right, auto)
+  fix x0 k0 y
+  assume *: "(x0, k0) \<in> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
+  show "(x0, k0) \<in> iterate_range B"
+  proof (cases k0)
+    case None
+    then show ?thesis by simp
   next
-    case (VarSome y k)
-    then show ?thesis using * unfolding resolve_store_def proof (simp add: valuate_hat_alpha)
-      obtain y0 where
-        y0: "lookup_rec m y (enum_to_nat k) Enum.enum 
-           = lookup_row (resolve_shuffle m) y (enum_to_nat k) (seek y0 Enum.enum) (scan_pair (m y0))"
-        using enum_distinct enum_ne_Nil lookup_rec_distinct by fast
-      assume asm: "\<forall>x. \<forall>yk\<in>set (post_index_vars (resolve_shuffle m) (seek x enum_class.enum) (resolve_shuffle m x)).
-                          (y, Some k) \<noteq> to_enum B yk"
-      have "(y, Some (enum_to_nat k)) \<notin> set (post_index_vars (resolve_shuffle m) (seek y0 Enum.enum) (resolve_shuffle m y0))"
-      proof
-        assume "(y, Some (enum_to_nat k)) \<in> set (post_index_vars (resolve_shuffle m) (seek y0 enum_class.enum) (resolve_shuffle m y0))"
-        then have "(y, Some k) \<noteq> to_enum B (y, Some (enum_to_nat k))"
-          by (rule asm[rule_format])
-        then have "k \<noteq> nat_to_enum (enum_to_nat k)"
-          by simp
-        moreover have "k = nat_to_enum (enum_to_nat k)" by (simp add: enum_nat_iso)
-        ultimately show False by simp
-      qed
-      then have "lookup_row (resolve_shuffle m) y (enum_to_nat k) (seek y0 Enum.enum) (scan_pair (m y0)) = None"
-        by (simp add: there_doesnt_exist_corresponding_string)
-      then show "count_list (orNil (lookup_rec m y (enum_to_nat k) enum_class.enum)) a = 0"
-        using y0 by simp
-    qed
+    case (Some k)
+    have "bounded_shuffle K (resolve_shuffle m)" using assms(2) by (rule resolve_bounded)
+    then show ?thesis using assms(1) * bounded_shuffle_less_than
+      apply (simp add: Some synthesize_shuffle_nat_def) by fastforce
+  qed
+next
+  fix x0 k0
+  assume asm: "\<forall>y. (x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
+  show "count_list (resolve_store_nat m (x0, k0)) a = 0"
+  proof (cases k0)
+    case None
+    then have "(x0, None) \<notin> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) x0))" using asm by simp
+    then show ?thesis by (simp add: synthesize_shuffle_nat_def None)
+  next
+    case (Some k)
+    obtain y0 where y0: "lookup_rec m x0 k Enum.enum 
+         = lookup_row (resolve_shuffle m) x0 k (seek y0 Enum.enum) (scan_pair (m y0))"
+      using enum_distinct enum_ne_Nil lookup_rec_distinct by fast 
+    moreover have "(x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y0))"
+      using asm by simp
+    ultimately show "count_list (resolve_store_nat m (x0, k0)) a = 0"
+      by (simp add: Some there_doesnt_exist_corresponding_string synthesize_shuffle_nat_def)
   qed
 qed
 
+lemma sum_UNION_eq_sum_sum_list:
+  assumes "distinct ys"
+  assumes "distinct (concat (map f ys))"
+  shows "(\<Sum>x\<in>(\<Union>y\<in>set ys. set (f y)). g x) = (\<Sum>y\<in>set ys. \<Sum>x\<leftarrow>f y. g x)"
+  using assms  by (induct ys, simp_all add: sum.union_disjoint sum.distinct_set_conv_list)
 
-lemma sum_UNION_eq_sum_list_concat_map:
-  assumes "distinct (concat (map g xs))"
-  shows "sum f (\<Union>y\<in>set xs. set (g y)) = sum_list (map f (concat (map g xs)))"
-using assms proof (induct xs)
+lemma count_list_sum_list_concat_map:
+  "(\<Sum>x\<leftarrow>xs. count_list (g x) a) = count_list (concat (map g xs)) a"
+  by (induct xs, simp_all)
+
+
+lemma distinct_post_index_vars:
+  "distinct (post_index_vars s ys xs)"
+proof (induct xs)
   case Nil
   then show ?case by simp
 next
   case (Cons x xs)
-  then show ?case by (simp add: sum.union_disjoint sum.distinct_set_conv_list)
+  then show ?case proof (auto)
+    assume "(x, Some (calc_index s ys xs x)) \<in> set (post_index_vars s ys xs)"
+    then have "calc_index s ys xs x < calc_index s ys xs x"
+      by (rule give_index_row_position_lt)
+    then show False by simp
+  qed
 qed
 
 
-lemma distinct_enum_convert:
-  fixes u :: "('y \<times> nat option) list"
-  assumes "boundedness (B::'k::enum boundedness) K"
-  assumes "list_all (index_less_than K) u"
-  assumes "distinct u"
-  shows "distinct (concat (map (to_enum_list B) u))"
+lemma post_index_vars_seek_contr:
+  assumes "y0 \<in> set ys"
+  assumes "(x0, Some k0) \<in> set (post_index_vars s (seek y0 ys) (s y0))"
+  assumes "(x0, Some k0) \<in> set (post_index_vars s ys (s y1))"
+  shows "False"
 proof -
-  have "distinct (map (to_enum B) u)"
-  proof (simp add: distinct_map assms inj_on_def, auto)
-    fix x1 x2 k1 k2
-    assume hoge: "(x1, k1) \<in> set u" "(x2, k2) \<in> set u"
-    assume piyo: "to_enum B (x1, k1) = to_enum B (x2, k2)"
-    then show "x1 = x2" by (cases k1; cases k2, simp_all)
-    show "k1 = k2" using assms hoge piyo proof (cases k1; cases k2; simp)
-      fix k1' k2'
-      assume "k1 = Some k1'"
-      then have k1: "k1' < length (Enum.enum :: 'k list)"
-        using hoge assms unfolding boundedness_def by (auto simp add: list_all_length in_set_conv_nth)
-      assume "k2 = Some k2'"
-      then have k2: "k2' < length (Enum.enum :: 'k list)"
-        using hoge assms unfolding boundedness_def by (auto simp add: list_all_length in_set_conv_nth)
-      assume en: "x1 = x2 \<and> (nat_to_enum k1' :: 'k) = nat_to_enum k2'"
-      show "k1' = k2'"
-        using en k1 k2 inj_nat_to_enum unfolding inj_on_def by auto
-    qed
-  qed
-  then show ?thesis proof (induct u)
+  have "k0 < calc_index s (seek y0 ys) (s y0) x0"
+    using assms(2) by (rule give_index_row_position_lt)
+  also have "... \<le> calc_index_rows s ys x0"
+    using assms(1) by (rule calc_index_rows_seek)
+  finally have "k0 < calc_index_rows s ys x0" .
+  also have "k0 \<ge> calc_index_rows s ys x0"
+    using assms(3) by (rule give_index_row_position_ge)
+  finally show False by simp
+qed
+
+lemma seek_twice:
+  assumes "y0 \<noteq> y1"
+  shows "seek y0 (seek y1 ys) = seek y0 ys
+       \<or> seek y1 (seek y0 ys) = seek y1 ys"
+  using assms by (induct ys, simp_all)
+
+lemma seek_length_le:
+  "length (seek y ys) \<le> length ys"
+  by (induct ys, auto)
+
+lemma seek_in_neq:
+  assumes "y2 \<in> set ys"
+  shows "seek y1 (seek y2 ys) \<noteq> ys"
+proof -
+  have "length (seek y1 (seek y2 ys)) \<le> length (seek y2 ys)"
+    by (simp add: seek_length_le)
+  also have "... < length ys" using assms
+    by (induct ys, auto)
+  finally show ?thesis by auto
+qed
+
+
+lemma post_index_vars_not_in_two_rows_aux:
+  assumes neq: "y1 \<noteq> y2"
+  assumes y1: "y1 \<in> set ys"
+  assumes y2: "y2 \<in> set ys"
+  assumes in1: "(x0, Some k0) \<in> set (post_index_vars s (seek y1 ys) (s y1))"
+  assumes in2: "(x0, Some k0) \<in> set (post_index_vars s (seek y2 ys) (s y2))"
+  assumes *: "seek y1 (seek y2 ys) = seek y1 ys"
+  shows False
+proof -
+  have 1: "(x0, Some k0) \<in> set (post_index_vars s (seek y1 (seek y2 ys)) (s y1))"
+    using in1 * by simp
+  have in_y1: "y1 \<in> set (seek y2 ys)" using neq y1 y2 * proof (induct ys)
     case Nil
     then show ?case by simp
   next
-    case (Cons a u)
-    then show ?case using Cons by (cases a rule: index_cases, simp_all)
+    case (Cons a ys)
+    then show ?case by (cases "a = y1"; cases "a = y2", simp_all add: seek_in_neq)
   qed
+  show False using post_index_vars_seek_contr in_y1 1 in2 by fast
 qed
 
 
-lemma distinct_post_index_vars:
-  fixes u :: "('y \<times> nat option) list"
-  assumes "boundedness (B::'k::enum boundedness) K"
-  shows "distinct (valuate (synthesize_shuffle_nat s y))"
-proof (auto simp add: synthesize_shuffle_nat_def)
-  fix xs
-  assume "(y, None) \<in> set (post_index_vars s (seek y enum_class.enum) xs)"
-  then show "False" by(induct xs, simp_all)
+lemma post_index_vars_not_in_two_rows:
+  assumes neq: "y1 \<noteq> y2"
+  assumes y1: "y1 \<in> set ys"
+  assumes y2: "y2 \<in> set ys"
+  assumes in1: "(x0, Some k0) \<in> set (post_index_vars s (seek y1 ys) (s y1))"
+  assumes in2: "(x0, Some k0) \<in> set (post_index_vars s (seek y2 ys) (s y2))"
+  shows False
+  using seek_twice[OF neq] proof
+  assume *: "seek y1 (seek y2 ys) = seek y1 ys"
+  show False using post_index_vars_not_in_two_rows_aux[OF assms *] by simp
 next
-  fix xs
-  show "distinct (post_index_vars s (seek y enum_class.enum) xs)"
-  proof (induct xs)
-    case Nil
-    then show ?case by simp
-  next
-    case (Cons a xs)
-    then show ?case proof (auto)
-      assume "(a, Some (calc_index s (seek y enum_class.enum) xs a)) \<in> set (post_index_vars s (seek y enum_class.enum) xs)"
-      then have "calc_index s (seek y enum_class.enum) xs a < calc_index s (seek y enum_class.enum) xs a"
-        by (rule give_index_row_position_lt)
-      then show False by simp
-    qed
-  qed
+  assume *: "seek y2 (seek y1 ys) = seek y2 ys"
+  show False using post_index_vars_not_in_two_rows_aux[OF neq[symmetric] y2 y1 in2 in1 *] by simp
 qed
 
-abbreviation var_marks :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> 'y \<Rightarrow> ('y, 'k) index list" where
-  "var_marks B s y \<equiv> valuate (extract_variables (synthesize_shuffle B s y) :: )"
 
-lemma distinct_synthesize_shuffle_one_row:
-  fixes m :: "('y::enum, 'b) update"
-  fixes B :: "'k::enum boundedness"
-  assumes "boundedness B K"
-  assumes "bounded K m"
-  shows "distinct (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y)))"
-proof -
-  have "valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y))
-      = map (to_enum B) (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
-  
+lemma synthesize_shuffle_nat_not_contain_two_rows:
+  assumes neq: "y0 \<noteq> y1"
+  assumes "(x0, k0) \<in> set (valuate (synthesize_shuffle_nat s y0))"
+  assumes "(x0, k0) \<in> set (valuate (synthesize_shuffle_nat s y1))"
+  shows False
+proof (cases k0)
+  case None
+  then show ?thesis using assms
+    by (simp add: synthesize_shuffle_nat_def post_index_vars_does_not_contain_None)
+next
+  case (Some k)
+  have y0: "y0 \<in> set Enum.enum" by (simp add: enum_UNIV)
+  have y1: "y1 \<in> set Enum.enum" by (simp add: enum_UNIV)
+  have in1: "(x0, Some k) \<in> set (post_index_vars s (seek y0 Enum.enum) (s y0))" using assms by (simp add: synthesize_shuffle_nat_def Some)
+  have in2: "(x0, Some k) \<in> set (post_index_vars s (seek y1 Enum.enum) (s y1))" using assms by (simp add: synthesize_shuffle_nat_def Some)
+  show ?thesis using post_index_vars_not_in_two_rows[OF neq y0 y1 in1 in2] by simp
+qed
+
 
 lemma distinct_synthesize_shuffle:
   fixes m :: "('y::enum, 'b) update"
   fixes B :: "'k::enum boundedness"
-  assumes "boundedness B K"
-  assumes "bounded K m"
   assumes "distinct ys"
-  shows "distinct (concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y))) ys))"
-using assms(3) proof (induct ys)
+  shows "distinct (concat (map (\<lambda>y. valuate (synthesize_shuffle_nat (resolve_shuffle m) y)) ys))"
+  using assms proof (induct ys)
   case Nil
   then show ?case by simp
 next
-  case (Cons y ys)
-  have "distinct ys" using Cons.prems by simp
-  then have "distinct (concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y))) ys))"
+  case (Cons y0 ys)
+  have y_notin_ys: "y0 \<notin> set ys" using Cons.prems by simp
+  have distinct_ys: "distinct ys" using Cons.prems by simp
+  then have distinct_rest: "distinct (concat (map (\<lambda>y. valuate (synthesize_shuffle_nat (resolve_shuffle m) y)) ys))"
     using Cons.hyps by simp
-  then show ?case proof (simp add: valuate_hat_alpha Cons synthesize_shuffle_nat_def)
+  have distinct_row: "distinct (valuate (synthesize_shuffle_nat (resolve_shuffle m) y0))"
+    using distinct_post_index_vars by (simp add: synthesize_shuffle_nat_def post_index_vars_does_not_contain_None distinct_post_index_vars)
+  show ?case proof (simp add: valuate_hat_alpha Cons post_index_vars_does_not_contain_None y_notin_ys distinct_row distinct_rest, auto)
+    fix x k y
+    assume y0: "(x, k) \<in> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y0))"
+    assume y: "(x, k) \<in> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
+    assume ys: "y \<in> set ys"
+    have neq: "y \<noteq> y0" using y_notin_ys ys by auto
+    show False using synthesize_shuffle_nat_not_contain_two_rows[OF neq y y0] by simp
+  qed
 qed
 
-
-
-lemma 
-  fixes m :: "('y::enum, 'b) update"
-  fixes B :: "'k::enum boundedness"
-  assumes "boundedness B K"
-  assumes "bounded K m"
-  shows "(\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list)))). count_list (resolve_store B m xk) a)
-       = (\<Sum>xk\<leftarrow>concat (map (\<lambda>y. valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))) Enum.enum). count_list (resolve_store B m xk) a)"
-  apply (simp only: UNIV_enum)
-  apply (rule sum_UNION_eq_sum_list_concat_map)
-  apply (simp add: )
-
-lemma distinct_concat_map:
-  assumes "distinct (concat (map f xs))"
-  shows "\<forall>i\<in>set xs. \<forall>j\<in>set xs. i \<noteq> j \<longrightarrow> set (f i) \<inter> set (f j) = {}"
-  using assms by (induct xs, auto)
-
-lemma distinct_map_cong:
-  "distinct (map f xs) \<Longrightarrow> distinct xs"
-  by (induct xs, auto)
-
-
-lemma sum_decompose_second_step:
-  fixes m :: "('y::enum, 'b) update"
-  fixes B :: "'k::enum boundedness"
-  assumes "boundedness B K"
-  assumes "bounded K m"
-  shows "(\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y  :: (('y + ('y, 'k) index) + 'b) list)))).
-            count_list (resolve_store B m xk) a)
-       = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))" (is "?lhs = ?rhs")
+lemma resolve_inverse_nat_valuate: 
+  "concat (map (resolve_store_nat m) (valuate (synthesize_shuffle_nat (resolve_shuffle m) x))) = valuate (m x)"
 proof -
-  have "?lhs = (\<Sum>y\<in>UNIV. \<Sum>xk\<in>set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))).
-                   count_list (resolve_store B m xk) a)"
-    apply (rule sum.UNION_disjoint, simp, simp)
-    apply (simp only: UNIV_enum)
-    apply (rule distinct_concat_map)
-    apply (simp)
-    sorry
-  also have "... = ?rhs" apply (rule sum.cong)
-    apply auto
-    term distinct
+  have "(resolve_store_nat m \<odot> (valuate o synthesize_shuffle_nat (resolve_shuffle m))) x = valuate (m x)"
+    by (simp add: valuate_map_alpha[symmetric] resolve_inverse_nat)
+  then show ?thesis by (simp add: compS_apply)
+qed
 
-
-lemma sum_decompose_second_step:
-  fixes m :: "('y::enum, 'b) update"
-  fixes B :: "'k::enum boundedness"
-  assumes "boundedness B K"
-  assumes "bounded K m"
-  shows "(\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y  :: (('y + ('y, 'k) index) + 'b) list)))).
-            count_list (resolve_store B m xk) a)
-       = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))" (is "?lhs = ?rhs")
-proof -
-  have "?lhs = (\<Sum>y\<in>UNIV. \<Sum>xk\<in>set (valuate (extract_variables (synthesize_shuffle B (resolve_shuffle m) y :: (('y + ('y, 'k) index) + 'b) list))).
-                   count_list (resolve_store B m xk) a)"
-    apply (rule sum.UNION_disjoint, simp, simp)
-    apply (simp only: UNIV_enum)
-    apply (rule distinct_concat_map)
-    apply (simp)
-    sorry
-  also have "... = ?rhs" apply (rule sum.cong)
-    apply auto
-    term distinct
-
-
-
-
-
-
-fun count_pair where
-  "count_pair [] a = 0" |
-  "count_pair ((x, as)#xas) a = count_list as a + count_pair xas a"
-
-fun count_scanned where
-  "count_scanned (w, xas) a = count_list w a + count_pair xas a"
-
-lemma count_pair_last[simp]:
-  "count_pair (xas @ [(x, as)]) a = count_pair xas a + count_list as a"
-  by (induct xas rule: pair_induct, simp_all)
-
-lemma count_scanned_last[simp]:
-  "count_scanned (sc @@@ [(x, as)]) a = count_scanned sc a + count_list as a"
-  by (induct sc rule: scanned_induct, simp_all add: append_scanned_simp)
 
 lemma sum_decompose:
   fixes m :: "('y::enum, 'b) update"
+  fixes B :: "'k::enum boundedness"
+  assumes "boundedness B K"
+  assumes "bounded K m"
   shows "(\<Sum>yk\<in>UNIV. count_list (resolve_store B m yk) a)
-       = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))"
+       = (\<Sum>y\<in>UNIV. count_list (valuate (m y)) a)" (is "?from = ?to")
 proof -
-  have "(\<Sum>yk\<in>UNIV. count_list (resolve_store B m yk) a)
-      = (\<Sum>y\<in>UNIV. count_scanned (scan (m y)) a)"
-  proof (cases yk rule: index_cases)
-    sorry
-  also have "... = (\<Sum>y\<in>UNIV. count_list (m y) (Inr a))"
-  proof (rule sum.cong, simp_all)
-    fix u :: "('y + 'b) list"
-    show "count_scanned (scan u) a
-          = count_list u (Inr a)"
-      by (induct u rule: xw_induct, simp_all add: count_list_Inr)
-  qed
+  let ?vars = "\<lambda>y. valuate (synthesize_shuffle_nat (resolve_shuffle m) y)"
+  let ?resolve = "\<lambda>xk. resolve_store_nat m xk"
+  let ?count = "\<lambda>xk. count_list (?resolve xk) a"
+  have "?from = (\<Sum>xk\<in>iterate_range B. ?count xk)"
+    using sum_decompose_to_nat by simp
+  also have "... = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (?vars y)). ?count xk)"
+    using sum_decompose_first_step[OF assms] by simp
+  also have "... = (\<Sum>y\<in>UNIV. \<Sum>xk\<leftarrow>?vars y. ?count xk)"
+    apply (simp only: UNIV_enum)
+    apply (rule sum_UNION_eq_sum_sum_list[OF enum_distinct])
+    apply (rule distinct_synthesize_shuffle[OF enum_distinct])
+    done
+  also have "... = (\<Sum>y\<in>UNIV. count_list (concat (map ?resolve (?vars y))) a)"
+    by (simp add: count_list_sum_list_concat_map)
+  also have "... = ?to"
+    using resolve_inverse_nat_valuate by (simp add: compS_apply resolve_inverse_nat_valuate)
   finally show ?thesis .
 qed
 
-fun synthesize_shuffle2 :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<Rightarrow> ('y, 'y \<times> 'k option) update" where
-  "synthesize_shuffle2 B s = to_enum_list B \<star> synthesize_shuffle_nat s"
 
-definition synthesize2 :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, 'k, 'b) store
-                      \<Rightarrow> ('y, 'b) update" where
-  "synthesize2 B sa = (case sa of (s, a) \<Rightarrow> a \<star> synthesize_shuffle2 B s)"
 
 end

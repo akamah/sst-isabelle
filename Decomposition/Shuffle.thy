@@ -17,9 +17,8 @@ type_synonym 'y shuffle = "('y, 'y) shuffle'"
 definition bounded_shuffle :: "[nat, 'x shuffle] \<Rightarrow> bool" where
   "bounded_shuffle k f \<equiv> \<forall>x. (\<Sum>y\<in>UNIV. count_list (f y) x) \<le> k"
 
-definition resolve_shuffle :: "('y, 'x, 'b) update' \<Rightarrow> ('y, 'x) shuffle'" where
+definition resolve_shuffle :: "('y, 'x, 'b) update' \<Rightarrow> ('y, 'x) shuffle'" ("\<pi>\<^sub>1") where
   "resolve_shuffle \<theta> y = extract_variables (\<theta> y)"
-
 
 lemma sum_specific_if:
   assumes "x0 \<in> A"

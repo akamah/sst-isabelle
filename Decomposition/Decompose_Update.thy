@@ -42,6 +42,7 @@ type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
 subsection \<open>Utility functions\<close>
 
+find_consts  "'a option \<Rightarrow> 'a option \<Rightarrow> 'a option"
 
 fun orElse where
   "orElse None b = b" |
@@ -140,6 +141,9 @@ fun lookup_rec where
   "lookup_rec m x0 k0 (y#ys) = orElse (lookup_row (resolve_shuffle m) x0 k0 ys (scan_pair (m y)))
                                        (lookup_rec m x0 k0 ys)"
 
+fun lookup_found where
+  "lookup_found s ys (x, as) xas (x0, k0) = (if x = x0 \<and> calc_index s ys (keys_pair xas) x = k0 then Some as else None)"
+
 fun lookup :: "('y, 'x, 'b) update' \<Rightarrow> 'x \<Rightarrow> nat \<Rightarrow>'y list \<Rightarrow> 'b list" where
   "lookup m x0 k0 ys = orNil (lookup_rec m x0 k0 ys)"
 
@@ -186,11 +190,11 @@ lemma keys_pair_scan_pair: "keys_pair (scan_pair u) = extract_variables u"
 lemma concat_value_scanned_scan: "concat_value_scanned (scan u) = valuate u"
   by (induct u rule: xw_induct, simp_all)
 
-fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" where  
+fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" ("\<pi>'\<^sub>2") where  
   "resolve_store_nat m (y, None) = fst (scan (m y))" |
   "resolve_store_nat m (y, Some k) = lookup m y k (Enum.enum :: 'y list)"
 
-definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y, 'k::enum, 'b) store" where  
+definition resolve_store :: "'k::enum boundedness \<Rightarrow> ('y::enum, 'b) update \<Rightarrow> ('y, 'k::enum, 'b) store" ("\<pi>\<^sub>2") where  
   "resolve_store B m = resolve_store_nat m \<odot> to_nat_list B"
 
 fun empty_store :: "('y::enum, 'k, 'b) store" where
@@ -204,7 +208,7 @@ fun synthesize_shuffle :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \
   "synthesize_shuffle B s = to_enum_list B \<star> synthesize_shuffle_nat s"
 
 definition synthesize :: "'k::enum boundedness \<Rightarrow> 'y::enum shuffle \<times> ('y, 'k, 'b) store
-                      \<Rightarrow> ('y, 'b) update" where
+                      \<Rightarrow> ('y, 'b) update" ("\<pi>") where
   "synthesize B sa = (case sa of (s, a) \<Rightarrow> a \<star> synthesize_shuffle B s)"
 
 lemma synthesize_simp: "synthesize B (s, a) = a \<star> synthesize_shuffle B s"
@@ -800,16 +804,6 @@ theorem resolve_inverse:
 
 
 subsection \<open>Lemmas for counting alphabet\<close>
-
-lemma count_list_resolve_store:
-  fixes m :: "('y::enum, 'b) update"
-  fixes B :: "'k::enum boundedness"
-  fixes a :: "'b"
-  assumes "boundedness B k"
-  assumes "bounded k m"
-  shows "(\<Sum>yk::'y \<times> 'k option\<in>UNIV. count_list (resolve_store B m yk) a)
-       = (\<Sum>y::'y \<in>UNIV. count_list (m y) (Inr a))"
-  sorry
 
 subsection \<open>Example\<close>
 

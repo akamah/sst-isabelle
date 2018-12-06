@@ -122,11 +122,6 @@ fun calc_index_rows where
   "calc_index_rows s [] x = 0" |
   "calc_index_rows s (y#ys) x = count_list (s y) x + calc_index_rows s ys x"
 
-lemma calc_index_rows_eq_sum:
-  assumes "distinct ys"
-  shows "calc_index_rows s ys x = (\<Sum>y\<in>set ys. count_list (s y) x)"
-  using assms by (induct ys, simp_all)
-
 definition calc_index where
   "calc_index s ys xs x = count_list xs x + calc_index_rows s ys x"
 
@@ -184,14 +179,209 @@ lemma valuate_give_index_row_post_index_vars[iff]:
 
 subsection \<open>Properties of Auxiliary functions\<close>
 
-subsection \<open>Resolve & Synthesize\<close>
-
-
 lemma keys_pair_scan_pair: "keys_pair (scan_pair u) = extract_variables u"
   by (induct u rule: xw_induct, simp_all)
 
 lemma concat_value_scanned_scan: "concat_value_scanned (scan u) = valuate u"
   by (induct u rule: xw_induct, simp_all)
+
+
+lemma resolve_shuffle_keys_pair_scan_pair:
+  "\<pi>\<^sub>1 m x = keys_pair (scan_pair (m x))"
+  unfolding resolve_shuffle_def
+  by  (simp add: keys_pair_scan_pair)
+
+lemma there_exists_corresponding_string:
+  fixes m :: "('y, 'x, 'b) update'"
+  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0))"
+  shows "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = Some as"
+using assms proof (simp add: resolve_shuffle_keys_pair_scan_pair)
+  fix xas :: "('x \<times> 'b list) list"
+  assume "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (keys_pair xas))"
+  then show "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys xas = Some as"
+  by (induct xas rule: pair_induct, auto simp add: resolve_shuffle_def)
+qed
+
+lemma there_doesnt_exist_corresponding_string_inner:
+  assumes "(x0, Some k0) \<notin> set (post_index_vars s ys (keys_pair xas))"
+  shows "lookup_row s x0 k0 ys xas = None"
+  using assms unfolding resolve_shuffle_def
+  by (induct xas rule: pair_induct, auto)
+
+lemma there_doesnt_exist_corresponding_string:
+  assumes "(x0, Some k0) \<notin> set (post_index_vars (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0))"
+  shows "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = None"  
+  apply (rule there_doesnt_exist_corresponding_string_inner)
+  using assms
+  apply (simp add: keys_pair_scan_pair)
+  apply (simp add: resolve_shuffle_def)
+  done
+
+lemma give_index_row_position_ge:
+  assumes "(x0, Some k0) \<in> set (post_index_vars s ys xs)"
+  shows "k0 \<ge> calc_index_rows s ys x0"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by (simp)
+next
+  case (Cons x xs)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def)
+qed
+
+lemma give_index_row_position_lt:
+  assumes "(x0, Some k0) \<in> set (post_index_vars s ys xs)"
+  shows "k0 < calc_index s ys xs x0"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by (simp)
+next
+  case (Cons x xs)
+  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def)
+qed
+
+lemma lookup_row_position_lt_None:
+  assumes "k0 < calc_index_rows s ys x0"
+  shows "lookup_row s x0 k0 ys xas = None"
+using assms proof (induct xas rule: pair_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (PairCons x as xas)
+  then show ?case proof (cases "x = x0")
+    case True
+    then show ?thesis using PairCons by (simp add: calc_index_def)
+  next
+    case False
+    then show ?thesis using PairCons by simp
+  qed
+qed
+
+
+lemma calc_index_rows_seek:
+  assumes "y0 \<in> set ys"
+  shows "calc_index s (seek y0 ys) (s y0) x0
+       \<le> calc_index_rows s ys x0"
+using assms proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons y ys)
+  show ?case proof (cases "y = y0")
+    case True
+    then show ?thesis unfolding calc_index_def by simp
+  next
+    case False
+    then have "y0 \<in> set ys" using Cons.prems by simp
+    then show ?thesis using False Cons.hyps by simp
+  qed
+qed
+
+lemma previous_row_does_not_have_same_variable:
+  assumes "y0 \<in> set ys"
+  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
+  shows "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys xs = None"
+proof -
+  let ?xs0 = "\<pi>\<^sub>1 m y0"
+  have "k0 < calc_index (\<pi>\<^sub>1 m) (seek y0 ys) ?xs0 x0"
+    using assms(2) by (rule give_index_row_position_lt)
+  also have "... \<le> calc_index_rows (\<pi>\<^sub>1 m) ys x0"
+    using assms(1) by (rule calc_index_rows_seek)
+  finally have "k0 < calc_index_rows (\<pi>\<^sub>1 m) ys x0" .
+  then show ?thesis
+    by (rule lookup_row_position_lt_None)
+qed
+
+lemma post_index_vars_does_not_contain_None: 
+  "(x0, None) \<notin> set (post_index_vars s ys xs)"
+  by (induct xs, simp_all)
+
+
+lemma inspect_only_this_row:
+  assumes "y0 \<in> set ys"
+  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
+  shows "lookup_rec m x0 k0 ys
+       = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+  using assms proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons y ys)
+  show ?case proof (cases "y = y0")
+    case True
+    then have "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = Some as"
+      using Cons by (simp add: there_exists_corresponding_string)
+    then show ?thesis using True by auto
+  next
+    case False
+    then have y0: "y0 \<in> set ys" using Cons(2) by simp
+    moreover have in_row: "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
+      using Cons(3) False by simp 
+    ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+      using Cons by simp
+    have "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y)) = None"
+      using y0 in_row by (rule previous_row_does_not_have_same_variable)
+    then show ?thesis using * False by simp
+  qed
+qed
+
+lemma lookup_rec_distinct:
+  assumes "distinct ys"
+  assumes "ys \<noteq> []"
+  shows "\<exists>y0 \<in> set ys.
+     lookup_rec m x0 k0 ys
+   = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+using assms proof (induct ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons y ys)
+  then show ?case proof (cases "ys = []")
+    case True
+    then show ?thesis by simp
+  next
+    case False
+    then show ?thesis
+    proof (cases "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y))")
+      case None
+      have "distinct ys" using Cons.prems by simp
+      then obtain y0 where
+        y0: "y0 \<in> set ys \<and> lookup_rec m x0 k0 ys
+                         = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
+        using Cons False by blast
+      then have y: "y \<noteq> y0" using Cons.prems by auto
+      show ?thesis proof (rule bexI)
+        show "lookup_rec m x0 k0 (y # ys) 
+            = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 (y # ys)) (scan_pair (m y0))"
+          by (simp add: None y y0)
+      next
+        show "y0 \<in> set (y # ys)" using y0 by simp
+      qed
+    next
+      case (Some a)
+      then show ?thesis by simp
+    qed
+  qed
+qed
+
+
+lemma all_var_index_less_than:
+  fixes s :: "'y shuffle"
+  assumes "y0 \<in> set ys"
+  assumes "(x0, Some k0) \<in> set (post_index_vars s (seek y0 ys) (s y0))"
+  shows "k0 < calc_index_rows s ys x0"
+proof -
+  have "k0 < calc_index s (seek y0 ys) (s y0) x0"
+    using assms(2)
+    by (rule give_index_row_position_lt)
+  also have "... \<le> calc_index_rows s ys x0"
+    using assms(1) by (rule calc_index_rows_seek)
+  finally show ?thesis .
+qed
+
+
+
+
+subsection \<open>Resolve & Synthesize\<close>
 
 fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" ("\<pi>\<^sub>2'") where  
   "\<pi>\<^sub>2' m (y, None) = fst (scan (m y))" |
@@ -452,200 +642,10 @@ subsection \<open>Proof of inverse of Resolve\<close>
 fun index_less_than :: "nat \<Rightarrow> 'x \<times> nat option \<Rightarrow> bool" where
   "index_less_than K yk = (\<forall>x0 k0. yk = (x0, Some k0) \<longrightarrow> k0 < K)"
 
-fun var_index_less_than :: "nat \<Rightarrow> 'x + 'x \<times> nat option \<Rightarrow> bool" where
-  "var_index_less_than K yk = (\<forall>x0 k0. yk = Inr (x0, Some k0) \<longrightarrow> k0 < K)"
-
-lemma resolve_shuffle_keys_pair_scan_pair:
-  "\<pi>\<^sub>1 m x = keys_pair (scan_pair (m x))"
-  unfolding resolve_shuffle_def
-  by  (simp add: keys_pair_scan_pair)
-
-lemma there_exists_corresponding_string:
-  fixes m :: "('y, 'x, 'b) update'"
-  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0))"
-  shows "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = Some as"
-using assms proof (simp add: resolve_shuffle_keys_pair_scan_pair)
-  fix xas :: "('x \<times> 'b list) list"
-  assume "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (keys_pair xas))"
-  then show "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys xas = Some as"
-  by (induct xas rule: pair_induct, auto simp add: resolve_shuffle_def)
-qed
-
-lemma there_doesnt_exist_corresponding_string_inner:
-  assumes "(x0, Some k0) \<notin> set (post_index_vars s ys (keys_pair xas))"
-  shows "lookup_row s x0 k0 ys xas = None"
-  using assms unfolding resolve_shuffle_def
-  by (induct xas rule: pair_induct, auto)
-
-lemma there_doesnt_exist_corresponding_string:
-  assumes "(x0, Some k0) \<notin> set (post_index_vars (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0))"
-  shows "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = None"  
-  apply (rule there_doesnt_exist_corresponding_string_inner)
-  using assms
-  apply (simp add: keys_pair_scan_pair)
-  apply (simp add: resolve_shuffle_def)
-  done
-
-lemma give_index_row_position_ge:
-  assumes "(x0, Some k0) \<in> set (post_index_vars s ys xs)"
-  shows "k0 \<ge> calc_index_rows s ys x0"
-using assms proof (induct xs)
-  case Nil
-  then show ?case by (simp)
-next
-  case (Cons x xs)
-  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def)
-qed
-
-lemma give_index_row_position_lt:
-  assumes "(x0, Some k0) \<in> set (post_index_vars s ys xs)"
-  shows "k0 < calc_index s ys xs x0"
-using assms proof (induct xs)
-  case Nil
-  then show ?case by (simp)
-next
-  case (Cons x xs)
-  then show ?case using Cons by (cases "x = x0", auto simp add: calc_index_def)
-qed
-
-lemma lookup_row_position_lt_None:
-  assumes "k0 < calc_index_rows s ys x0"
-  shows "lookup_row s x0 k0 ys xas = None"
-using assms proof (induct xas rule: pair_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (PairCons x as xas)
-  then show ?case proof (cases "x = x0")
-    case True
-    then show ?thesis using PairCons by (simp add: calc_index_def)
-  next
-    case False
-    then show ?thesis using PairCons by simp
-  qed
-qed
-
-
-lemma calc_index_rows_seek:
-  assumes "y0 \<in> set ys"
-  shows "calc_index s (seek y0 ys) (s y0) x0
-       \<le> calc_index_rows s ys x0"
-using assms proof (induct ys)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons y ys)
-  show ?case proof (cases "y = y0")
-    case True
-    then show ?thesis unfolding calc_index_def by simp
-  next
-    case False
-    then have "y0 \<in> set ys" using Cons.prems by simp
-    then show ?thesis using False Cons.hyps by simp
-  qed
-qed
-
-lemma previous_row_does_not_have_same_variable:
-  assumes "y0 \<in> set ys"
-  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
-  shows "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys xs = None"
-proof -
-  let ?xs0 = "\<pi>\<^sub>1 m y0"
-  have "k0 < calc_index (\<pi>\<^sub>1 m) (seek y0 ys) ?xs0 x0"
-    using assms(2) by (rule give_index_row_position_lt)
-  also have "... \<le> calc_index_rows (\<pi>\<^sub>1 m) ys x0"
-    using assms(1) by (rule calc_index_rows_seek)
-  finally have "k0 < calc_index_rows (\<pi>\<^sub>1 m) ys x0" .
-  then show ?thesis
-    by (rule lookup_row_position_lt_None)
-qed
-
-lemma post_index_vars_does_not_contain_None: 
-  "(x0, None) \<notin> set (post_index_vars s ys xs)"
-  by (induct xs, simp_all)
-
-
-lemma inspect_only_this_row:
-  assumes "y0 \<in> set ys"
-  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
-  shows "lookup_rec m x0 k0 ys
-       = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
-  using assms proof (induct ys)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons y ys)
-  show ?case proof (cases "y = y0")
-    case True
-    then have "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = Some as"
-      using Cons by (simp add: there_exists_corresponding_string)
-    then show ?thesis using True by auto
-  next
-    case False
-    then have y0: "y0 \<in> set ys" using Cons(2) by simp
-    moreover have in_row: "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
-      using Cons(3) False by simp 
-    ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
-      using Cons by simp
-    have "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y)) = None"
-      using y0 in_row by (rule previous_row_does_not_have_same_variable)
-    then show ?thesis using * False by simp
-  qed
-qed
-
-lemma lookup_rec_distinct:
+lemma calc_index_rows_eq_sum:
   assumes "distinct ys"
-  assumes "ys \<noteq> []"
-  shows "\<exists>y0 \<in> set ys.
-     lookup_rec m x0 k0 ys
-   = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
-using assms proof (induct ys)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons y ys)
-  then show ?case proof (cases "ys = []")
-    case True
-    then show ?thesis by simp
-  next
-    case False
-    then show ?thesis
-    proof (cases "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y))")
-      case None
-      have "distinct ys" using Cons.prems by simp
-      then obtain y0 where
-        y0: "y0 \<in> set ys \<and> lookup_rec m x0 k0 ys
-                         = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
-        using Cons False by blast
-      then have y: "y \<noteq> y0" using Cons.prems by auto
-      show ?thesis proof (rule bexI)
-        show "lookup_rec m x0 k0 (y # ys) 
-            = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 (y # ys)) (scan_pair (m y0))"
-          by (simp add: None y y0)
-      next
-        show "y0 \<in> set (y # ys)" using y0 by simp
-      qed
-    next
-      case (Some a)
-      then show ?thesis by simp
-    qed
-  qed
-qed
-
-
-lemma all_var_index_less_than:
-  fixes s :: "'y shuffle"
-  assumes "y0 \<in> set ys"
-  assumes "(x0, Some k0) \<in> set (post_index_vars s (seek y0 ys) (s y0))"
-  shows "k0 < calc_index_rows s ys x0"
-proof -
-  have "k0 < calc_index s (seek y0 ys) (s y0) x0"
-    using assms(2)
-    by (rule give_index_row_position_lt)
-  also have "... \<le> calc_index_rows s ys x0"
-    using assms(1) by (rule calc_index_rows_seek)
-  finally show ?thesis .
-qed
+  shows "calc_index_rows s ys x = (\<Sum>y\<in>set ys. count_list (s y) x)"
+  using assms by (induct ys, simp_all)
 
 lemma bounded_shuffle_less_than:
   fixes s :: "'y::enum shuffle"
@@ -668,21 +668,11 @@ proof -
   finally show ?thesis .
 qed
 
-lemma bounded_shuffle_var_index_less_than:
+lemma bounded_shuffle_index_less_than:
   fixes s :: "'y::enum shuffle"
   assumes "bounded_shuffle K s"
-  shows "list_all (var_index_less_than K) (give_index_row s (seek y0 (Enum.enum :: 'y list)) (s y0))"
-proof (simp only: list_all_iff, rule ballI)
-  fix yk
-  assume contain: "yk \<in> set (give_index_row s (seek y0 enum_class.enum) (s y0))"
-  show "var_index_less_than K yk" proof (auto)
-    fix x0 k0
-    assume "yk = Inr (x0, Some k0)"
-    then have "Inr (x0, Some k0) \<in> set (give_index_row s (seek y0 enum_class.enum) (s y0))"
-      using contain by simp
-    then show "k0 < K" using bounded_shuffle_less_than[OF assms] by simp
-  qed
-qed
+  shows "list_all (index_less_than K) (post_index_vars s (seek y0 (Enum.enum :: 'y list)) (s y0))"
+using assms by (auto simp add: list_all_iff bounded_shuffle_less_than)
 
 fun resolve_store_row where
   "resolve_store_row s ys as xas (x, None)   = as" |
@@ -759,34 +749,48 @@ proof -
 qed
 
 
-lemma resolve_inverse_remove_enum:
+
+
+lemma hat_alpha_remove_enum:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"
   assumes "boundedness B K"
-  assumes "bounded K m"
-  shows "((\<pi>\<^sub>2' m \<odot> to_nat_list B \<odot> to_enum_list B) \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x
-       = (\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x"
-proof -
-  have bs: "bounded_shuffle K (\<pi>\<^sub>1 m)"
-    using assms(2) by (rule resolve_bounded)
-  show ?thesis
-  proof (simp add: map_alpha_apply, rule hat_alpha_ext, auto simp add: synthesize_shuffle_nat_def compS_apply)
-    fix y k
-    assume *: "(y, k) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek x enum_class.enum) (\<pi>\<^sub>1 m x))"
-    have "to_nat B (to_enum B (y, k)) = (y, k)"
-    proof (cases k)
-      case None
-      then show ?thesis by simp
-    next
-      case (Some k)
-      then have "(y, Some k) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek x enum_class.enum) (\<pi>\<^sub>1 m x))"
-        using * by simp
-      then have "k < K" using bs bounded_shuffle_less_than by fast
-      then show ?thesis using assms(1) by (simp add: Some nat_enum_iso boundedness_def)
-    qed
-    then show "\<pi>\<^sub>2' m (to_nat B (to_enum B (y, k))) = \<pi>\<^sub>2' m (y, k)" by simp
-  qed
+  assumes "list_all (index_less_than K) (valuate u)"
+  shows " hat_alpha (to_nat_list B \<odot> to_enum_list B) u = u"
+using assms(2) proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case by simp
+next
+  case (Alpha a xs)
+  then show ?case 
+    apply (cases "a" rule: index_cases)
+    apply (simp_all add: compS_apply del: index_less_than.simps)
+    apply (drule conjunct1)
+    using assms(1) unfolding boundedness_def
+    apply (simp add: nat_enum_iso)
+    done
 qed
+  
+
+lemma synthesize_shuffle_nat_remove_enum:
+  fixes B :: "'k::enum boundedness"
+  fixes m :: "('y::enum, 'b) update"
+  assumes "boundedness B K"
+  assumes "bounded_shuffle K s"
+  shows "to_nat_list B \<star> to_enum_list B \<star> synthesize_shuffle_nat s
+       = synthesize_shuffle_nat s"
+  apply (rule ext)
+  apply (simp add: map_alpha_assoc)
+  apply (simp add: map_alpha_apply)
+  apply (rule hat_alpha_remove_enum[OF assms(1)])
+  apply (simp add: synthesize_shuffle_nat_def)
+  apply (rule bounded_shuffle_index_less_than)
+  apply (rule assms(2))
+  done
+  
 
 theorem resolve_inverse:
   fixes B :: "'k::enum boundedness"
@@ -794,10 +798,17 @@ theorem resolve_inverse:
   assumes "boundedness B k"
   assumes "bounded k m"
   shows "synthesize B (\<pi>\<^sub>1 m, \<pi>\<^sub>2 B m) = m"
-  apply (rule ext, simp add: resolve_store_def synthesize_def map_alpha_assoc)
-  apply (simp add: resolve_inverse_remove_enum[OF assms])
-  apply (simp add: resolve_inverse_nat)
-  done
+proof (rule ext, simp add: resolve_store_def synthesize_def)
+  fix x
+  have bs: "bounded_shuffle k (\<pi>\<^sub>1 m)"
+    using assms(2) by (simp add: resolve_bounded)
+  have "((\<pi>\<^sub>2' m \<odot> to_nat_list B) \<star> to_enum_list B \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x
+      = (\<pi>\<^sub>2' m \<star> to_nat_list B \<star> to_enum_list B \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x"
+    by (simp add: map_alpha_assoc compS_assoc)
+  also have "... = m x"
+    by (simp add: synthesize_shuffle_nat_remove_enum[OF assms(1) bs] resolve_inverse_nat)
+  finally show "((\<pi>\<^sub>2' m \<odot> to_nat_list B) \<star> to_enum_list B \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x = m x" .
+qed
 
 
 subsection \<open>Lemmas for counting alphabet\<close>

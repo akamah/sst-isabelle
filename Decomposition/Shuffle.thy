@@ -51,10 +51,6 @@ lemma idS_bounded_enum: "bounded_shuffle (length (Enum.enum :: 'k::enum list)) (
   by (rule idS_bounded) (rule length_enum_gt_0)
 
 
-lemma count_list_extract_variables: "count_list (extract_variables u) x = count_list u (Inl x)"
-  by (induct u rule: xa_induct, simp_all)
-
-
 lemma resolve_bounded:
   fixes m :: "('x::finite, 'b) update"
   assumes "bounded k m"
@@ -72,40 +68,9 @@ lemma resolve_bounded_inverse:
   shows "bounded k m"
   unfolding bounded_def count_var_def proof (auto)
   fix x
-  show "(\<Sum>y\<in>UNIV. count_list (m y) (Inl x)) \<le> k"
+  show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
     using assms unfolding bounded_shuffle_def resolve_shuffle_def
     by (simp add: count_list_extract_variables)
-qed
-
-
-lemma count_extract_variables:
-  fixes m :: "('x::finite, 'a) update"
-  shows "(\<Sum>y\<in>(UNIV::'x set). count_list u (Inl y)) = length (extract_variables u)"
-proof (induct u rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case proof (simp)
-    have "(\<Sum>y\<in>(UNIV::'x set). if x = y then count_list xs (Inl y) + 1 else count_list xs (Inl y))
-        = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0) + count_list xs (Inl y))" (is "?lhs = _")
-    proof (rule sum_cong)
-      fix x :: "'x"
-      show "x \<in> UNIV" by simp
-    next
-      show "(\<lambda>y. if x = y then count_list xs (Inl y) + 1  else count_list xs (Inl y)) =
-            (\<lambda>y. (if x = y then 1 else 0) + count_list xs (Inl y))"
-        by auto
-    qed
-    also have "...  = (\<Sum>y\<in>(UNIV::'x set). (if x = y then 1 else 0)) + (\<Sum>y\<in>(UNIV::'x set). count_list xs (Inl y))"
-      by (rule sum.distrib)
-    also have "... = Suc (length (extract_variables xs))" (is "_ = ?rhs")
-      by (simp add: Var)
-    finally show "?lhs = ?rhs".
-  qed
-next
-  case (Alpha a xs)
-  then show ?case by simp
 qed
 
 

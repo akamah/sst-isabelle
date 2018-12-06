@@ -5,16 +5,44 @@ theory Bounded_Copy_Convert
 begin
 
 
-lemma "count_alpha (synthesize_shuffle_nat s) yk
+lemma distinct_count_list_le_1:
+  assumes "distinct xs"
+  shows "count_list xs a \<le> 1"
+using assms proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons x xs)
+  then show ?case by (cases "x = a", simp_all)
+qed
+
+
+definition update_index_vars where
+  "update_index_vars m = concat (map (\<lambda>y. valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y)) Enum.enum)"
+
+lemma update_index_vars_set:
+  "set (update_index_vars m) = (\<Union>y\<in>UNIV. set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y)))"
+  unfolding update_index_vars_def
+  by (simp add: enum_UNIV)
+
+
+
+find_theorems "count_list (extract_variables _ ) _"
+
+lemma
+  fixes s :: "('y::enum) shuffle"
+  shows "count_alpha (synthesize_shuffle_nat s) yk
      = undefined"
 proof (cases yk rule: index_cases)
   case (VarNone y)
-  then show ?thesis unfolding count_alpha_def synthesize_shuffle_nat_def
-    
-
+  then have "count_alpha (synthesize_shuffle_nat s) yk \<le> 1"
+    apply (simp add: count_list_valuate[symmetric] count_list_my_simp VarNone sum.distrib count_alpha_def synthesize_shuffle_nat_def
+                      post_index_vars_does_not_contain_None del: count_list.simps)
+    apply (simp add: sum_kronecker[OF finite_UNIV]) sorry
+    find_theorems "finite UNIV"
 next
   case (VarSome y k)
-  then show ?thesis sorry
+  then show ?thesis apply (simp add: count_alpha_def)
 qed
 
 
@@ -26,6 +54,8 @@ lemma count_alpha_iota_le_1:
   assumes "bounded_shuffle k (\<alpha> x)"
   shows "count_alpha (\<iota> B \<alpha> x :: ('y, 'x \<times> ('y, 'k::enum) index + 'b) update) (Inl (x0, y0, z0) :: 'x \<times> ('y, 'k::enum) index + 'b) \<le> 1"
   unfolding \<iota>_def
+  apply (simp add: synthesize_def synthesize_shuffle_nat_def)
+
 
 lemma count_alpha_iota_x_neq_x0_eq_0:
   fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
@@ -170,9 +200,9 @@ lemma sum_decompose_first_step:
   assumes "boundedness B K"
   assumes "bounded K m"
   shows "(\<Sum>(x, k)\<in>iterate_range B. count_list (resolve_store_nat m (x, k)) a)
-       = (\<Sum>(x, k)\<in>(\<Union>y\<in>UNIV. set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))).
+       = (\<Sum>(x, k)\<in>set (update_index_vars m).
             count_list (resolve_store_nat m (x, k)) a)"
-proof (rule sum.mono_neutral_right, auto)
+proof (simp add: update_index_vars_set, rule sum.mono_neutral_right, auto)
   fix x0 k0 y
   assume *: "(x0, k0) \<in> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
   show "(x0, k0) \<in> iterate_range B"
@@ -361,8 +391,7 @@ proof -
   then show ?thesis by (simp add: compS_apply)
 qed
 
-lemma count_list_valuate: "count_list (valuate u) a = count_list u (Inr a)"
-  by (induct u rule: xa_induct, simp_all)
+
 
 lemma sum_decompose:
   fixes m :: "('y::enum, 'b) update"
@@ -378,7 +407,7 @@ proof -
   have "?from = (\<Sum>xk\<in>iterate_range B. ?count xk)"
     using sum_decompose_to_nat by simp
   also have "... = (\<Sum>xk\<in>(\<Union>y\<in>UNIV. set (?vars y)). ?count xk)"
-    using sum_decompose_first_step[OF assms] by simp
+    using sum_decompose_first_step[OF assms] by (simp add: update_index_vars_set)
   also have "... = (\<Sum>y\<in>UNIV. \<Sum>xk\<leftarrow>?vars y. ?count xk)"
     apply (simp only: UNIV_enum)
     apply (rule sum_UNION_eq_sum_sum_list[OF enum_distinct])
@@ -472,12 +501,6 @@ proof (intro allI, rule impI)
   qed
 qed
 
-lemma "f (g x :: 'a list) = h (g x)"
-proof -
-  fix u
-  show "f u = h u" proof (induct "(g x)")
-
-  
 
 
 end

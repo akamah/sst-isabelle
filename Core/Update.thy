@@ -155,7 +155,7 @@ lemma hat_alpha_right_map[simp]: "hat_alpha f (map Inr as) = map Inr (concat (ma
   by (induct as, auto)
 
 
-definition map_alpha :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('x, 'y, 'a) update' \<Rightarrow> ('x, 'y, 'b) update'" (infix "\<star>" 60)
+definition map_alpha :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('x, 'y, 'a) update' \<Rightarrow> ('x, 'y, 'b) update'" (infixr "\<star>" 60)
   where "map_alpha t m = hat_alpha t o m"
 
 lemma map_alpha_apply: "(t \<star> m) x = hat_alpha t (m x)"

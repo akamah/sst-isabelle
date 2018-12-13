@@ -87,6 +87,5 @@ definition revreset where
 
 value "SST_run rev [1, 2, 3]"
 
-thm_deps composed_SST_bounded
 
 end

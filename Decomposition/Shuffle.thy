@@ -180,14 +180,6 @@ next
   qed
 qed
 
-lemma
-  fixes f :: "'a \<Rightarrow> nat"
-  assumes "finite A"
-  assumes "y \<in> A"
-  shows "f y \<le> sum f A"
-  by (simp add: assms(1) assms(2) member_le_sum)
-thm member_le_sum
-
 
 lemma bounded_shuffle_count_list_le_k:
   fixes m :: "'x::finite shuffle"
@@ -255,7 +247,6 @@ proof
   show "finite (UNIV :: ('e::enum, 'x::finite) bc_shuffle set)"
   proof (rule finite_imageD)
     let ?graph = "\<lambda>f :: ('e, 'x) bc_shuffle. {(x, y). y = Rep_bc_shuffle f x}"
-    thm finite_imageD
     have "range ?graph \<subseteq> Pow (UNIV \<times> {y::'x::finite list. \<exists>m::('e::enum, 'x) bc_shuffle. \<exists>x. y = Rep_bc_shuffle m x})"
       by (auto)
     moreover have "finite (Pow ((UNIV :: 'x set) \<times> {y::'x::finite list. \<exists>m::('e::enum, 'x) bc_shuffle. \<exists>x. y = Rep_bc_shuffle m x}))"

@@ -150,9 +150,6 @@ lemma valuate_eta_hat_string:
 lemma valuate_eta_hat: "SST.hat2 tr td (q, valuate (u x)) = concatU (valuate (H tr td (\<lambda>(q, x). q, u) (q, x)))"
   by (simp add: H_def valuate_eta_hat_string)
 
-lemmas valuate = valuate_delta_hat valuate_eta_hat
-
-
 lemma reachable_then_exist_valuation:
   fixes sst1 :: "('q1, 'x1, 'a, 'b) SST"
   fixes sst2 :: "('q2, 'x2, 'b, 'c) SST"

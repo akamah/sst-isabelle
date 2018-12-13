@@ -111,10 +111,6 @@ next
   qed
 qed
 
-lemma hat_hom_valuate_fun:
-  shows "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
-  by (rule ext, simp add: compU_apply hat_hom_valuate)
-
 lemma valuate_hat_hom_emptyU: "valuate (hat_hom emptyU w) = valuate w"
   by (induct w rule: xa_induct, simp_all add: emptyU_def)
 
@@ -246,8 +242,6 @@ lemma list_all_isl_valuate:
   using assms by (induct bs rule: xa_induct, simp_all)
 
 
-find_theorems "list_all isl"
-
 lemma valuate_H'_Nil_var: "valuate (H' B (\<alpha>, idU) (x, y, k)) = []"
 proof (simp add: H'_def idU_def \<iota>_def)
   let ?beta = "Rep_bc_shuffle (\<alpha> x)"
@@ -275,8 +269,6 @@ next
 qed
 
 (* SST.eta_hat msst (q, w) *)
-thm hat_homU_iota_bounded_copy
-thm resolve_inverse
 lemma map_alpha_H'_iota_\<Delta>:
   fixes x :: "'x"
   fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"

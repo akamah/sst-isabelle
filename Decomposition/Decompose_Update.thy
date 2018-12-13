@@ -42,8 +42,6 @@ type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
 subsection \<open>Utility functions\<close>
 
-find_consts  "'a option \<Rightarrow> 'a option \<Rightarrow> 'a option"
-
 fun orElse where
   "orElse None b = b" |
   "orElse (Some a) b = Some a"

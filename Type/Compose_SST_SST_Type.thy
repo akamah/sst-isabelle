@@ -282,7 +282,6 @@ next
   let ?eta = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
   let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
   assume "u \<in> tails ?eta"
-  thm allI
   then have u: "u \<in> tails ?eta_hat" by (simp add:)
   assume m0: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
   obtain v1 v2 where v: "u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 

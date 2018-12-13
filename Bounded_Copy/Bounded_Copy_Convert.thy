@@ -385,7 +385,6 @@ next
   case (Var x' xs)
   then show ?case proof -
     have xs: "xs \<in> tails (SST.eta_hat msst (q1, w) x)" proof -
-      thm tails_def
       obtain ys where "ys @ Inl x' # xs = SST.eta_hat msst (q1, w) x"
         using Var.prems unfolding tails_def by auto
       then have body: "SST.eta_hat msst (q1, w) x = (ys @ [Inl x']) @ xs" by simp
@@ -420,7 +419,6 @@ next
   case (Alpha a xs)
   then show ?case proof -
     have xs: "xs \<in> tails (SST.eta_hat msst (q1, w) x)" proof -
-      thm tails_def
       obtain ys where "ys @ Inr a # xs = SST.eta_hat msst (q1, w) x"
         using Alpha.prems unfolding tails_def by auto
       then have body: "SST.eta_hat msst (q1, w) x = (ys @ [Inr a]) @ xs" by simp

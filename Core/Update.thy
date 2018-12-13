@@ -41,7 +41,7 @@ lemma valuate_map_Inr[simp]: "valuate (map Inr as) = as"
 
 
 definition idU :: "('a, 'b) update" where
-  "idU x == [Inl x]"
+  "idU x = [Inl x]"
 
 definition emptyU :: "('x, 'b) update" where
   "emptyU x = []"
@@ -161,11 +161,12 @@ definition map_alpha :: "('a \<Rightarrow> 'b list) \<Rightarrow> ('x, 'y, 'a) u
 lemma map_alpha_apply: "(t \<star> m) x = hat_alpha t (m x)"
   unfolding map_alpha_def by simp
 
-lemma hat_alpha_hat_hom_lem: "hat_alpha t (hat_hom f w) = hat_hom (t \<star> f) (hat_alpha t w)"
-  by (induct w rule: xa_induct, simp_all add: map_alpha_apply)
-
 lemma map_alpha_distrib: "t \<star> (\<psi> \<bullet> \<phi>) = t \<star> \<psi> \<bullet> t \<star> \<phi>"
-  by (rule ext, simp add: map_alpha_apply hat_alpha_hat_hom_lem compU_apply)
+proof (rule ext, simp add: map_alpha_apply compU_apply)
+  fix w
+  show "hat_alpha t (hat_hom \<psi> w) = hat_hom (t \<star> \<psi>) (hat_alpha t w)"
+    by (induct w rule: xa_induct, simp_all add: map_alpha_apply)
+qed
 
 lemma map_alpha_idU[simp]: "t \<star> idU = idU"
   by (rule ext, simp add: idU_def map_alpha_apply)

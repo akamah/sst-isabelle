@@ -592,7 +592,7 @@ proof (intro allI)
         next
           case (Some as)
           have "list_all P (concat_value_pair (scan_pair (m y)))"
-            using * unfolding concat_value_scanned_def by simp
+            using * unfolding concat_value_scanned_def by (simp add: snd_scan)
           then show ?thesis using Some proof (simp)
             fix xas :: "('x \<times> 'b list) list" and s
             assume "list_all P (concat_value_pair xas)"
@@ -706,7 +706,7 @@ proof -
   have "(\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x
        = (resolve_store_row (\<pi>\<^sub>1 m) (seek x Enum.enum) (fst (scan (m x))) (snd (scan (m x)))
         \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x"
-  proof (simp add: map_alpha_apply synthesize_shuffle_nat_def, rule hat_alpha_ext, rule ballI, simp)
+  proof (simp add: map_alpha_apply synthesize_shuffle_nat_def snd_scan, rule hat_alpha_ext, rule ballI, simp)
     fix xa
     assume *: "xa \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek x Enum.enum) (\<pi>\<^sub>1 m x))"
     show "\<pi>\<^sub>2' m xa
@@ -721,7 +721,7 @@ proof -
     qed
   qed
   also have "... = flat (fst (scan (m x)), snd (scan (m x)))"
-  proof (simp add: map_alpha_apply resolve_shuffle_def synthesize_shuffle_nat_def keys_pair_scan_pair[symmetric])
+  proof (simp add: map_alpha_apply resolve_shuffle_def snd_scan synthesize_shuffle_nat_def keys_pair_scan_pair[symmetric])
     fix xas
     show "map Inr (fst (scan (m x))) @
             hat_alpha (resolve_store_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (fst (scan (m x))) xas)
@@ -741,7 +741,7 @@ proof -
     qed
   qed
   also have "... = m x"
-    by (simp add: scan_inverse del: snd_scan)
+    by (simp add: scan_inverse)
   finally show ?thesis .
 qed
 

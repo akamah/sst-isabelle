@@ -57,10 +57,6 @@ proof -
     by (rule convert_MSST_bounded[OF bc_msst bound assms(2) typed bc_type])
 qed
 
-
-
-
-
 definition revrev where
   "revrev = compose_SST_SST rev rev"
 
@@ -91,11 +87,6 @@ definition revreset where
 
 value "SST_run rev [1, 2, 3]"
 
-lemmas runner = SST.run_def Monoid_SST.run_def
-         convert_MSST_def convert_\<delta>_def convert_\<eta>_def emptyU_def convert_final_def
-         compose_SST_SST_def compose_\<delta>_def compose_\<eta>_def compose_final_update_def compose_final_string_def
-         comp_ignore rev_def H_def H'_def \<Delta>'_def \<Delta>_def comp_def
-         \<iota>_def synthesize_def synthesize_shuffle_def synthesize_store_def 
-         resolve_shuffle_def map_alpha_def idS_def idU_def \<alpha>0_def resolve_store_def scan_def
+thm_deps composed_SST_bounded
 
 end

@@ -72,36 +72,6 @@ lemma count_list_valuate: "count_list (valuate u) a = count_list u (Inr a)"
   by (induct u rule: xa_induct, simp_all)
 
 
-lemma count_list_map_inj:
-  assumes "inj f"
-  shows "count_list (map f w) (f a) = count_list w a"
-proof (induct w)
-  case Nil
-  then show ?case by simp
-next
-  case (Cons a w)
-  then show ?case using assms by (simp add: injD)
-qed
-
-lemma count_list_Inr:
-  "count_list (map Inr w) (Inr a) = count_list w a"
-  by (simp add: count_list_map_inj)
-
-
-lemma sum_count_list_inj:
-  fixes f :: "'y::finite \<Rightarrow> 'z"
-  assumes "inj f"
-  shows "(\<Sum>ya\<in>UNIV. count_list [f ya] (f y)) = 1"
-proof -
-  have f_ya: "\<forall>ya. [f ya] = map f [ya]" by simp
-  show ?thesis
-    apply (simp only: f_ya count_list_map_inj[OF assms])
-    apply simp
-    apply (simp only: count_list.simps(1))
-    apply simp
-    done
-qed
-
 lemma sum_count_list_UNIV: "(\<Sum>y\<in>(UNIV::'x::finite set). count_list xs y) = length xs"
   by (rule sum_count_set, simp_all)
 

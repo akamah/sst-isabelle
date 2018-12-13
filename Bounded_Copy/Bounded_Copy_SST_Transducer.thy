@@ -7,16 +7,7 @@ begin
 lemma count_list_H:
   "count_list (extract_variables (Transducer.hat2 (delta2f f tr) (eta2f to) (q, u))) (q0, x0)
  \<le> count_list (extract_variables u) x0"
-proof (induct u arbitrary: q rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case by (simp add: Nat.le_SucI)
-next
-  case (Alpha a xs)
-  then show ?case by (simp add: count_list_Inr)
-qed
+  by (induct u arbitrary: q rule: xa_induct, simp_all add: Nat.le_SucI)
 
 lemma compose_reachable:
   assumes "reachable (compose_SST_Transducer sst td) (q1, f)"

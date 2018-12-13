@@ -53,8 +53,11 @@ lemma Rep_alpha:
   using Rep_bc_shuffle
   by simp
 
+fun embed_single :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y + 'b)" where
+  "embed_single x y = Inl (x, y)"
+
 fun embed :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y + 'b) list" where
-  "embed x y = [Inl (x, y)]"
+  "embed x y = [embed_single x y]"
 
 definition \<iota> :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y::enum shuffle) \<Rightarrow> 'x 
               \<Rightarrow> ('y, 'x \<times> ('y, 'k) index + 'b) update" where

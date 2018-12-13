@@ -156,8 +156,7 @@ fun to_nat :: "'k::enum boundedness \<Rightarrow> 'y \<times> 'k option \<Righta
   "to_nat B (y, Some k) = (y, Some (enum_to_nat k))"
 
 fun to_enum :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> 'y \<times> 'k option" where
-  "to_enum B (y, None)   = (y, None)" |
-  "to_enum B (y, Some k) = (y, Some (nat_to_enum k))"
+  "to_enum B = apsnd (map_option nat_to_enum)"
 
 
 abbreviation to_nat_list :: "'k::enum boundedness \<Rightarrow> 'y \<times> 'k option \<Rightarrow> ('y \<times> nat option) list" where
@@ -623,9 +622,9 @@ qed
 lemma synthesize_preserve_prop_on_string:
   assumes "\<forall>x k. list_all P (a (x, k))"
   shows "\<forall>x. list_all P (valuate (\<pi>\<inverse> B (s, a) x))"
-proof (auto simp add: synthesize_def map_alpha_apply valuate_hat_alpha synthesize_shuffle_nat_def)
+proof (auto simp add: synthesize_def map_alpha_apply valuate_hat_alpha synthesize_shuffle_nat_def simp del: to_enum.simps)
   fix x
-  show "list_all P (a (x, None))" using assms by simp
+  show "list_all P (a (to_enum B (x, None)))" using assms by simp
 next
   fix x xs ys
   show "list_all P (concat (map (a \<circ> to_enum B) (post_index_vars s ys xs)))"
@@ -783,8 +782,8 @@ lemma synthesize_shuffle_nat_remove_enum:
   shows "to_nat_list B \<star> to_enum_list B \<star> synthesize_shuffle_nat s
        = synthesize_shuffle_nat s"
   apply (rule ext)
-  apply (simp add: map_alpha_assoc)
-  apply (simp add: map_alpha_apply)
+  apply (simp add: map_alpha_assoc del: to_enum.simps)
+  apply (simp add: map_alpha_apply del: to_enum.simps)
   apply (rule hat_alpha_remove_enum[OF assms(1)])
   apply (simp add: synthesize_shuffle_nat_def)
   apply (rule bounded_shuffle_index_less_than)
@@ -798,7 +797,7 @@ theorem resolve_inverse:
   assumes "boundedness B k"
   assumes "bounded k m"
   shows "synthesize B (\<pi>\<^sub>1 m, \<pi>\<^sub>2 B m) = m"
-proof (rule ext, simp add: resolve_store_def synthesize_def)
+proof (rule ext, simp add: resolve_store_def synthesize_def del: to_enum.simps)
   fix x
   have bs: "bounded_shuffle k (\<pi>\<^sub>1 m)"
     using assms(2) by (simp add: resolve_bounded)
@@ -806,7 +805,7 @@ proof (rule ext, simp add: resolve_store_def synthesize_def)
       = (\<pi>\<^sub>2' m \<star> to_nat_list B \<star> to_enum_list B \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x"
     by (simp add: map_alpha_assoc compS_assoc)
   also have "... = m x"
-    by (simp add: synthesize_shuffle_nat_remove_enum[OF assms(1) bs] resolve_inverse_nat)
+    by (simp add: synthesize_shuffle_nat_remove_enum[OF assms(1) bs] resolve_inverse_nat del: to_enum.simps)
   finally show "((\<pi>\<^sub>2' m \<odot> to_nat_list B) \<star> to_enum_list B \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x = m x" .
 qed
 

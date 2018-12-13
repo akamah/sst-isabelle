@@ -11,7 +11,7 @@ lemma sum1:
   fixes f::"'a \<Rightarrow> nat"
   assumes "finite s" "sum f s = 1"
   shows "\<exists>y \<in> s. f y = 1 \<and> sum f (s - {y}) = 0"
-  by (metis add_eq_self_zero assms(1) assms(2) le_add_diff_inverse order_refl sum_diff1_nat sum_eq_1_iff)
+  using assms apply (simp add: sum_eq_1_iff[OF assms(1), simplified]) by fastforce
 
 lemma sumk:
   fixes f::"'a \<Rightarrow> nat"

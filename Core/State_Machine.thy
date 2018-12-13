@@ -45,16 +45,26 @@ lemma delta_append_1:
 lemma reachable_initial:
   "reachable m (initial m)"
   unfolding reachable_def
-  by (metis hat1.simps(1))
+  by (rule exI[where x="[]"], simp)
 
 lemma reachable_delta:
   assumes "reachable m q"
   shows "reachable m (delta m (q, a))"
-  by (metis assms delta_append_1 reachable_def)
+proof -
+  obtain w where "q = delta_hat m (initial m, w)" 
+    using assms unfolding reachable_def by (erule exE)
+  then show ?thesis
+    unfolding reachable_def by (intro exI[where x="w @ [a]"], simp)
+qed
 
 lemma reachable_delta_hat:
   assumes "reachable m q"
   shows "reachable m (delta_hat m (q, w))"
-  by (metis assms delta_append reachable_def)
+proof -
+  obtain v where "q = delta_hat m (initial m, v)" 
+    using assms unfolding reachable_def by (erule exE)
+  then show ?thesis
+    unfolding reachable_def by (intro exI[where x="v @ w"], simp)
+qed
 
 end

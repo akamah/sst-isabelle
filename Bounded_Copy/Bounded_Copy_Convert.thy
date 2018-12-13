@@ -395,7 +395,7 @@ next
       by (rule condition_of_convert_MSST_reachable_state[OF boundedness_l typed bc_type reach])
     then have bs: "bounded_shuffle l (Rep_alpha B2 \<beta> x')"
       using bc_type unfolding bounded_copy_type_def
-      by (meson reach reachable_convert)
+      using reach reachable_convert by fast
     note bc = hat_homU_iota_bounded_copy_tail[OF boundedness_l typed bc_type reach xs]
     show ?thesis proof (cases "x' = x0")
       case True

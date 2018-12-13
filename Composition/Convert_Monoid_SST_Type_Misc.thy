@@ -115,31 +115,12 @@ lemma condition_of_convert_MSST_reachable_state:
   assumes assm_bounded: "boundedness B k"
   assumes assm_is_type: "is_type msst \<gamma>"
   assumes assm_bc_type: "bounded_copy_type k msst \<gamma>"
-  assumes assm_reachable:  "reachable (convert_MSST B msst) (q, \<beta>)"
-  shows "Rep_alpha B \<beta> x \<in> \<gamma> (q, x)"
-  by (meson assm_bc_type assm_bounded assm_is_type assm_reachable condition_of_convert_MSST_state reachable_def)
-
-lemma hat_homU_iota_bounded_copy:
-  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
-  fixes \<gamma> :: "('q, 'x, 'y) msst_type"
-  fixes B :: "'k::enum boundedness"
-  assumes assm_k_bounded: "boundedness B k"
-  assumes assm_is_type: "is_type msst \<gamma>"
-  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
   assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
-  shows "bounded k (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))"
+  shows "Rep_alpha B \<beta> x \<in> \<gamma> (q, x)"
 proof -
-  have "resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x)) 
-      \<in> type_hom \<gamma> (q, (SST.eta_hat msst (q, w) x))"
-    by (meson assm_bounded_type assm_is_type assm_k_bounded assm_reachable condition_of_convert_MSST_reachable_state iota_alpha_type_hom)
-  also have "... \<subseteq> \<gamma> (delta_hat msst (q, w), x)" by (simp add: type_hom_hat assm_is_type)
-  finally have in_type: "resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x)) 
-               \<in> \<gamma> (delta_hat msst (q, w), x)" .
-  have "reachable msst (delta_hat msst (q, w))"
-    by (rule reachable_delta_hat, rule reachable_convert, rule assm_reachable)
-  then have "bounded_shuffle k (resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x)))"
-    using assm_bounded_type in_type unfolding bounded_copy_type_def by auto
-  then show ?thesis by (rule resolve_bounded_inverse)
+  obtain w where "(q, \<beta>) = delta_hat (convert_MSST B msst) (initial (convert_MSST B msst), w)"
+    using assm_reachable by (auto simp add: reachable_def)
+  then show ?thesis using condition_of_convert_MSST_state[OF assm_bounded assm_is_type assm_bc_type] by simp
 qed
 
 lemma hat_homU_iota_bounded_copy_tail:
@@ -156,14 +137,30 @@ proof -
   have reach: "reachable msst q" by (rule reachable_convert[OF assm_reachable])
   then have tail: "\<forall>m\<in>type_hom \<gamma> (q, u). bounded_shuffle k m"
     using assm_bounded_type assm_tail unfolding bounded_copy_type_def by auto
-  then have "resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u) 
+  have "resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u) 
       \<in> type_hom \<gamma> (q, u)"
-    by (meson assm_bounded_type assm_is_type assm_k_bounded assm_reachable condition_of_convert_MSST_reachable_state iota_alpha_type_hom)
+    apply (rule iota_alpha_type_hom[rule_format])
+    apply (rule condition_of_convert_MSST_reachable_state[OF assms(1-4)])
+    done
   then have "bounded_shuffle k (resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u))"
     using assm_bounded_type assm_tail reach tail unfolding bounded_copy_type_def by auto
   then show "bounded k (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u)"
     by (simp add: resolve_bounded_inverse)
 qed
+
+lemma hat_homU_iota_bounded_copy:
+  fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
+  fixes \<gamma> :: "('q, 'x, 'y) msst_type"
+  fixes B :: "'k::enum boundedness"
+  assumes assm_k_bounded: "boundedness B k"
+  assumes assm_is_type: "is_type msst \<gamma>"
+  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
+  shows "bounded k (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))"
+  apply (rule hat_homU_iota_bounded_copy_tail[OF assms])
+  apply (simp add: tails_def)
+  apply (rule exI[where x="[]"])
+  by simp
 
 lemma resolve_shuffle_hat_homU_inverse:
   fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"

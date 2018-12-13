@@ -140,7 +140,7 @@ proof (induct u rule: length_induct)
       using find_split[where P="isl", where lis="xs"] by blast
     obtain v where v: "r = map Inr v" using find_var_None_then_all_alpha hoge by blast
     obtain x' where x': "x = Inl x'"
-      using hoge by (meson isl_def)
+      using hoge unfolding isl_def by blast      
     have "P (l @ Inl x' # map Inr v)" proof (rule var_word)
       show "P l" by (rule IH[rule_format], simp add: hoge)
     qed

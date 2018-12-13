@@ -120,7 +120,9 @@ proof
   show "(\<forall>x. idS \<in> compose_\<gamma> sst1 sst2 (initial (compose_SST_SST sst1 sst2), x))"
     unfolding compose_SST_SST_def
     apply (simp add: all_shuffles_def)
-    apply (metis hat1.simps(1) SST.hat2.simps(1) resolve_idU_idS)
+    apply (rule allI)
+    apply (rule exI[where x="[]"])
+    apply (simp add: resolve_idU_idS)
     done
 next
   show "\<forall>x q a. type_hom (compose_\<gamma> sst1 sst2) (q, SST.eta (compose_SST_SST sst1 sst2) (q, a) x)
@@ -188,7 +190,7 @@ proof -
 qed
 
 
-lemma type_hom_eta2f_hat_ex_string':
+lemma type_hom_eta2f_hat_ex_string:
   fixes sst1 :: "('q1, 'x, 'a, 'b) SST"
   fixes sst2 :: "('q2, 'y, 'b, 'c) SST"
   shows "\<forall>m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v)).
@@ -254,15 +256,6 @@ next
   qed
 qed
 
-lemma type_hom_eta2f_hat_ex_string:
-  fixes sst1 :: "('q1, 'x, 'a, 'b) SST"
-  fixes sst2 :: "('q2, 'y, 'b, 'c) SST"
-  assumes "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v))"
-  shows "\<exists>w. delta_hat sst2 (q2, w) = hat1 (delta2f f (delta sst2)) (q2, v) \<and>
-             resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
-  by (meson assms type_hom_eta2f_hat_ex_string')
-
-
 theorem compose_\<gamma>_bounded:
   fixes sst2 :: "('q2::finite, 'x2::finite, 'b, 'c) SST"
   assumes "bounded_copy_SST k sst2"
@@ -291,7 +284,7 @@ next
                                  (?q, v2))" 
     using m0 v by simp
   obtain w where w: "resolve_shuffle (SST.eta_hat sst2 (?q, w)) = m"
-    using type_hom_eta2f_hat_ex_string[OF m] by auto
+    using type_hom_eta2f_hat_ex_string[rule_format, OF m] by auto
   have q2_reach: "reachable sst2 ?q"
     using assms(2) unfolding trim_def by simp
   then have "bounded k (SST.eta_hat sst2 (?q, w))"

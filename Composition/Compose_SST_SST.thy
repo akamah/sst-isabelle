@@ -157,7 +157,7 @@ lemma reachable_then_exist_valuation:
   shows "\<exists>\<mu>. \<forall>q2 x. delta_hat sst2 (q2, \<mu> x) = f (q2, x)"
 proof -
   obtain w where w: "(q1, f) = delta_hat (compose_SST_SST sst1 sst2) (initial (compose_SST_SST sst1 sst2), w)"
-    by (meson assms reachable_def)
+    using assms by (auto simp add: reachable_def)
   then show ?thesis proof (induct w arbitrary: q1 f rule: rev_induct)
     case Nil
     show ?case proof (rule exI, intro allI)

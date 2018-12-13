@@ -163,8 +163,7 @@ lemma map_alpha_apply: "(t \<star> m) x = hat_alpha t (m x)"
 
 lemma map_alpha_distrib: "t \<star> (\<psi> \<bullet> \<phi>) = t \<star> \<psi> \<bullet> t \<star> \<phi>"
 proof (rule ext, simp add: map_alpha_apply compU_apply)
-  fix w
-  show "hat_alpha t (hat_hom \<psi> w) = hat_hom (t \<star> \<psi>) (hat_alpha t w)"
+  show "hat_alpha t (hat_hom \<psi> w) = hat_hom (t \<star> \<psi>) (hat_alpha t w)" for w
     by (induct w rule: xa_induct, simp_all add: map_alpha_apply)
 qed
 

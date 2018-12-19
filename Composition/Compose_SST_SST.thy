@@ -113,42 +113,43 @@ fun list_valuation :: "('x \<Rightarrow> 'a list) \<Rightarrow> ('x + 'a) list \
   "list_valuation \<mu> (Inl x # w) = \<mu> x @ list_valuation \<mu> w" |
   "list_valuation \<mu> (Inr a # w) = a # list_valuation \<mu> w"
 
+fun update_valuation :: "('x \<Rightarrow> ('y, 'b) update) \<Rightarrow> ('x + ('y, 'b) update) list \<Rightarrow> ('y, 'b) update" where
+  "update_valuation \<mu> [] = idU" |
+  "update_valuation \<mu> (Inl x # w) = \<mu> x \<bullet> update_valuation \<mu> w" |
+  "update_valuation \<mu> (Inr m # w) = m \<bullet> update_valuation \<mu> w"
 
-lemma valuation_delta_hat_string:
-  assumes "\<forall>q x. delta_hat sst (q, \<mu> x) = f (q, x)"
-  shows "delta_hat sst (q, list_valuation \<mu> u) = hat1 (delta2f f (delta sst)) (q, u)"
-  using assms by (induct u arbitrary: q rule: xa_induct, simp_all) 
+lemma valuate_list_valuation: "valuate u = list_valuation (\<lambda>x. []) u"
+  by (induct u rule: xa_induct, simp_all)
+
+lemma valuate_concatU_update_valuation: "concatU (valuate u) = update_valuation (\<lambda>x. idU) u"
+  by (induct u rule: xa_induct, simp_all)
+
 
 lemma valuation_delta_hat:
-  assumes "\<forall>q x. hat1 (delta sst) (q, \<mu> x) = f (q, x)"
-  shows "delta_hat sst (q, list_valuation \<mu> (\<theta> x)) = \<Delta> (delta sst) (f, \<theta>) (q, x)"
-  by (simp add: \<Delta>_def valuation_delta_hat_string[OF assms])
+  assumes "\<forall>q x. hat1 t (q, \<mu> x) = f (q, x)"
+  shows "hat1 t (q, list_valuation \<mu> (\<theta> x)) = \<Delta> t (f, \<theta>) (q, x)"
+proof (simp add: \<Delta>_def)
+  show "hat1 t (q, list_valuation \<mu> u) = hat1 (delta2f f t) (q, u)" for u
+    using assms by (induct u arbitrary: q rule: xa_induct, simp_all) 
+qed
 
-lemma valuate_delta_hat_string: "hat1 (delta2f (\<lambda>(q, x). q) tr) (q, w) = hat1 tr (q, valuate w)"
-  by (induct w arbitrary: q rule: xa_induct, simp_all add: empty_def)
-
-lemma valuate_delta_hat: "hat1 tr (q, valuate (u x)) = \<Delta> tr (\<lambda>(q, x). q, u) (q, x)"
-  by (simp add: comp_def \<Delta>_def valuate_delta_hat_string)
-
-
-fun valuation_eta_hat ::  "('q, 'y, 'b, 'c, 'e) SST_scheme \<Rightarrow> ('x \<Rightarrow> 'b list) \<Rightarrow> 'q \<times> 'x \<Rightarrow> ('y, 'c) update list" where
-  "valuation_eta_hat sst \<mu> (q, x) = [SST.eta_hat sst (q, \<mu> x)]"
-
-lemma valuation_eta_hat_string:
-  assumes "\<forall>q x. delta_hat sst (q, \<mu> x) = f (q, x)"
-  shows "SST.eta_hat sst (q, list_valuation \<mu> u)
-       = concatU (list_valuation (valuation_eta_hat sst \<mu>)
-                                 (Transducer.hat2 (delta2f f (delta sst)) (eta2f (SST.eta sst)) (q, u)))"
- by (induct u arbitrary: q rule: xa_induct, simp_all add: eta_append assms)
+lemma valuate_delta_hat: "hat1 tr (q, valuate (\<theta> x)) = \<Delta> tr (\<lambda>(q, x). q, \<theta>) (q, x)"
+  by (simp add: valuate_list_valuation valuation_delta_hat)
 
 
-lemma valuate_eta_hat_string:
-  "concatU (valuate (Transducer.hat2 (delta2f (\<lambda>(q2, x). q2) tr) (eta2f td) (q, w)))
- = SST.hat2 tr td (q, valuate w)"
-  by (induct w arbitrary: q rule: xa_induct, simp_all)
+lemma valuation_eta_hat:
+  assumes "\<forall>q x. hat1 tr (q, \<mu> x) = f (q, x)"
+  assumes "\<forall>q x. hat2 tr to (q, \<mu> x) = g (q, x)"
+  shows "hat2 tr to (q, list_valuation \<mu> (\<theta> x))
+       = update_valuation g (H tr to (f, \<theta>) (q, x))"
+proof (simp add: H_def)
+  show "hat2 tr to (q, list_valuation \<mu> u)
+       = update_valuation g (Transducer.hat2 (delta2f f tr) (eta2f to) (q, u))" for u
+    by (induct u arbitrary: q rule: xa_induct, simp_all add: eta_append assms)
+qed
 
 lemma valuate_eta_hat: "SST.hat2 tr td (q, valuate (u x)) = concatU (valuate (H tr td (\<lambda>(q, x). q, u) (q, x)))"
-  by (simp add: H_def valuate_eta_hat_string)
+  by (simp add: valuate_list_valuation[of "u x"] valuation_eta_hat valuate_concatU_update_valuation)
 
 lemma reachable_then_exist_valuation:
   fixes sst1 :: "('q1, 'x1, 'a, 'b) SST"
@@ -208,8 +209,8 @@ next
   next
     case Some_2: (Some output_final2) then show ?thesis
       by (simp add: SST.run_def Monoid_SST.run_def compose_SST_SST_def
-               compose_final_update_def compose_final_string_def
-               Transducer.run_def compose_\<delta>_hat compose_\<eta>_hat Some_2
+               compose_final_update_def compose_final_string_def Transducer.run_def 
+               compose_\<delta>_hat compose_\<eta>_hat Some_2
                        \<Delta>_assoc valuate_delta_hat
                        compU_ignore
                        valuate_eta_hat

@@ -114,6 +114,19 @@ definition convert_MSST :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum
     final       = convert_final B msst
   \<rparr>"
 
+lemma initial_convert_MSST_simp: "initial (convert_MSST B msst) = (initial msst, Abs_alpha B \<alpha>0)"
+  unfolding convert_MSST_def by simp
+
+lemma delta_convert_MSST_simp: "delta (convert_MSST B msst) = convert_\<delta> B msst"
+  unfolding convert_MSST_def by simp
+
+lemma eta_convert_MSST_simp: "eta (convert_MSST B msst) = convert_\<eta> B msst"
+  unfolding convert_MSST_def by simp
+
+lemma final_convert_MSST_simp: "final (convert_MSST B msst) = convert_final B msst"
+  unfolding convert_MSST_def by simp
+
+
 
 lemma convert_\<delta>_state:
   assumes "(q', \<beta>') = delta_hat (convert_MSST B msst) ((q, \<beta>), w)"

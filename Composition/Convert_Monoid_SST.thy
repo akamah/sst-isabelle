@@ -67,11 +67,11 @@ lemma convert_\<delta>_hat:
        = (delta_hat msst (q, w), \<Delta>' B (\<beta>, eta_hat msst (q, w)))"
 using assm_reachable proof (induct w arbitrary: q rule: rev_induct)
   case Nil
-  then show ?case by (simp add: convert_\<delta>_def \<Delta>'_id)
+  then show ?case by (simp add: convert_\<delta>_simp \<Delta>'_id)
 next
   case (snoc a w)
   then show ?case 
-    by (simp add: eta_append convert_\<delta>_def \<Delta>'_assoc[OF assms(1-3) snoc.prems])
+    by (simp add: eta_append convert_\<delta>_simp \<Delta>'_assoc[OF assms(1-3) snoc.prems])
 qed
 
 
@@ -79,12 +79,9 @@ lemma hat_hom_valuate:
   fixes t :: "('y, 'z, 'b) update'"
   fixes \<theta> :: "('w, 'x, 'y + 'b) update'"
   shows "hat_hom t (valuate (\<theta> x)) = valuate ((update2hom t \<star> \<theta>) x)"
-proof -
-  { fix u :: "('x + 'y + 'b) list"
-    have "hat_hom t (valuate u) = valuate (hat_alpha (update2hom t) u)"
-      by (induct u rule: xa_induct, simp_all add: hat_hom_def)
-  }
-  then show ?thesis by (simp add: map_alpha_def)
+proof (simp add: map_alpha_apply)
+  show "hat_hom t (valuate u) = valuate (hat_alpha (update2hom t) u)" for u :: "('x + 'y + 'b) list"
+    by (induct u rule: xa_induct, simp_all add: hat_hom_def)
 qed
 
 
@@ -110,10 +107,6 @@ next
     then show ?thesis by (simp add: map_alpha_def Alpha)
   qed
 qed
-
-lemma valuate_hat_hom_emptyU: "valuate (hat_hom emptyU w) = valuate w"
-  by (induct w rule: xa_induct, simp_all add: emptyU_def)
-
 
 lemma update2hom_hat_alpha: "hat_alpha (update2hom t) (hat_alpha inr_list w) = hat_alpha inr_list w"
   by (induct w rule: xa_induct, simp_all)
@@ -226,48 +219,6 @@ lemma iota_alpha0_remove:
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
 
-lemma scan_valuate: "fst (scan (hat_alpha retain_right u)) = valuate (fst (scan u))"
-proof (induct u rule: xw_induct)
-  case (Word w)                      
-  then show ?case by (simp add:  valuate_retain_right)
-next
-  case (VarWord x w u)
-  then show ?case by (simp add: )
-qed
-
-
-lemma list_all_isl_valuate:
-  assumes "list_all isl bs"
-  shows "valuate bs = []"
-  using assms by (induct bs rule: xa_induct, simp_all)
-
-
-lemma valuate_H'_Nil_var: "valuate (H' B (\<alpha>, idU) (x, y, k)) = []"
-proof (simp add: H'_def idU_def \<iota>_def)
-  let ?beta = "Rep_bc_shuffle (\<alpha> x)"
-  let ?m = "synthesize B (Rep_bc_shuffle (\<alpha> x), embed x)"
-  have "\<forall>y k. list_all isl (embed x (y, k))"
-    by simp
-  then have "\<forall>y. list_all isl (valuate (?m y))"
-    by (rule synthesize_preserve_prop_on_string)
-  then have "list_all isl (resolve_store B ?m (y, k))"
-    using resolve_store_preserve_prop_on_string by blast
-  then show "valuate (resolve_store B ?m (y, k)) = []"
-    by (rule list_all_isl_valuate)
-qed
-
-lemma valuate_H'_Nil: "valuate (hat_hom (H' B (\<alpha>, idU)) u) = valuate u"
-proof (induct u rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case by (cases x, simp add: valuate_H'_Nil_var)
-next
-  case (Alpha a xs)
-  then show ?case by simp
-qed
-
 (* SST.eta_hat msst (q, w) *)
 lemma map_alpha_H'_iota_\<Delta>:
   fixes x :: "'x"
@@ -333,7 +284,7 @@ lemma convert_\<eta>_hat_gt_0:
   assumes "bounded_copy_type k msst \<gamma>"
   assumes reach: "reachable (convert_MSST B msst) (q, \<beta>)"
   assumes len: "0 < length w"
-  shows   "SST.eta_hat (convert_MSST B msst) ((q, \<beta>), w)
+  shows   "SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<beta>), w)
          = H' B (\<beta>, eta_hat msst (q, w))"
 using reach len proof (induct w arbitrary: q \<beta>)
   case Nil
@@ -341,18 +292,18 @@ using reach len proof (induct w arbitrary: q \<beta>)
 next
   case (Cons a w)
   then show ?case proof (cases "length w")
-    case 0 then show ?thesis by (simp add: convert_MSST_def convert_\<eta>_def)
+    case 0 then show ?thesis by (simp add: eta_convert_MSST_simp convert_\<eta>_simp)
   next
     case (Suc nat) then show ?thesis proof -
-      let ?qb' = "delta (convert_MSST B msst) ((q, \<beta>), a)"
+      let ?qb' = "convert_\<delta> B msst ((q, \<beta>), a)"
       have l: "0 < length w" by (simp add: Suc)
       have r: "reachable (convert_MSST B msst) (fst ?qb', snd ?qb')"
-        by (simp, rule reachable_delta, rule Cons.prems(1))
+        by (simp add: reachable_delta[OF Cons.prems(1)] delta_convert_MSST_simp[symmetric])
       have hat: "SST.eta msst (q, a) = SST.eta_hat msst (q, [a])" by (simp add:)
       show ?thesis
         apply (simp add: Cons.hyps[OF r l, simplified])
-        apply (simp add: convert_MSST_def convert_\<eta>_simp convert_\<delta>_simp)
-        apply (subst hat)+
+        apply (simp add: delta_convert_MSST_simp eta_convert_MSST_simp convert_\<eta>_simp convert_\<delta>_simp)
+        apply (simp only: hat)
         apply (rule H'_assoc[symmetric, OF assms(1-3) Cons.prems(1)])
         done
     qed
@@ -360,12 +311,45 @@ next
 qed
 
 
+lemma list_all_isl_valuate:
+  assumes "list_all isl bs"
+  shows "valuate bs = []"
+  using assms by (induct bs rule: xa_induct, simp_all)
+
+lemma valuate_H'_Nil_var: "valuate (H' B (\<alpha>, idU) (x, y, k)) = []"
+proof (simp add: H'_def idU_def \<iota>_def)
+  let ?beta = "Rep_bc_shuffle (\<alpha> x)"
+  let ?m = "synthesize B (Rep_bc_shuffle (\<alpha> x), embed x)"
+  have "\<forall>y k. list_all isl (embed x (y, k))"
+    by simp
+  then have "\<forall>y. list_all isl (valuate (?m y))"
+    by (rule synthesize_preserve_prop_on_string)
+  then have "list_all isl (resolve_store B ?m (y, k))"
+    using resolve_store_preserve_prop_on_string by blast
+  then show "valuate (resolve_store B ?m (y, k)) = []"
+    by (rule list_all_isl_valuate)
+qed
+
+lemma valuate_H'_Nil: "valuate (hat_hom (H' B (\<alpha>, idU)) u) = valuate u"
+proof (induct u rule: xa_induct)
+  case Nil
+  then show ?case by simp
+next
+  case (Var x xs)
+  then show ?case by (cases x, simp add: valuate_H'_Nil_var)
+next
+  case (Alpha a xs)
+  then show ?case by simp
+qed
+
+
+(* important, but dirty *)
 lemma convert_\<eta>_hat_valuate:
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"
   assumes "bounded_copy_type k msst \<gamma>"
   assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
-  shows   "valuate (hat_hom (SST.eta_hat (convert_MSST B msst) ((q, \<alpha>), w)) u)
+  shows   "valuate (hat_hom (SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<alpha>), w)) u)
          = valuate (hat_hom (H' B (\<alpha>, eta_hat msst (q, w))) u)"
 proof (cases "length w")
   case 0
@@ -378,8 +362,31 @@ next
   qed
 qed
 
+
+(*
+lemma convert_\<eta>_hat_valuate:
+  assumes "boundedness B k"
+  assumes "is_type msst \<gamma>"
+  assumes "bounded_copy_type k msst \<gamma>"
+  assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
+  shows   "valuate (SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<alpha>), w) \<bullet> \<phi>)
+         = valuate (H' B (\<alpha>, eta_hat msst (q, w)) \<bullet> \<phi>)"
+proof (cases "length w")
+  case 0
+  then show ?thesis by (simp add: valuate_H'_Nil)
+next
+  case (Suc nat)
+  then show ?thesis proof -
+    have l: "0 < length w" using Suc by simp
+    show ?thesis by (simp add: convert_\<eta>_hat_gt_0[OF assms l])
+  qed
+qed
+*)
+
+
+
 lemma reach0: "reachable (convert_MSST B msst) (initial msst, Abs_alpha B \<alpha>0)"
-  unfolding reachable_def convert_MSST_def by (rule exI[where x="[]"], simp)
+  by (simp add: reachable_initial initial_convert_MSST_simp[symmetric])
 
 theorem MSST_can_convert:
   assumes assm_k_bounded: "boundedness B k"
@@ -398,14 +405,16 @@ next
       by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] Some1)
   next
     case Some2: (Some u)
-    show ?thesis using Some2
-      apply (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] Some1)
-      using convert_\<eta>_hat_valuate[OF assms reach0]
-      apply (simp add: convert_MSST_def compU_apply)
+    then show ?thesis
+      apply (simp add: SST.run_def Monoid_SST.run_def Some1 initial_convert_MSST_simp final_convert_MSST_simp)
+      apply (simp add: convert_final_def convert_\<delta>_hat[OF assms reach0] Some1
+                 initial_convert_MSST_simp delta_convert_MSST_simp eta_convert_MSST_simp convert_\<eta>_hat_valuate[OF assms reach0] compU_apply)
       apply (simp add: hat_hom_valuate_hat_hom hat_homU_map_alpha
                        update2hom_hat_alpha map_alpha_H'_iota_\<Delta>[OF assms reach0] hat_homU_lem iota_alpha0_remove)
       done
   qed
 qed
+
+hide_fact reach0
 
 end

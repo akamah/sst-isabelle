@@ -84,34 +84,14 @@ proof (simp add: map_alpha_apply)
     by (induct u rule: xa_induct, simp_all add: hat_hom_def)
 qed
 
-
-(* TODO: this lemma is a combination of hat_hom_valuate
- * and distribute law of star operator 
- *)
-lemma hat_hom_valuate_hat_hom:
-  fixes t :: "('z, 'z, 'b) update'"
-  fixes \<phi> :: "('w, 'x, 'z + 'b) update'"
-  shows "hat_hom t (valuate (hat_hom \<phi> u)) = valuate (hat_hom (update2hom t \<star> \<phi>) (hat_alpha (update2hom t) u))"
-proof (induct u rule: xa_induct)
-case Nil
-  then show ?case by (simp add: map_alpha_def)
-  case (Var x xs)
-  then show ?case by (simp add: hat_hom_valuate map_alpha_def)
-next
-  case (Alpha a xs)
-  then show ?case proof (cases a)
-    case (Inl z)
-    then show ?thesis by (simp add: map_alpha_def Alpha)
-  next
-    case (Inr b)
-    then show ?thesis by (simp add: map_alpha_def Alpha)
-  qed
-qed
-
+lemma hat_hom_valuate': "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
+  by (rule ext, simp add: compU_apply hat_hom_valuate)
+  
+  
 lemma update2hom_hat_alpha: "hat_alpha (update2hom t) (hat_alpha inr_list w) = hat_alpha inr_list w"
   by (induct w rule: xa_induct, simp_all)
 
-lemma update2hom_inr_list: "update2hom t \<star> (inr_list \<star> m) = inr_list \<star> m"
+lemma update2hom_map_alpha: "update2hom t \<star> inr_list \<star> \<phi> = inr_list \<star> \<phi>"
   by (auto simp add: map_alpha_def update2hom_hat_alpha)
 
 
@@ -127,7 +107,7 @@ next
     then show ?thesis by (simp add: map_alpha_distrib Cons)
   next
     case (Inr b)
-    then show ?thesis by (simp add: map_alpha_distrib Cons update2hom_inr_list)
+    then show ?thesis by (simp add: map_alpha_distrib Cons update2hom_map_alpha)
   qed
 qed  
 
@@ -191,6 +171,9 @@ qed
 lemma hat_homU_lem: "hat_homU (hat_homU \<phi> o \<theta>) m = hat_homU \<phi> (hat_hom \<theta> m)"
   by (induct m rule: xa_induct, simp_all add: hat_homU_append)
 
+lemma hat_homU_lem': "hat_homU (hat_homU \<phi> o \<theta>) o \<psi> = hat_homU \<phi> o (\<theta> \<bullet> \<psi>)"
+  by (rule ext, simp add: compU_apply hat_homU_lem)
+
 lemma iota_alpha0_remove_aux:
   "valuate (valuate (hat_homU (\<iota> B \<alpha>0) m x')) 
  = valuate (concatU (valuate m) x')"
@@ -218,6 +201,10 @@ lemma iota_alpha0_remove:
  = valuate (hat_hom (concatU (valuate m)) u)"
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
+lemma iota_alpha0_remove':
+  "valuate o (valuate o (hat_homU (\<iota> B \<alpha>0) m \<bullet> inr_list \<star> \<phi>))
+ = valuate o (concatU (valuate m) \<bullet> \<phi>)"
+  by (rule ext, simp add: hat_homU_lem compU_apply map_alpha_apply iota_alpha0_remove)
 
 (* SST.eta_hat msst (q, w) *)
 lemma map_alpha_H'_iota_\<Delta>:
@@ -342,47 +329,23 @@ next
   then show ?case by simp
 qed
 
-
-(* important, but dirty *)
 lemma convert_\<eta>_hat_valuate:
   assumes "boundedness B k"
   assumes "is_type msst \<gamma>"
   assumes "bounded_copy_type k msst \<gamma>"
   assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
-  shows   "valuate (hat_hom (SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<alpha>), w)) u)
-         = valuate (hat_hom (H' B (\<alpha>, eta_hat msst (q, w))) u)"
-proof (cases "length w")
-  case 0
-  then show ?thesis by (simp add: valuate_H'_Nil)
+  shows   "valuate o (SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<alpha>), w) \<bullet> \<phi>)
+         = valuate o (H' B (\<alpha>, eta_hat msst (q, w)) \<bullet> \<phi>)"
+proof (cases "w")
+  case Nil
+  show ?thesis by (rule ext, simp add: Nil valuate_H'_Nil compU_apply)
 next
-  case (Suc nat)
+  case (Cons _ _)
   then show ?thesis proof -
-    have l: "0 < length w" using Suc by simp
+    have l: "0 < length w" using Cons by simp
     show ?thesis by (simp add: convert_\<eta>_hat_gt_0[OF assms l])
   qed
 qed
-
-
-(*
-lemma convert_\<eta>_hat_valuate:
-  assumes "boundedness B k"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
-  assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
-  shows   "valuate (SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<alpha>), w) \<bullet> \<phi>)
-         = valuate (H' B (\<alpha>, eta_hat msst (q, w)) \<bullet> \<phi>)"
-proof (cases "length w")
-  case 0
-  then show ?thesis by (simp add: valuate_H'_Nil)
-next
-  case (Suc nat)
-  then show ?thesis proof -
-    have l: "0 < length w" using Suc by simp
-    show ?thesis by (simp add: convert_\<eta>_hat_gt_0[OF assms l])
-  qed
-qed
-*)
-
 
 
 lemma reach0: "reachable (convert_MSST B msst) (initial msst, Abs_alpha B \<alpha>0)"
@@ -405,12 +368,18 @@ next
       by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] Some1)
   next
     case Some2: (Some u)
-    then show ?thesis
-      apply (simp add: SST.run_def Monoid_SST.run_def Some1 initial_convert_MSST_simp final_convert_MSST_simp)
-      apply (simp add: convert_final_def convert_\<delta>_hat[OF assms reach0] Some1
-                 initial_convert_MSST_simp delta_convert_MSST_simp eta_convert_MSST_simp convert_\<eta>_hat_valuate[OF assms reach0] compU_apply)
-      apply (simp add: hat_hom_valuate_hat_hom hat_homU_map_alpha
-                       update2hom_hat_alpha map_alpha_H'_iota_\<Delta>[OF assms reach0] hat_homU_lem iota_alpha0_remove)
+    show ?thesis
+      apply (simp add: SST.run_def Monoid_SST.run_def initial_convert_MSST_simp final_convert_MSST_simp)
+      apply (simp add: convert_final_def convert_\<delta>_hat[OF assms reach0] Some1 Some2
+                 initial_convert_MSST_simp delta_convert_MSST_simp eta_convert_MSST_simp convert_\<eta>_hat_valuate[OF assms reach0] del: comp_apply)
+      apply (simp add: hat_hom_valuate' del: comp_apply)
+      apply (simp add: map_alpha_distrib del: comp_apply)
+      apply (simp add: hat_homU_map_alpha del: comp_apply)
+      apply (simp add: update2hom_map_alpha del: comp_apply)
+      apply (simp add: map_alpha_H'_iota_\<Delta>[OF assms reach0] del: comp_apply)
+      apply (simp add: hat_homU_lem del: comp_apply)
+      apply (simp add: iota_alpha0_remove')
+      apply (simp add: compU_apply)
       done
   qed
 qed

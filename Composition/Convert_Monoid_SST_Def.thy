@@ -95,7 +95,7 @@ definition convert_final :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enu
   "convert_final B msst = (\<lambda>(q, \<beta>).
      (case final_update msst q of
         Some u \<Rightarrow> (case final_string msst q of
-          Some v \<Rightarrow> Some (valuate (hat_hom (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u) (hat_alpha inr_list v))) |
+          Some v \<Rightarrow> Some ((valuate o ((hat_homU (\<iota> B (Rep_alpha B \<beta>)) u \<bullet> inr_list \<star> (\<lambda>x. v)))) ()) |
           None \<Rightarrow> None) |
         None \<Rightarrow> None))"
 

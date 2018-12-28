@@ -341,10 +341,8 @@ proof (cases "w")
   show ?thesis by (rule ext, simp add: Nil valuate_H'_Nil compU_apply)
 next
   case (Cons _ _)
-  then show ?thesis proof -
-    have l: "0 < length w" using Cons by simp
-    show ?thesis by (simp add: convert_\<eta>_hat_gt_0[OF assms l])
-  qed
+  then have l: "0 < length w" by simp
+  then show ?thesis by (simp add: convert_\<eta>_hat_gt_0[OF assms])
 qed
 
 

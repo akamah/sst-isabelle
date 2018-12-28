@@ -154,7 +154,7 @@ proof -
     unfolding reachable_def by auto
 qed
 
-lemma [simp]:
+lemma Abs_alpha_inverse_\<alpha>0[simp]:
   fixes B :: "'k::enum boundedness"
   shows "Rep_alpha B (Abs_alpha B \<alpha>0 :: 'x \<Rightarrow> ('k, 'y::enum) bc_shuffle) = \<alpha>0"
 proof (rule Abs_alpha_inverse)

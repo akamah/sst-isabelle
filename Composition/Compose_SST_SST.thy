@@ -148,8 +148,8 @@ proof (simp add: H_def)
     by (induct u arbitrary: q rule: xa_induct, simp_all add: eta_append assms)
 qed
 
-lemma valuate_eta_hat: "SST.hat2 tr td (q, valuate (u x)) = concatU (valuate (H tr td (\<lambda>(q, x). q, u) (q, x)))"
-  by (simp add: valuate_list_valuation[of "u x"] valuation_eta_hat valuate_concatU_update_valuation)
+lemma valuate_eta_hat: "SST.hat2 tr td (q, valuate (\<theta> x)) = concatU (valuate (H tr td (\<lambda>(q, x). q, \<theta>) (q, x)))"
+  by (simp add: valuate_list_valuation[of "\<theta> x"] valuation_eta_hat valuate_concatU_update_valuation)
 
 lemma reachable_then_exist_valuation:
   fixes sst1 :: "('q1, 'x1, 'a, 'b) SST"

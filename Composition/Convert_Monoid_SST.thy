@@ -79,12 +79,13 @@ lemma hat_hom_valuate:
   fixes t :: "('y, 'z, 'b) update'"
   fixes \<theta> :: "('w, 'x, 'y + 'b) update'"
   shows "hat_hom t (valuate (\<theta> x)) = valuate ((update2hom t \<star> \<theta>) x)"
+
 proof (simp add: map_alpha_apply)
   show "hat_hom t (valuate u) = valuate (hat_alpha (update2hom t) u)" for u :: "('x + 'y + 'b) list"
     by (induct u rule: xa_induct, simp_all add: hat_hom_def)
 qed
 
-lemma hat_hom_valuate': "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
+lemma compU_valuate: "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
   by (rule ext, simp add: compU_apply hat_hom_valuate)
   
   
@@ -111,13 +112,6 @@ next
   qed
 qed  
 
-
-
-lemma H'_embed: "H' B (\<beta>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))"
-  by (auto simp add: compU_apply H'_def)
-
-lemma H'_const_Nil: "H' B (\<alpha>, \<theta>) \<bullet> empty_store = empty_store"
-  by (auto simp add: compU_apply)
 
 
 lemma valuate_retain_right: "valuate = concat o map retain_right"
@@ -169,10 +163,8 @@ qed
 
 
 lemma hat_homU_lem: "hat_homU (hat_homU \<phi> o \<theta>) m = hat_homU \<phi> (hat_hom \<theta> m)"
+  using[[show_types]]
   by (induct m rule: xa_induct, simp_all add: hat_homU_append)
-
-lemma hat_homU_lem': "hat_homU (hat_homU \<phi> o \<theta>) o \<psi> = hat_homU \<phi> o (\<theta> \<bullet> \<psi>)"
-  by (rule ext, simp add: compU_apply hat_homU_lem)
 
 lemma iota_alpha0_remove_aux:
   "valuate (valuate (hat_homU (\<iota> B \<alpha>0) m x')) 
@@ -183,6 +175,8 @@ proof (induct m rule: xa_induct)
 next
   case (Var x xs)
   then show ?case 
+    apply simp
+
     apply (simp add: concatU_append hat_homU_append valuate_update_map_alpha map_alpha_distrib)
     apply (simp add: retain_right_iota_alpha0)
     done
@@ -201,10 +195,8 @@ lemma iota_alpha0_remove:
  = valuate (hat_hom (concatU (valuate m)) u)"
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
-lemma iota_alpha0_remove':
-  "valuate o (valuate o (hat_homU (\<iota> B \<alpha>0) m \<bullet> inr_list \<star> \<phi>))
- = valuate o (concatU (valuate m) \<bullet> \<phi>)"
-  by (rule ext, simp add: hat_homU_lem compU_apply map_alpha_apply iota_alpha0_remove)
+lemma H'_embed: "H' B (\<beta>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))"
+  by (auto simp add: compU_apply H'_def)
 
 (* SST.eta_hat msst (q, w) *)
 lemma map_alpha_H'_iota_\<Delta>:
@@ -245,7 +237,7 @@ lemma H'_assoc_string:
   shows "resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)) (y, e)
        = (H' B (\<beta>, SST.eta_hat msst (q, w)) 
          \<bullet> resolve_store B (hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u)) (y, e)"
-  apply (simp add: hat_homU_iota[OF assms] map_alpha_resolve_store H'_const_Nil)
+  apply (simp add: hat_homU_iota[OF assms] map_alpha_resolve_store)
   done
 
 lemma H'_assoc:
@@ -370,14 +362,13 @@ next
       apply (simp add: SST.run_def Monoid_SST.run_def initial_convert_MSST_simp final_convert_MSST_simp)
       apply (simp add: convert_final_def convert_\<delta>_hat[OF assms reach0] Some1 Some2
                  initial_convert_MSST_simp delta_convert_MSST_simp eta_convert_MSST_simp convert_\<eta>_hat_valuate[OF assms reach0] del: comp_apply)
-      apply (simp add: hat_hom_valuate' del: comp_apply)
+      apply (simp add: compU_valuate del: comp_apply)
       apply (simp add: map_alpha_distrib del: comp_apply)
       apply (simp add: hat_homU_map_alpha del: comp_apply)
       apply (simp add: update2hom_map_alpha del: comp_apply)
       apply (simp add: map_alpha_H'_iota_\<Delta>[OF assms reach0] del: comp_apply)
-      apply (simp add: hat_homU_lem del: comp_apply)
-      apply (simp add: iota_alpha0_remove')
-      apply (simp add: compU_apply)
+      apply (simp add: hat_homU_lem)
+      apply (simp add: iota_alpha0_remove compU_apply map_alpha_apply)
       done
   qed
 qed

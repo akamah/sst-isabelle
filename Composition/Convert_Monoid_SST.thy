@@ -16,26 +16,6 @@ lemma \<Delta>'_id: "\<Delta>' B (\<alpha>, idU) = \<alpha>"
   by (rule ext, simp add: \<Delta>'_def idU_def resolve_shuffle_def \<iota>_def synthesize_inverse_shuffle Rep_bc_shuffle_inverse)
  
 
-lemma \<Delta>'_assoc_string:
-  fixes B :: "'k::enum boundedness"
-  fixes \<alpha> :: "'x \<Rightarrow> ('k, 'y::enum) bc_shuffle"
-  fixes \<theta> :: "('x, ('y, 'b) update) update"
-  fixes u :: "('x + ('y, 'b) update) list"
-  fixes y :: "'y"
-  shows "resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<alpha>)) (hat_hom \<theta> u))
-       = resolve_shuffle (hat_homU (\<iota> B (\<lambda>y. resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<alpha>)) (\<theta> y)))) u)"
-proof (induct u rule: xa_induct)
-  case Nil
-  then show ?case by (simp add: resolve_shuffle_def idU_def)
-next
-  case (Var x xs)
-  then show ?case
-    by (simp add: resolve_shuffle_distrib hat_homU_append \<iota>_def synthesize_inverse_shuffle)
-next
-  case (Alpha a xs)
-  then show ?case by (simp add: resolve_shuffle_distrib)
-qed
-
 lemma \<Delta>'_assoc:
   fixes B :: "'k::enum boundedness"
   fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
@@ -45,7 +25,22 @@ lemma \<Delta>'_assoc:
   assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
   shows  "\<Delta>' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) = \<Delta>' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)"
 proof -
-  let ?inner = "(\<lambda>x. resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x)))"
+  let ?alpha = "Rep_alpha B \<beta>"
+  let ?theta = "SST.eta_hat msst (q, w)"
+  let ?inner = "(\<lambda>x. resolve_shuffle (hat_homU (\<iota> B ?alpha) (?theta x)))"
+  have \<Delta>'_assoc_string: "resolve_shuffle (hat_homU (\<iota> B ?alpha) (hat_hom ?theta u))
+       = resolve_shuffle (hat_homU (\<iota> B (\<lambda>y. resolve_shuffle (hat_homU (\<iota> B ?alpha) (?theta y)))) u)" for u
+  proof (induct u rule: xa_induct)
+    case Nil
+    then show ?case by (simp add: resolve_shuffle_def idU_def)
+  next
+    case (Var x xs)
+    then show ?case
+      by (simp add: resolve_shuffle_distrib hat_homU_append \<iota>_def synthesize_inverse_shuffle)
+  next
+    case (Alpha a xs)
+    then show ?case by (simp add: resolve_shuffle_distrib)
+  qed
   have *: "\<forall>x. bounded_shuffle k (?inner x)"
     apply (rule allI)
     apply (rule resolve_bounded)
@@ -74,27 +69,24 @@ next
     by (simp add: eta_append convert_\<delta>_simp \<Delta>'_assoc[OF assms(1-3) snoc.prems])
 qed
 
-
-lemma hat_hom_valuate:
+lemma compU_valuate:
   fixes t :: "('y, 'z, 'b) update'"
   fixes \<theta> :: "('w, 'x, 'y + 'b) update'"
-  shows "hat_hom t (valuate (\<theta> x)) = valuate ((update2hom t \<star> \<theta>) x)"
-
-proof (simp add: map_alpha_apply)
+  shows "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
+proof (rule ext, simp add: compU_apply map_alpha_apply)
   show "hat_hom t (valuate u) = valuate (hat_alpha (update2hom t) u)" for u :: "('x + 'y + 'b) list"
     by (induct u rule: xa_induct, simp_all add: hat_hom_def)
 qed
 
-lemma compU_valuate: "t \<bullet> (valuate o \<theta>) = valuate o (update2hom t \<star> \<theta>)"
-  by (rule ext, simp add: compU_apply hat_hom_valuate)
-  
-  
-lemma update2hom_hat_alpha: "hat_alpha (update2hom t) (hat_alpha inr_list w) = hat_alpha inr_list w"
-  by (induct w rule: xa_induct, simp_all)
 
-lemma update2hom_map_alpha: "update2hom t \<star> inr_list \<star> \<phi> = inr_list \<star> \<phi>"
-  by (auto simp add: map_alpha_def update2hom_hat_alpha)
-
+lemma update2hom_map_alpha:
+  fixes t :: "('y, 'z, 'b) update'"
+  fixes \<theta> :: "('w, 'x, 'b) update'"
+  shows "update2hom t \<star> inr_list \<star> \<theta> = inr_list \<star> \<theta>"
+proof (rule ext, simp add: map_alpha_def)
+  show "hat_alpha (update2hom t) (hat_alpha inr_list w) = hat_alpha inr_list w" for w :: "('x + 'b) list"
+    by (induct w rule: xa_induct, simp_all)
+qed
 
 lemma hat_homU_map_alpha:
   "update2hom t \<star> hat_homU \<phi> m = hat_homU (map_alpha (update2hom t) o \<phi>) m"
@@ -112,6 +104,9 @@ next
   qed
 qed  
 
+
+lemma hat_homU_lem: "hat_homU (hat_homU \<phi> o \<theta>) m = hat_homU \<phi> (hat_hom \<theta> m)"
+  by (induct m rule: xa_induct, simp_all add: hat_homU_append)
 
 
 lemma valuate_retain_right: "valuate = concat o map retain_right"
@@ -162,9 +157,7 @@ next
 qed
 
 
-lemma hat_homU_lem: "hat_homU (hat_homU \<phi> o \<theta>) m = hat_homU \<phi> (hat_hom \<theta> m)"
-  using[[show_types]]
-  by (induct m rule: xa_induct, simp_all add: hat_homU_append)
+
 
 lemma iota_alpha0_remove_aux:
   "valuate (valuate (hat_homU (\<iota> B \<alpha>0) m x')) 
@@ -226,19 +219,8 @@ lemma hat_homU_iota:
   assumes "reachable (convert_MSST B msst) (q, \<beta>)"
   shows "hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)
        = update2hom (H' B (\<beta>, SST.eta_hat msst (q, w))) \<star> hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u"
-  apply (simp add: hat_homU_map_alpha hat_homU_lem map_alpha_H'_iota_\<Delta>[OF assms])
-  done
+  by (simp add: hat_homU_map_alpha hat_homU_lem map_alpha_H'_iota_\<Delta>[OF assms])
 
-lemma H'_assoc_string:
-  assumes "boundedness B k"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
-  assumes "reachable (convert_MSST B msst) (q, \<beta>)"
-  shows "resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)) (y, e)
-       = (H' B (\<beta>, SST.eta_hat msst (q, w)) 
-         \<bullet> resolve_store B (hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u)) (y, e)"
-  apply (simp add: hat_homU_iota[OF assms] map_alpha_resolve_store)
-  done
 
 lemma H'_assoc:
   fixes \<beta> :: "'x \<Rightarrow> ('k::enum, 'y::enum) bc_shuffle"
@@ -249,9 +231,13 @@ lemma H'_assoc:
   shows "H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>)
        = H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)"
 proof -
-  have "\<And>x y e. H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) (x, y, e) 
-              = (H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)) (x, y, e)"
-    by (simp add: compU_apply H'_assoc_string[OF assms] H'_simp2)
+  have "resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)) (y, e)
+       = (H' B (\<beta>, SST.eta_hat msst (q, w)) 
+         \<bullet> resolve_store B (hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u)) (y, e)" for u y e
+    by (simp add: hat_homU_iota[OF assms] map_alpha_resolve_store)
+  then have "H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) (x, y, e) 
+           = (H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)) (x, y, e)" for x y e
+    by (simp add: compU_apply H'_simp2)
   then show ?thesis by auto
 qed
 

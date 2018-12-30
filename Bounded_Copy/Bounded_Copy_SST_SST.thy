@@ -5,9 +5,13 @@ begin
 
 
 lemma count_list_H:
-  "count_list (extract_variables (Transducer.hat2 (delta2f f tr) (eta2f to) (q, u))) (q0, x0)
- \<le> count_list (extract_variables u) x0"
-  by (induct u arbitrary: q rule: xa_induct, simp_all add: Nat.le_SucI)
+  "count_list (extract_variables (H tr to (f, \<theta>) (q, x))) (q0, x0)
+ \<le> count_list (extract_variables (\<theta> x)) x0"
+proof (simp add: H_def)
+  show "count_list (extract_variables (Transducer.hat2 (delta2f f tr) (eta2f to) (q, u))) (q0, x0)
+      \<le> count_list (extract_variables u) x0" for u
+   by  (induct u arbitrary: q rule: xa_induct, simp_all add: Nat.le_SucI)
+qed
 
 lemma compose_reachable_SST_SST:
   assumes "reachable (compose_SST_SST sst1 sst2) (q1, f)"
@@ -42,12 +46,10 @@ proof (simp add: bounded_copy_SST_def, intro allI, rule impI)
     have "(\<Sum>y\<in>(UNIV::('q2\<times>'x1)set). count_list (extract_variables (H ?tr ?to (f, ?xi) y)) (q0, x0))
         = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x1 set). count_list (extract_variables (H ?tr ?to (f, ?xi) (q, x))) (q0, x0))"
       by (simp add: sum.Sigma)
-    also have "... = (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x1 set). 
-                         count_list (extract_variables (Transducer.hat2 (delta2f f ?tr) (eta2f ?to) (q, ?xi x))) (q0, x0))"
-      by (simp add: H_def)
-    also have "... \<le> (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x1 set).
-                         count_list (extract_variables (?xi x)) x0)" by (intro sum_mono, rule count_list_H)
-    also have "... = card (UNIV::'q2 set) * (\<Sum>x\<in>(UNIV::'x1 set). count_list (extract_variables (?xi x)) x0)" by (simp)
+    also have "... \<le> (\<Sum>q\<in>(UNIV::'q2 set). \<Sum>x\<in>(UNIV::'x1 set).  count_list (extract_variables (?xi x)) x0)"
+      by (intro sum_mono, rule count_list_H)
+    also have "... = card (UNIV::'q2 set) * (\<Sum>x\<in>(UNIV::'x1 set). count_list (extract_variables (?xi x)) x0)"
+      by (simp)
     also have "... \<le> card (UNIV::'q2 set) * k"
       using assms reach unfolding bounded_copy_SST_def bounded_def count_var_def
       by (simp add: reach)

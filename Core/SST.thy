@@ -5,7 +5,7 @@
 section \<open>The definition of streaming string transducers\<close>
 
 theory SST
-  imports Main Update State_Machine Transducer
+  imports Main Update State_Machine
 begin
 
 (* type of variable update function *)

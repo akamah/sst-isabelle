@@ -571,7 +571,7 @@ proof (intro allI, rule impI)
     case (Suc nat)
     then have w_gt_0: "0 < length w" by simp
     note mado = convert_\<eta>_hat_gt_0[OF assms(3-5) r_pair w_gt_0, simplified]
-    then show ?thesis proof (auto simp add: mado count_var_def H'_def prod.case_eq_if)
+    then show ?thesis proof (auto simp add: mado count_var_def H'_def prod.case_eq_if delta_convert_MSST_simp eta_convert_MSST_simp)
       fix x0 y0 z0
       have "(\<Sum>xyz\<in>UNIV. count_list (extract_variables (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb)))
                                                           (SST.eta_hat msst (fst qb, w) (fst xyz))) (snd xyz)))

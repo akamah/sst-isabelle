@@ -20,8 +20,7 @@ lemma \<Delta>'_assoc:
   fixes B :: "'k::enum boundedness"
   fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
   assumes assm_k_bounded: "boundedness B k"
-  assumes assm_is_type: "is_type msst \<gamma>"
-  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_bounded_type: "bctype k msst \<gamma>"
   assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
   shows  "\<Delta>' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) = \<Delta>' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)"
 proof -
@@ -55,8 +54,7 @@ lemma convert_\<delta>_hat:
   fixes B :: "'k::enum boundedness"
   fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
   assumes assm_k_bounded: "boundedness B k"
-  assumes assm_is_type: "is_type msst \<gamma>"
-  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_bounded_type: "bctype k msst \<gamma>"
   assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
   shows "hat1 (convert_\<delta> B msst) ((q, \<beta>), w)
        = (delta_hat msst (q, w), \<Delta>' B (\<beta>, eta_hat msst (q, w)))"
@@ -66,7 +64,7 @@ using assm_reachable proof (induct w arbitrary: q rule: rev_induct)
 next
   case (snoc a w)
   then show ?case 
-    by (simp add: eta_append convert_\<delta>_simp \<Delta>'_assoc[OF assms(1-3) snoc.prems])
+    by (simp add: eta_append convert_\<delta>_simp \<Delta>'_assoc[OF assm_k_bounded assm_bounded_type snoc.prems])
 qed
 
 lemma compU_valuate:
@@ -197,8 +195,7 @@ lemma map_alpha_H'_iota_\<Delta>:
   fixes \<alpha> :: "'x \<Rightarrow> 'y::enum shuffle"
   fixes \<theta> :: "('x, ('y, 'b) update) update"
   assumes "boundedness B k"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
+  assumes "bctype k msst \<gamma>"
   assumes "reachable (convert_MSST B msst) (q, \<beta>)"
   shows "map_alpha (update2hom (H' B (\<beta>, SST.eta_hat msst (q, w)))) o \<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)))) 
        = hat_homU (\<iota> B (Rep_alpha B \<beta>)) o SST.eta_hat msst (q, w)"
@@ -214,8 +211,7 @@ lemma map_alpha_H'_iota_\<Delta>:
 
 lemma hat_homU_iota:
   assumes "boundedness B k"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
+  assumes "bctype k msst \<gamma>"
   assumes "reachable (convert_MSST B msst) (q, \<beta>)"
   shows "hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)
        = update2hom (H' B (\<beta>, SST.eta_hat msst (q, w))) \<star> hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u"
@@ -225,8 +221,7 @@ lemma hat_homU_iota:
 lemma H'_assoc:
   fixes \<beta> :: "'x \<Rightarrow> ('k::enum, 'y::enum) bc_shuffle"
   assumes "boundedness B k"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
+  assumes "bctype k msst \<gamma>"
   assumes "reachable (convert_MSST B msst) (q, \<beta>)"
   shows "H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>)
        = H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)"
@@ -245,8 +240,7 @@ lemma convert_\<eta>_hat_gt_0:
   fixes msst :: "('q, 'x, 'y::enum, 'a, 'b) MSST"
   fixes \<beta> :: "'x \<Rightarrow> ('k::enum, 'y::enum) bc_shuffle"
   assumes "boundedness B k"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
+  assumes "bctype k msst \<gamma>"
   assumes reach: "reachable (convert_MSST B msst) (q, \<beta>)"
   assumes len: "0 < length w"
   shows   "SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<beta>), w)
@@ -269,7 +263,7 @@ next
         apply (simp add: Cons.hyps[OF r l, simplified])
         apply (simp add: delta_convert_MSST_simp eta_convert_MSST_simp convert_\<eta>_simp convert_\<delta>_simp)
         apply (simp only: hat)
-        apply (rule H'_assoc[symmetric, OF assms(1-3) Cons.prems(1)])
+        apply (rule H'_assoc[symmetric, OF assms(1-2) Cons.prems(1)])
         done
     qed
   qed
@@ -309,8 +303,7 @@ qed
 
 lemma convert_\<eta>_hat_valuate:
   assumes "boundedness B k"
-  assumes "is_type msst \<gamma>"
-  assumes "bounded_copy_type k msst \<gamma>"
+  assumes "bctype k msst \<gamma>"
   assumes "reachable (convert_MSST B msst) (q, \<alpha>)"
   shows   "valuate o (SST.hat2 (convert_\<delta> B msst) (convert_\<eta> B msst) ((q, \<alpha>), w) \<bullet> \<phi>)
          = valuate o (H' B (\<alpha>, eta_hat msst (q, w)) \<bullet> \<phi>)"
@@ -329,8 +322,7 @@ lemma reach0: "reachable (convert_MSST B msst) (initial msst, Abs_alpha B \<alph
 
 theorem MSST_can_convert:
   assumes assm_k_bounded: "boundedness B k"
-  assumes assm_is_type: "is_type msst \<gamma>"
-  assumes assm_bounded_type: "bounded_copy_type k msst \<gamma>"
+  assumes assm_bounded_type: "bctype k msst \<gamma>"
   shows "SST.run (convert_MSST B msst) w = Monoid_SST.run msst w"
 proof (cases "final_update msst (hat1 (delta msst) (initial msst, w))")
   case None

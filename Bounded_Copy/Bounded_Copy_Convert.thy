@@ -372,8 +372,7 @@ lemma count_alpha_hat_homU_eta_hat:
   fixes B2 :: "'l::enum boundedness"
   assumes bc_msst: "bounded_copy_SST k msst"
   assumes boundedness_l: "boundedness B2 l"
-  assumes typed: "is_type msst \<gamma>"
-  assumes bc_type: "bounded_copy_type l msst \<gamma>"
+  assumes bc_type: "bctype l msst \<gamma>"
   assumes reach: "reachable (convert_MSST B2 msst) (q1, \<beta>)"
   assumes tail: "u \<in> tails (SST.eta_hat msst (q1, w) x)"
   shows "count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 \<beta>)) u) (Inl (x0, y0, z0))
@@ -392,11 +391,11 @@ next
     qed
     note IH = Var.hyps(1)[OF xs]
     have rep: "Rep_alpha B2 \<beta> x' \<in> \<gamma> (q1, x')"
-      by (rule condition_of_convert_MSST_reachable_state[OF boundedness_l typed bc_type reach])
+      by (rule condition_of_convert_MSST_reachable_state[OF boundedness_l bc_type reach])
+    have "reachable msst q1" using reach by (rule reachable_convert)
     then have bs: "bounded_shuffle l (Rep_alpha B2 \<beta> x')"
-      using bc_type unfolding bounded_copy_type_def
-      using reach reachable_convert by fast
-    note bc = hat_homU_iota_bounded_copy_tail[OF boundedness_l typed bc_type reach xs]
+      using bc_type rep by (simp add: bctype_bounded)
+    note bc = hat_homU_iota_bounded_copy_tail[OF boundedness_l bc_type reach xs]
     show ?thesis proof (cases "x' = x0")
       case True
       then show ?thesis proof -
@@ -546,8 +545,7 @@ theorem convert_MSST_bounded:
   assumes bc_msst: "bounded_copy_SST k msst"
   assumes boundedness_k: "boundedness B1 k"
   assumes boundedness_l: "boundedness B2 l"
-  assumes typed: "is_type msst \<gamma>"
-  assumes bc_type: "bounded_copy_type l msst \<gamma>"
+  assumes bc_type: "bctype l msst \<gamma>"
   shows "bounded_copy_SST (k * l) (convert_MSST B2 msst)"
   unfolding bounded_copy_SST_def bounded_def
 proof (intro allI, rule impI)
@@ -570,7 +568,7 @@ proof (intro allI, rule impI)
   next
     case (Suc nat)
     then have w_gt_0: "0 < length w" by simp
-    note mado = convert_\<eta>_hat_gt_0[OF assms(3-5) r_pair w_gt_0, simplified]
+    note mado = convert_\<eta>_hat_gt_0[OF boundedness_l bc_type r_pair w_gt_0, simplified]
     then show ?thesis proof (auto simp add: mado count_var_def H'_def prod.case_eq_if delta_convert_MSST_simp eta_convert_MSST_simp)
       fix x0 y0 z0
       have "(\<Sum>xyz\<in>UNIV. count_list (extract_variables (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb)))
@@ -586,7 +584,7 @@ proof (intro allI, rule impI)
         done
       also have "... = (\<Sum>x\<in>UNIV. \<Sum>y\<in>UNIV. count_list (valuate (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x) y))
            (Inl (x0, y0, z0)))"
-        by (simp add: count_list_extract_variables sum_decompose[OF boundedness_l hat_homU_iota_bounded_copy[OF boundedness_l typed bc_type r_pair]])
+        by (simp add: count_list_extract_variables sum_decompose[OF boundedness_l hat_homU_iota_bounded_copy[OF boundedness_l bc_type r_pair]])
       also have "... = (\<Sum>x\<in>UNIV. count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) (Inl (x0, y0, z0)))"
         unfolding count_alpha_def by simp
       also have "... \<le> k * l" proof -
@@ -597,7 +595,7 @@ proof (intro allI, rule impI)
             unfolding tails_def by auto
           show "count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) (Inl (x0, y0, z0))
                     \<le> count_list (extract_variables (SST.eta_hat msst (fst qb, w) x)) x0 * l"
-            by (simp add: count_list_extract_variables count_alpha_hat_homU_eta_hat[OF bc_msst boundedness_l typed bc_type r_pair tail])
+            by (simp add: count_list_extract_variables count_alpha_hat_homU_eta_hat[OF bc_msst boundedness_l bc_type r_pair tail])
         qed
         have "(\<Sum>x\<in>UNIV. count_alpha (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) (Inl (x0, y0, z0)))
             \<le> (\<Sum>x\<in>UNIV. count_list (extract_variables (SST.eta_hat msst (fst qb, w) x)) x0 * l)"

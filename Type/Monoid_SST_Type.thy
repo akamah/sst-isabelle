@@ -60,16 +60,56 @@ fun type_hom :: "('q, 'x, 'y) msst_type \<Rightarrow> ('q \<times> (('x + ('y, '
   "type_hom \<gamma> (q, (Inl x#xs)) = mult_shuffles (\<gamma> (q, x)) (type_hom \<gamma> (q, xs))" |
   "type_hom \<gamma> (q, (Inr m#xs)) = mult_shuffles { resolve_shuffle m } (type_hom \<gamma> (q, xs))"
 
-definition is_type :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
-  "is_type msst \<gamma> \<equiv> (\<forall>x. idS \<in> \<gamma> (initial msst, x)) \<and>
-                     (\<forall>x q a. type_hom \<gamma> (q, eta msst (q, a) x) \<subseteq> \<gamma> (delta msst (q, a), x))"
+
+definition bctype_idS where
+  "bctype_idS k msst \<gamma> = (\<forall>x. idS \<in> \<gamma> (initial msst, x))"
+
+definition bctype_step where
+  "bctype_step k msst \<gamma> = (\<forall>x q a. type_hom \<gamma> (q, eta msst (q, a) x) \<subseteq> \<gamma> (delta msst (q, a), x))"
+
+definition bctype_bounded where
+  "bctype_bounded k msst \<gamma> = (\<forall>q x. \<forall>m \<in> \<gamma> (q, x). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
+
+definition bctype_tails where
+  "bctype_tails k msst \<gamma> = (\<forall>q x w. \<forall>u \<in> tails (SST.eta_hat msst (q, w) x). 
+        \<forall>m \<in> type_hom \<gamma> (q, u). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
+
+
+definition bctype :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
+  "bctype k msst \<gamma> \<equiv> bctype_idS k msst \<gamma> \<and> bctype_step k msst \<gamma> \<and>
+                      bctype_bounded k msst \<gamma> \<and> bctype_tails k msst \<gamma>"
+
+lemma bctype_idS:
+  assumes "bctype k msst \<gamma>"
+  shows "idS \<in> \<gamma> (initial msst, x)"
+  using assms unfolding bctype_def bctype_idS_def by simp
+
+lemma bctype_step:
+  assumes "bctype k msst \<gamma>"
+  shows "type_hom \<gamma> (q, eta msst (q, a) x) \<subseteq> \<gamma> (delta msst (q, a), x)"
+  using assms unfolding bctype_def bctype_step_def by simp
+
+lemma bctype_bounded:
+  assumes "bctype k msst \<gamma>"
+  assumes "reachable msst q"
+  assumes "m \<in> \<gamma> (q, x)"
+  shows "bounded_shuffle k m"
+  using assms unfolding bctype_def bctype_bounded_def by simp
+
+lemma bctype_tails:
+  assumes "bctype k msst \<gamma>"
+  assumes "reachable msst q"
+  assumes "u \<in> tails (SST.eta_hat msst (q, w) x)"
+  assumes "m \<in> type_hom \<gamma> (q, u)"
+  shows "bounded_shuffle k m"
+  using assms unfolding bctype_def bctype_tails_def by simp
 
 
 lemma type_hom_append [simp]: "type_hom \<gamma> (q, u @ v) = mult_shuffles (type_hom \<gamma> (q, u)) (type_hom \<gamma> (q, v))"
   by (induct u arbitrary: q rule: xa_induct, simp_all)
 
 lemma type_hom_subset:
-  assumes "is_type msst \<gamma>"
+  assumes "bctype k msst \<gamma>"
   shows "type_hom \<gamma> (q, hat_hom (SST.eta msst (q, a)) u) 
       \<subseteq> type_hom \<gamma> (delta msst (q, a), u)"
 proof (induct u rule: xa_induct)
@@ -80,19 +120,19 @@ next
   show ?case
     apply (simp)
     apply (rule mult_shuffles_subset)
-    using assms apply (simp_all add: is_type_def Var)
+    using assms apply (simp_all add: bctype_step Var)
     done
 next
   case (Alpha a xs)
   then show ?case
     apply (simp)
     apply (rule mult_shuffles_subset)
-    using assms apply (simp_all add: is_type_def Alpha)
+    using assms apply (simp_all add: Alpha)
     done
 qed
 
 lemma type_hom_hat_hom:
-  assumes "is_type msst \<gamma>"
+  assumes "bctype k msst \<gamma>"
   shows "type_hom \<gamma> (q, hat_hom (eta_hat msst (q, w)) u)
       \<subseteq> type_hom \<gamma> (delta_hat msst (q, w), u)"
 proof (induct w arbitrary: q u)
@@ -110,21 +150,5 @@ next
   qed    
 qed
 
-lemma type_hom_hat:
-  assumes "is_type msst \<gamma>"
-  shows "type_hom \<gamma> (q, eta_hat msst (q, w) x)
-      \<subseteq> \<gamma> (delta_hat msst (q, w), x)"
-  by (simp add: type_hom_hat_hom[where u="[Inl x]", simplified] assms)
-
-
-abbreviation is_type_tails :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
-  "is_type_tails k msst \<gamma> \<equiv> (\<forall>q x w. \<forall>u \<in> tails (SST.eta_hat msst (q, w) x). 
-                                     \<forall>m \<in> type_hom \<gamma> (q, u). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
-
-abbreviation is_type_bounded :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
-  "is_type_bounded k msst \<gamma> \<equiv> (\<forall>q x. \<forall>m \<in> \<gamma> (q, x). (reachable msst q \<longrightarrow> bounded_shuffle k m))"
-
-definition bounded_copy_type :: "nat \<Rightarrow> ('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> ('q, 'x, 'y) msst_type \<Rightarrow> bool" where
-  "bounded_copy_type k msst \<gamma> \<equiv> is_type_bounded k msst \<gamma> \<and> is_type_tails k msst \<gamma>"
 
 end

@@ -22,9 +22,8 @@ theorem SST_can_compose:
 proof -
   let ?gm = "compose_\<gamma> sst1 sst2"
   let ?comp = "compose_SST_SST sst1 sst2"
-  have "is_type ?comp ?gm" by (simp add: compose_typable)
-  moreover have "bounded_copy_type k ?comp ?gm" by (simp add: compose_\<gamma>_bounded assms)
-  ultimately show ?thesis unfolding compose_def using assms
+  have "bctype k ?comp ?gm" by (simp add: compose_typable assms)
+  then show ?thesis unfolding compose_def using assms
     by (simp add: MSST_can_convert can_compose_SST_SST)
 qed
 
@@ -49,12 +48,10 @@ proof -
     unfolding boundedness_def by (simp add: card_UNIV_length_enum[symmetric] UNIV_Times_UNIV[symmetric] del: UNIV_Times_UNIV)
   have bc_msst: "bounded_copy_SST ?q2_k ?msst"
     by (simp add: compose_SST_SST_bounded assms(3))
-  have typed: "is_type ?msst ?gamma"
-    by (simp add: compose_typable)
-  have bc_type: "bounded_copy_type l ?msst ?gamma"
-    by (simp add: compose_\<gamma>_bounded assms(4-5))
+  have bc_type: "bctype l ?msst ?gamma"
+    by (simp add: compose_typable assms(4-5))
   show ?thesis
-    by (rule convert_MSST_bounded[OF bc_msst bound assms(2) typed bc_type])
+    by (rule convert_MSST_bounded[OF bc_msst bound assms(2) bc_type])
 qed
 
 definition revrev where

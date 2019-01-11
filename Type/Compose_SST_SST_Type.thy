@@ -113,25 +113,6 @@ next
 qed
 
 
-lemma compose_typable:
-  "is_type (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
-  unfolding is_type_def
-proof
-  show "(\<forall>x. idS \<in> compose_\<gamma> sst1 sst2 (initial (compose_SST_SST sst1 sst2), x))"
-    unfolding compose_SST_SST_def
-    apply (simp add: all_shuffles_def)
-    apply (rule allI)
-    apply (rule exI[where x="[]"])
-    apply (simp add: resolve_idU_idS)
-    done
-next
-  show "\<forall>x q a. type_hom (compose_\<gamma> sst1 sst2) (q, SST.eta (compose_SST_SST sst1 sst2) (q, a) x)
-                \<subseteq> compose_\<gamma> sst1 sst2 (delta (compose_SST_SST sst1 sst2) (q, a), x)"
-    apply (simp add: compose_SST_SST_def compose_\<delta>_def \<Delta>_def compose_\<eta>_def H_def)
-    apply (simp add: compose_\<gamma>_subset)
-    done
-qed
-
 lemma eta2f_length:
   "length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q, w)) = length w"
   by (induct w arbitrary: q rule: xa_induct, simp_all)
@@ -256,42 +237,62 @@ next
   qed
 qed
 
-theorem compose_\<gamma>_bounded:
+theorem compose_typable:
   fixes sst2 :: "('q2::finite, 'x2::finite, 'b, 'c) SST"
   assumes "bounded_copy_SST k sst2"
   assumes "trim sst2"
-  shows "bounded_copy_type k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
-proof (auto simp add: bounded_copy_type_def all_shuffles_def)
-  fix q2 w
-  have q2_reach: "reachable sst2 q2"
-    using assms(2) unfolding trim_def by simp
-  have "bounded k (SST.eta_hat sst2 (q2, w))"
-    by (rule bounded_copy_SST_simp, simp_all add: assms q2_reach)
-  then show "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (q2, w)))"
-    by (rule resolve_bounded)
+  shows "bctype k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
+proof (auto simp add: bctype_def)
+  show "bctype_idS k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
+    unfolding compose_SST_SST_def bctype_idS_def
+    apply (auto simp add: all_shuffles_def)
+    apply (rule exI[where x="[]"])
+    apply (simp add: resolve_idU_idS)
+    done
 next
-  fix q1 f q2 w x u m 
-  assume "reachable (compose_SST_SST sst1 sst2) (q1, f)"
-  let ?eta = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
-  let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
-  assume "u \<in> tails ?eta"
-  then have u: "u \<in> tails ?eta_hat" by (simp add:)
-  assume m0: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
-  obtain v1 v2 where v: "u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
-                                 (hat1 (delta2f f (delta sst2)) (q2, v1), v2)" using tail_substring_ex[OF u] by auto
-  let ?q = "hat1 (delta2f f (delta sst2)) (q2, v1)"
-  have m: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
-                                 (?q, v2))" 
-    using m0 v by simp
-  obtain w where w: "resolve_shuffle (SST.eta_hat sst2 (?q, w)) = m"
-    using type_hom_eta2f_hat_ex_string[rule_format, OF m] by auto
-  have q2_reach: "reachable sst2 ?q"
-    using assms(2) unfolding trim_def by simp
-  then have "bounded k (SST.eta_hat sst2 (?q, w))"
-    using assms(1) unfolding bounded_copy_SST_def by simp
-  then have "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (?q, w)))"
-    by (simp add: resolve_bounded)
-  then show "bounded_shuffle k m" using w by simp
+  show "bctype_step k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
+    unfolding bctype_step_def
+    by (auto simp add: compose_SST_SST_def compose_\<delta>_def \<Delta>_def compose_\<eta>_def H_def compose_\<gamma>_subset)
+next
+  show "bctype_bounded k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
+    unfolding bctype_bounded_def 
+  proof (auto simp add: all_shuffles_def)
+    fix q2 w
+    have q2_reach: "reachable sst2 q2"
+      using assms(2) unfolding trim_def by simp
+    have "bounded k (SST.eta_hat sst2 (q2, w))"
+      by (rule bounded_copy_SST_simp, simp_all add: assms q2_reach)
+    then show "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (q2, w)))"
+      by (rule resolve_bounded)
+  qed
+next
+  show "bctype_tails k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
+    unfolding bctype_tails_def
+  proof (auto)
+    fix q1 f q2 w x u m
+    assume "reachable (compose_SST_SST sst1 sst2) (q1, f)"
+    let ?eta = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
+    let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
+    assume "u \<in> tails ?eta"
+    then have u: "u \<in> tails ?eta_hat" by (simp add:)
+    assume m0: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
+    obtain v1 v2 where v: "u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                                   (hat1 (delta2f f (delta sst2)) (q2, v1), v2)" using tail_substring_ex[OF u] by auto
+    let ?q = "hat1 (delta2f f (delta sst2)) (q2, v1)"
+    have m: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
+                                                 (?q, v2))" 
+      using m0 v by simp
+    obtain w where w: "resolve_shuffle (SST.eta_hat sst2 (?q, w)) = m"
+      using type_hom_eta2f_hat_ex_string[rule_format, OF m] by auto
+    have q2_reach: "reachable sst2 ?q"
+      using assms(2) unfolding trim_def by simp
+    then have "bounded k (SST.eta_hat sst2 (?q, w))"
+      using assms(1) unfolding bounded_copy_SST_def by simp
+    then have "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (?q, w)))"
+      by (simp add: resolve_bounded)
+    then show "bounded_shuffle k m" using w by simp
+  qed
 qed
+
 
 end

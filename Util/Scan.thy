@@ -40,7 +40,7 @@ qed
 
 subsubsection \<open>Scanned string\<close>
 
-text \<open>Scanned string, w_0 y_1 w_1 y_2 w_2 ... y_n w_n\<close>
+text \<open>Scanned string\<close>
 type_synonym ('y, 'b) scanned_tail = "('y \<times> 'b list) list"
 type_synonym ('y, 'b) scanned = "'b list \<times> ('y, 'b) scanned_tail"
 

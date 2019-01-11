@@ -8,8 +8,8 @@ begin
 
 
 
-type_synonym ('a, 'b) update = "'a \<Rightarrow> ('a + 'b) list"
 type_synonym ('x, 'y, 'b) update' = "'x \<Rightarrow> ('y + 'b) list"
+type_synonym ('x, 'b) update = "('x, 'x, 'b) update'"
 
 (* extract only variables from var-alphabet list *)
 fun extract_variables :: "('x + 'b) list \<Rightarrow> 'x list" where

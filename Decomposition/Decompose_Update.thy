@@ -35,8 +35,8 @@ text \<open>
   - (y, Some k) means the following string of k-th occurrence of x.
   Note that the occurrence is counted along bottom-up direction from zero.
   Example: 
-    x \<mapsto> (x, None) x (x, Some 2) x (x, Some 1)
-    y \<mapsto> (y, None) x (y, Some 0) y (y, Some 0)
+    x -> (x, None) x (x, Some 2) x (x, Some 1)
+    y -> (y, None) x (y, Some 0) y (y, Some 0)
 \<close>
 type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
 
@@ -378,7 +378,7 @@ qed
 
 
 
-subsection \<open>Resolve & Synthesize\<close>
+subsection \<open>Resolve and Synthesize\<close>
 
 fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" ("\<pi>\<^sub>2'") where  
   "\<pi>\<^sub>2' m (y, None) = fst (scan (m y))" |
@@ -436,7 +436,7 @@ next
 qed
 
 
-subsection \<open>Properties of Resolve & Synthesize\<close>
+subsection \<open>Properties of Resolve and Synthesize\<close>
 
 lemma map_alpha_synthesize:
   "t \<star> \<pi>\<inverse> B (s, a) = \<pi>\<inverse> B (s, t \<odot> a)"

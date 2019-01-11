@@ -6,13 +6,11 @@ session "SST" = "HOL-Library" +
 
     A formalization and theories of Streaming String Transducers
   *}
-  options [document = false]
+  options [document = pdf, document_output = "output"]
   theories "Bounded_Copy/Bounded_Copy_Convert"
            "Bounded_Copy/Bounded_Copy_SST_SST"
-           "Bounded_Copy/Bounded_Copy_SST_Transducer"
            "Composition/Compose"
            "Composition/Compose_SST_SST"
-           "Composition/Compose_SST_Transducer"
            "Composition/Convert_Monoid_SST"
            "Composition/Convert_Monoid_SST_Def"
            "Composition/Convert_Monoid_SST_Type_Misc"
@@ -28,6 +26,8 @@ session "SST" = "HOL-Library" +
            "Type/Compose_SST_SST_Type"
            "Type/Monoid_SST_Type"
            "Util/Enum_Nat"
-           "Util/Monoid"
+           "Util/Scan"
            "Util/Setsum"
            "Util/Sum_Util"
+  document_files
+    "root.tex"

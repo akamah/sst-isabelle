@@ -817,7 +817,7 @@ fun poyo :: "(bool, char) update" where
   "poyo True  = [Inr (CHR ''D''), Inl False, Inr (CHR ''E''), Inl True,  Inr (CHR ''F'')]"
 
 definition testB :: "bool boundedness" where
-  "testB = Type_Nat"
+  "testB = Boundedness"
 
 lemmas resolve_store_poyo_expand =
   resolve_store_def resolve_shuffle_def compS_apply

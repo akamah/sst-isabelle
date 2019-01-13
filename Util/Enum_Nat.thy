@@ -111,10 +111,7 @@ using assms unfolding inj_on_def by (induct xs, simp_all)
 lemma inj_enum_to_nat:
   "inj enum_to_nat"
   unfolding enum_to_nat_def
-  apply (simp add: UNIV_enum)
-  apply (rule inj_list_to_nat)
-  apply (rule enum_distinct)
-  done
+  by (simp add: UNIV_enum inj_list_to_nat[OF enum_distinct])
 
 lemma inj_nat_to_enum':
   assumes "distinct xs"

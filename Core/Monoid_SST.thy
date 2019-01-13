@@ -11,9 +11,6 @@ begin
 record ('q, 'x, 'y, 'a, 'b) "MSST" = "('q, 'x, 'a, ('y, 'b) update) SST" +
   final_string :: "'q \<Rightarrow> ('y + 'b) list option"
 
-abbreviation final_update where
-  "final_update \<equiv> final"
-
 
 definition run :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
   "run msst w = (case SST.run msst w of

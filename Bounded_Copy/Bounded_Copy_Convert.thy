@@ -60,7 +60,7 @@ definition update_index_vars where
   "update_index_vars m = concat (map (\<lambda>y. valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y)) Enum.enum)"
 
 lemma update_index_vars_set:
-  "set (update_index_vars m) = (\<Union>y\<in>UNIV. set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y)))"
+  "set (update_index_vars m) = (\<Union>y\<in>UNIV. set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y)))"
   unfolding update_index_vars_def
   by (simp add: enum_UNIV)
 
@@ -456,31 +456,31 @@ lemma sum_decompose_first_step:
             count_list (resolve_store_nat m (x, k)) a)"
 proof (simp add: update_index_vars_set, rule sum.mono_neutral_right, auto)
   fix x0 k0 y
-  assume *: "(x0, k0) \<in> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
+  assume *: "(x0, k0) \<in> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y))"
   show "(x0, k0) \<in> valid_vars B"
   proof (cases k0)
     case None
     then show ?thesis by simp
   next
     case (Some k)
-    have "bounded_shuffle K (resolve_shuffle m)" using assms(2) by (rule resolve_bounded)
+    have "bounded_shuffle K (\<pi>\<^sub>1 m)" using assms(2) by (rule resolve_bounded)
     then show ?thesis using assms(1) * bounded_shuffle_less_than
       apply (simp add: Some synthesize_shuffle_nat_def) by fastforce
   qed
 next
   fix x0 k0
-  assume asm: "\<forall>y. (x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y))"
+  assume asm: "\<forall>y. (x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y))"
   show "count_list (resolve_store_nat m (x0, k0)) a = 0"
   proof (cases k0)
     case None
-    then have "(x0, None) \<notin> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) x0))" using asm by simp
+    then have "(x0, None) \<notin> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) x0))" using asm by simp
     then show ?thesis by (simp add: synthesize_shuffle_nat_def None)
   next
     case (Some k)
     obtain y0 where y0: "lookup_rec m x0 k Enum.enum 
-         = lookup_row (resolve_shuffle m) x0 k (seek y0 Enum.enum) (scan_pair (m y0))"
+         = lookup_row (\<pi>\<^sub>1 m) x0 k (seek y0 Enum.enum) (scan_pair (m y0))"
       using enum_distinct enum_ne_Nil lookup_rec_distinct by fast 
-    moreover have "(x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (resolve_shuffle m) y0))"
+    moreover have "(x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y0))"
       using asm by simp
     ultimately show "count_list (resolve_store_nat m (x0, k0)) a = 0"
       by (simp add: Some there_doesnt_exist_corresponding_string synthesize_shuffle_nat_def)
@@ -501,9 +501,9 @@ lemma count_list_sum_list_concat_map:
 
 
 lemma resolve_inverse_nat_valuate: 
-  "concat (map (resolve_store_nat m) (valuate (synthesize_shuffle_nat (resolve_shuffle m) x))) = valuate (m x)"
+  "concat (map (resolve_store_nat m) (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) x))) = valuate (m x)"
 proof -
-  have "(resolve_store_nat m \<odot> (valuate o synthesize_shuffle_nat (resolve_shuffle m))) x = valuate (m x)"
+  have "(resolve_store_nat m \<odot> (valuate o synthesize_shuffle_nat (\<pi>\<^sub>1 m))) x = valuate (m x)"
     by (simp add: valuate_map_alpha[symmetric] resolve_inverse_nat)
   then show ?thesis by (simp add: compS_apply)
 qed
@@ -518,7 +518,7 @@ lemma sum_decompose:
   shows "(\<Sum>yk\<in>UNIV. count_list (resolve_store B m yk) a)
        = (\<Sum>y\<in>UNIV. count_list (valuate (m y)) a)" (is "?from = ?to")
 proof -
-  let ?vars = "\<lambda>y. valuate (synthesize_shuffle_nat (resolve_shuffle m) y)"
+  let ?vars = "\<lambda>y. valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y)"
   let ?resolve = "\<lambda>xk. resolve_store_nat m xk"
   let ?count = "\<lambda>xk. count_list (?resolve xk) a"
   have "?from = (\<Sum>xk::'y \<times> nat option\<in>valid_vars B. ?count xk)"

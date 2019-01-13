@@ -202,7 +202,7 @@ lemma bounded_copy_SST_simp:
   using assms unfolding bounded_copy_SST_def by simp
 
 text \<open>Phantom type used to state bounded-ness using size of UNIV :: 'i set\<close>
-type_synonym 'i boundedness = "'i type_nat"
+datatype ('i::enum) boundedness = Boundedness
 
 definition boundedness :: "'i::enum boundedness \<Rightarrow> nat \<Rightarrow> bool" where 
   "boundedness B k \<equiv> (k = length (Enum.enum :: 'i list))"

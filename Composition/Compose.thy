@@ -41,7 +41,7 @@ theorem composed_SST_bounded:
 proof -
   let ?msst = "compose_SST_SST sst1 sst2"
   let ?gamma = "compose_\<gamma> sst1 sst2"
-  let ?Bq2_k = "Type_Nat :: ('q2 \<times> 'e1) type_nat"
+  let ?Bq2_k = "Boundedness :: ('q2 \<times> 'e1) boundedness"
   let ?q2_k = "card (UNIV::'q2 set) * k"
   have bound: "boundedness ?Bq2_k ?q2_k"
     using assms(1)
@@ -57,32 +57,10 @@ qed
 definition revrev where
   "revrev = compose_SST_SST rev rev"
 
-definition SST_run :: "('q, 'x, 'a, 'b) SST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "SST_run sst w = (case SST.final sst (delta_hat sst (initial sst, w)) of
-      Some u \<Rightarrow> Some ((valuate o (SST.eta_hat sst (initial sst, w) \<bullet> (\<lambda>x :: nat. u))) 0) |
-      None   \<Rightarrow> None)"
-
-lemma "SST.run sst w = SST_run sst w"
-proof (cases "SST.final sst (delta_hat sst (initial sst, w))")
-  case None
-  then show ?thesis unfolding SST.run_def SST_run_def by simp
-next
-  case (Some a)
-  then show ?thesis unfolding SST.run_def SST_run_def by (simp add: compU_apply)
-qed
-
-definition MSST_run :: "('q, 'x, 'y, 'a, 'b) MSST \<Rightarrow> 'a list \<Rightarrow> 'b list option" where
-  "MSST_run msst w = (case final_update msst (hat1 (delta msst) (initial msst, w)) of
-      Some u \<Rightarrow> (case final_string msst (hat1 (delta msst) (initial msst, w)) of
-         Some v \<Rightarrow> (let m = concatU ((valuate o (eta_hat msst (initial msst, w) \<bullet> (\<lambda>x. u))) (0 :: nat))
-                    in Some ((valuate o (m \<bullet> (\<lambda>y. v))) (0 :: nat))) |
-         None \<Rightarrow> None) |
-      None \<Rightarrow> None)"
-
 definition revreset where
   "revreset = compose_SST_SST rev reset"
 
-value "SST_run rev [1, 2, 3]"
+value "SST.run rev [1, 2, 3]"
 
 
 end

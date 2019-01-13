@@ -6,32 +6,26 @@ begin
 definition all_shuffles where
   "all_shuffles sst2 q2 q2' =
     {m1. \<exists>w. delta_hat sst2 (q2, w) = q2' \<and>
-           m1 = resolve_shuffle (SST.eta_hat sst2 (q2, w))}"
+           m1 = \<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w))}"
+
+lemma all_shuffles_member:
+  "\<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w))
+ \<in> all_shuffles sst2 q2 (delta_hat sst2 (q2, w))"
+  unfolding all_shuffles_def by auto
 
 lemma all_shuffles_first:
-  "resolve_shuffle (SST.eta sst2 (q2, a))
+  "\<pi>\<^sub>1 (SST.eta sst2 (q2, a))
  \<in> all_shuffles sst2 q2 (delta sst2 (q2, a))"
-  unfolding all_shuffles_def
-  apply auto
-  apply (rule exI[of _ "[a]"])
-  apply (simp_all add:)
-  done
-  
+  using all_shuffles_member[of sst2 q2 "[a]"]
+  by simp
 
 lemma all_shuffles_mult:
-  "mult_shuffles (all_shuffles sst2 q0 q1) (all_shuffles sst2 q1 q2)
+  "all_shuffles sst2 q0 q1 \<otimes> all_shuffles sst2 q1 q2
  \<subseteq> all_shuffles sst2 q0 q2"
-  unfolding mult_shuffles_def all_shuffles_def
-proof (auto)
-  fix u v
-  assume "q1 = delta_hat sst2 (q0, u)"
-  assume "q2 = delta_hat sst2 (delta_hat sst2 (q0, u), v)"
-  show "\<exists>wb. delta_hat sst2 (q0, wb) = delta_hat sst2 (delta_hat sst2 (q0, u), v) \<and>
-                 resolve_shuffle (SST.eta_hat sst2 (q0, u)) \<odot>
-                 resolve_shuffle (SST.eta_hat sst2 (delta_hat sst2 (q0, u), v)) =
-                 resolve_shuffle (SST.eta_hat sst2 (q0, wb))"
-    by (rule exI[where x="u@v"], auto simp add: eta_append resolve_shuffle_distrib)
-qed
+  unfolding all_shuffles_def[of sst2 q0 q1] all_shuffles_def[of sst2 q1 q2] mult_shuffles_def
+  by (rule subsetI,
+      auto simp add: resolve_shuffle_distrib[symmetric] eta_append[symmetric]
+                     all_shuffles_member delta_append[symmetric] simp del: delta_append)
 
 fun compose_\<gamma> ::
   "('q1, 'x1, 'a, 'b) SST \<Rightarrow> ('q2, 'x2, 'b, 'c) SST \<Rightarrow>
@@ -43,75 +37,44 @@ fun compose_\<gamma> ::
 lemma compose_\<gamma>_ex:
   assumes "m \<in> compose_\<gamma> sst1 sst2 ((q1, f), (q2, x))"
   shows "\<exists>w. delta_hat sst2 (q2, w) = f (q2, x) \<and>
-             m = resolve_shuffle (SST.eta_hat sst2 (q2, w))"
+             m = \<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w))"
   using assms by (simp add: all_shuffles_def)
-
 
 lemma idS_in_all_shuffles: 
   "idS \<in> all_shuffles sst q2 q2"
-  unfolding all_shuffles_def
-  apply (simp)
-  apply (rule exI[of _ "[]"])
-  apply (simp add: resolve_idU_idS)
-  done
+  using all_shuffles_member[of sst q2 "[]"]
+  by (simp add: resolve_idU_idS)
 
 
 lemma compose_\<gamma>_subset:
   "type_hom (compose_\<gamma> sst1 sst2)
      ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (q2, u))
  \<subseteq> all_shuffles sst2 q2 (hat1 (delta2f f (delta sst2)) (q2, u))"
-proof (induct u arbitrary: q2 rule: xa_induct)
+proof (induct u rule: xa_rev_induct)
   case Nil
   then show ?case by (simp add: idS_in_all_shuffles)
 next
   case (Var x xs)
-  then show ?case proof (simp_all)
-    have "mult_shuffles (all_shuffles sst2 q2 (f (q2, x)))
-     (type_hom (compose_\<gamma> sst1 sst2)
-       ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (f (q2, x), xs)))
-    \<subseteq> mult_shuffles (all_shuffles sst2 q2 (f (q2, x)))
-     (all_shuffles sst2 (f (q2, x))
-       (hat1 (delta2f f (delta sst2)) (f (q2, x), xs)))"
-      apply (rule mult_shuffles_subset)
-      apply (simp_all add: Var)
-      done
-    also have "...  \<subseteq> all_shuffles sst2 q2 (hat1 (delta2f f (delta sst2)) (f (q2, x), xs))"
-      by (simp add: all_shuffles_mult)
-    finally show "mult_shuffles (all_shuffles sst2 q2 (f (q2, x)))
-     (type_hom (compose_\<gamma> sst1 sst2)
-       ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (f (q2, x), xs)))
-    \<subseteq> all_shuffles sst2 q2 (hat1 (delta2f f (delta sst2)) (f (q2, x), xs))" .
-  qed
+  show ?case
+    apply (simp add: Transducer.eta_append)
+    apply (rule subset_trans)
+     apply (rule mult_shuffles_subset)
+      apply (rule Var)
+    apply (rule subset_refl)
+     apply (rule all_shuffles_mult)
+    done
 next
   case (Alpha a xs)
-  then show ?case proof (simp_all)
-    have "mult_shuffles {resolve_shuffle (SST.eta sst2 (q2, a))}
-     (type_hom (compose_\<gamma> sst1 sst2)
-       ((q1, f),
-        Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2))
-         (delta sst2 (q2, a), xs)))
-    \<subseteq> mult_shuffles {resolve_shuffle (SST.eta sst2 (q2, a))}
-       (all_shuffles sst2 (delta sst2 (q2, a))
-         (hat1 (delta2f f (delta sst2)) (delta sst2 (q2, a), xs)))"
-      by (rule mult_shuffles_subset, simp_all add: Alpha)
-    also have "... 
-    \<subseteq> mult_shuffles (all_shuffles sst2 q2 (delta sst2 (q2, a)))
-       (all_shuffles sst2 (delta sst2 (q2, a))
-         (hat1 (delta2f f (delta sst2)) (delta sst2 (q2, a), xs)))"
-      by (rule mult_shuffles_subset, simp_all add: all_shuffles_first)
-    also have "...  \<subseteq> all_shuffles sst2 q2 
-                   (hat1 (delta2f f (delta sst2)) (delta sst2 (q2, a), xs))"
-      by (simp add: all_shuffles_mult)
-    finally show "mult_shuffles {resolve_shuffle (SST.eta sst2 (q2, a))}
-     (type_hom (compose_\<gamma> sst1 sst2)
-       ((q1, f),
-        Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2))
-         (delta sst2 (q2, a), xs)))
-   \<subseteq> all_shuffles sst2 q2 
-                   (hat1 (delta2f f (delta sst2)) (delta sst2 (q2, a), xs))" .
- qed
+  show ?case
+    apply (simp add: Transducer.eta_append)
+    apply (rule subset_trans)
+     apply (rule mult_shuffles_subset)
+     apply (rule Alpha)
+      apply simp
+      apply (rule all_shuffles_first)
+    apply (rule all_shuffles_mult)
+    done
 qed
-
 
 lemma eta2f_length:
   "length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q, w)) = length w"
@@ -127,11 +90,9 @@ proof (intro exI)
   let ?v1 = "take (length u0) v"
   let ?v2 = "drop (length u0) v"
   have v: "v = ?v1 @ ?v2" by simp
-  have len: "length (u0 @ u1) = length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
-                                     (q2, v))"
+  have len: "length (u0 @ u1) = length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v))"
     using assms by (simp only: eta2f_length)
-  have "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
-                                     (q2, ?v1 @ ?v2)"
+  have "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, ?v1 @ ?v2)"
     using assms v by simp
   then have "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, ?v1)
                 @ Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (hat1 (delta2f f (delta sst2)) (q2, ?v1), ?v2)"
@@ -176,7 +137,7 @@ lemma type_hom_eta2f_hat_ex_string:
   fixes sst2 :: "('q2, 'y, 'b, 'c) SST"
   shows "\<forall>m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v)).
          \<exists>w. delta_hat sst2 (q2, w) = hat1 (delta2f f (delta sst2)) (q2, v) \<and>
-             resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
+             \<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w)) = m"
 proof (induct v rule: xa_rev_induct)
   case Nil
   then show ?case by (simp, rule exI[where x="[]"], simp add: resolve_idU_idS)
@@ -195,16 +156,16 @@ next
              m2 \<in> (all_shuffles sst2 ?q ?q')"
       by (auto simp add: mult_shuffles_def)
     obtain w1 where w1: "delta_hat sst2 (q2, w1) = hat1 (delta2f f (delta sst2)) (q2, xs) \<and>
-                         m1 = resolve_shuffle (SST.eta_hat sst2 (q2, w1))"
+                         m1 = \<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w1))"
       using m Var by auto
-    obtain w2 where w2: "delta_hat sst2 (?q, w2) = ?q' \<and> m2 = resolve_shuffle (SST.eta_hat sst2 (?q, w2))"
+    obtain w2 where w2: "delta_hat sst2 (?q, w2) = ?q' \<and> m2 = \<pi>\<^sub>1 (SST.eta_hat sst2 (?q, w2))"
       using m unfolding all_shuffles_def by auto
     have "delta_hat sst2 (q2, w1 @ w2) = f (hat1 (delta2f f (delta sst2)) (q2, xs), x)"
       by (simp add: w1 w2)
-    moreover have "resolve_shuffle (SST.eta_hat sst2 (q2, w1 @ w2)) = m"
+    moreover have "\<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w1 @ w2)) = m"
       by (simp add: SST.eta_append resolve_shuffle_distrib m w1 w2)
     ultimately show "\<exists>w. delta_hat sst2 (q2, w) = f (hat1 (delta2f f (delta sst2)) (q2, xs), x) \<and>
-                         resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
+                         \<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w)) = m"
       by (auto simp del: delta_append)
   qed
 next
@@ -214,7 +175,7 @@ next
     let ?q' = "delta sst2 (?q, a)"
     let ?set1 = "type_hom (compose_\<gamma> sst1 sst2)
                   ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (q2, xs))"
-    let ?set2 = "{resolve_shuffle (SST.eta sst2 (?q, a))}"
+    let ?set2 = "{\<pi>\<^sub>1 (SST.eta sst2 (?q, a))}"
     fix m
     assume "m \<in> mult_shuffles ?set1 ?set2"
     then obtain m1 m2 :: "'y shuffle" 
@@ -223,16 +184,16 @@ next
              m2 \<in> ?set2"
       by (auto simp add: mult_shuffles_def)
     obtain w1 where w1: "delta_hat sst2 (q2, w1) = hat1 (delta2f f (delta sst2)) (q2, xs) \<and>
-                         m1 = resolve_shuffle (SST.eta_hat sst2 (q2, w1))"
+                         m1 = \<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w1))"
       using m Alpha by auto
-    have w2: "delta_hat sst2 (?q, [a]) = ?q' \<and> m2 = resolve_shuffle (SST.eta_hat sst2 (?q, [a]))"
+    have w2: "delta_hat sst2 (?q, [a]) = ?q' \<and> m2 = \<pi>\<^sub>1 (SST.eta_hat sst2 (?q, [a]))"
       using m by (simp add:)
     have "delta_hat sst2 (q2, w1 @ [a]) = delta sst2 (hat1 (delta2f f (delta sst2)) (q2, xs), a)"
       by (simp add: w1 w2)
-    moreover have "resolve_shuffle (SST.eta_hat sst2 (q2, w1 @ [a])) = m"
+    moreover have "\<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w1 @ [a])) = m"
       by (simp add: SST.eta_append resolve_shuffle_distrib m w1 w2)
     ultimately show "\<exists>w. delta_hat sst2 (q2, w) = delta sst2 (hat1 (delta2f f (delta sst2)) (q2, xs), a) \<and>
-                         resolve_shuffle (SST.eta_hat sst2 (q2, w)) = m"
+                         \<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w)) = m"
       by (auto simp del: delta_append)
   qed
 qed
@@ -262,7 +223,7 @@ next
       using assms(2) unfolding trim_def by simp
     have "bounded k (SST.eta_hat sst2 (q2, w))"
       by (rule bounded_copy_SST_simp, simp_all add: assms q2_reach)
-    then show "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (q2, w)))"
+    then show "bounded_shuffle k (\<pi>\<^sub>1 (SST.eta_hat sst2 (q2, w)))"
       by (rule resolve_bounded)
   qed
 next
@@ -282,13 +243,13 @@ next
     have m: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
                                                  (?q, v2))" 
       using m0 v by simp
-    obtain w where w: "resolve_shuffle (SST.eta_hat sst2 (?q, w)) = m"
+    obtain w where w: "\<pi>\<^sub>1 (SST.eta_hat sst2 (?q, w)) = m"
       using type_hom_eta2f_hat_ex_string[rule_format, OF m] by auto
     have q2_reach: "reachable sst2 ?q"
       using assms(2) unfolding trim_def by simp
     then have "bounded k (SST.eta_hat sst2 (?q, w))"
       using assms(1) unfolding bounded_copy_SST_def by simp
-    then have "bounded_shuffle k (resolve_shuffle (SST.eta_hat sst2 (?q, w)))"
+    then have "bounded_shuffle k (\<pi>\<^sub>1 (SST.eta_hat sst2 (?q, w)))"
       by (simp add: resolve_bounded)
     then show "bounded_shuffle k m" using w by simp
   qed

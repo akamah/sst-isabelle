@@ -10,55 +10,46 @@ begin
 type_synonym ('q, 'x, 'y) msst_type = "'q \<times> 'x \<Rightarrow> 'y shuffle set"
 
 
-definition mult_shuffles :: "'x shuffle set \<Rightarrow> 'x shuffle set \<Rightarrow> 'x shuffle set" where
-  "mult_shuffles A B = (\<Union>a\<in>A. \<Union>b\<in>B. { a \<odot> b })"
+definition mult_shuffles :: "'x shuffle set \<Rightarrow> 'x shuffle set \<Rightarrow> 'x shuffle set" (infixl "\<otimes>" 60) where
+  "A \<otimes> B = (\<Union>a\<in>A. \<Union>b\<in>B. { a \<odot> b })"
 
-lemma mult_shuffles_right_unit [simp]: "mult_shuffles A { idS } = A"
+lemma mult_shuffles_member:
+  assumes a: "a \<in> A"
+  assumes b: "b \<in> B"
+  shows "a \<odot> b \<in> A \<otimes> B"
+  using a b by (auto simp add: mult_shuffles_def)
+
+lemma mult_shuffles_right_unit [simp]: "A \<otimes> { idS } = A"
   by (simp add: mult_shuffles_def)
 
-lemma mult_shuffles_left_unit [simp]: "mult_shuffles { idS } A = A"
+lemma mult_shuffles_left_unit [simp]: "{ idS } \<otimes> A = A"
   by (simp add: mult_shuffles_def)
 
 lemma mult_shuffles_assoc [simp]:
-  "mult_shuffles A (mult_shuffles B C) = mult_shuffles (mult_shuffles A B) C" (is "?lhs = ?rhs")
+  "A \<otimes> (B \<otimes> C) = (A \<otimes> B) \<otimes> C"
   by (rule equalityI, simp_all add: mult_shuffles_def compS_assoc)
 
 lemma mult_shuffles_subset:
   assumes "A \<subseteq> C"
   assumes "B \<subseteq> D"
-  shows "mult_shuffles A B \<subseteq> mult_shuffles C D"
+  shows "A \<otimes> B \<subseteq> C \<otimes> D"
 proof
   fix x
-  assume "x \<in> mult_shuffles A B"
+  assume "x \<in> A \<otimes> B"
   then obtain a b where ab: "x = a \<odot> b \<and> a \<in> A \<and> b \<in> B"
     unfolding mult_shuffles_def by blast
   then have cd: "a \<in> C \<and> b \<in> D" using assms(1) assms(2) by blast
-  then show "x \<in> mult_shuffles C D"
-    using ab unfolding mult_shuffles_def by blast
+  then show "x \<in> C \<otimes> D" by (auto simp add: mult_shuffles_member ab)
 qed
 
-lemma mult_shuffles_member:
-  assumes "a \<in> A"
-  assumes "b \<in> B"
-  shows "a \<odot> b \<in> mult_shuffles A B"
-  unfolding mult_shuffles_def
-using assms by (simp, intro bexI, simp_all)
-
-fun tails_fun :: "'a list \<Rightarrow> 'a list set" where
-  "tails_fun [] = {[]}" |
-  "tails_fun (a#as) = {a#as} \<union> tails_fun as"
 
 definition tails where
   "tails xs = {ys. \<exists>zs. xs = zs @ ys}"
 
-lemma "tails_fun xs = tails xs" 
-  unfolding tails_def by (induct xs, auto simp add: Cons_eq_append_conv)
-
-
 fun type_hom :: "('q, 'x, 'y) msst_type \<Rightarrow> ('q \<times> (('x + ('y, 'b) update) list) \<Rightarrow> 'y shuffle set)" where
   "type_hom \<gamma> (q, []) = { idS }" |
-  "type_hom \<gamma> (q, (Inl x#xs)) = mult_shuffles (\<gamma> (q, x)) (type_hom \<gamma> (q, xs))" |
-  "type_hom \<gamma> (q, (Inr m#xs)) = mult_shuffles { resolve_shuffle m } (type_hom \<gamma> (q, xs))"
+  "type_hom \<gamma> (q, (Inl x#xs)) = \<gamma> (q, x) \<otimes> type_hom \<gamma> (q, xs)" |
+  "type_hom \<gamma> (q, (Inr m#xs)) = { \<pi>\<^sub>1 m } \<otimes> type_hom \<gamma> (q, xs)"
 
 
 definition bctype_idS where
@@ -105,31 +96,16 @@ lemma bctype_tails:
   using assms unfolding bctype_def bctype_tails_def by simp
 
 
-lemma type_hom_append [simp]: "type_hom \<gamma> (q, u @ v) = mult_shuffles (type_hom \<gamma> (q, u)) (type_hom \<gamma> (q, v))"
+lemma type_hom_append [simp]: "type_hom \<gamma> (q, u @ v) = type_hom \<gamma> (q, u) \<otimes> type_hom \<gamma> (q, v)"
   by (induct u arbitrary: q rule: xa_induct, simp_all)
 
 lemma type_hom_subset:
-  assumes "bctype k msst \<gamma>"
+  assumes bc: "bctype k msst \<gamma>"
   shows "type_hom \<gamma> (q, hat_hom (SST.eta msst (q, a)) u) 
       \<subseteq> type_hom \<gamma> (delta msst (q, a), u)"
-proof (induct u rule: xa_induct)
-case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  show ?case
-    apply (simp)
-    apply (rule mult_shuffles_subset)
-    using assms apply (simp_all add: bctype_step Var)
-    done
-next
-  case (Alpha a xs)
-  then show ?case
-    apply (simp)
-    apply (rule mult_shuffles_subset)
-    using assms apply (simp_all add: Alpha)
-    done
-qed
+  using bctype_step[OF bc]
+  by (induct u rule: xa_induct, simp_all add: mult_shuffles_subset)
+
 
 lemma type_hom_hat_hom:
   assumes "bctype k msst \<gamma>"
@@ -140,13 +116,12 @@ case Nil
   then show ?case by simp
 next
   case (Cons a w)
-  then show ?case proof (simp add: compU_lem del: Fun.comp_apply)
-    let ?q' = "delta msst (q, a)"
-    let ?e' = "SST.eta msst (q, a)"
-    let ?uu = "hat_hom (SST.eta_hat msst (?q', w)) u"
-    have "type_hom \<gamma> (q, hat_hom ?e' ?uu) \<subseteq> type_hom \<gamma> (?q', ?uu)" using assms by (simp add: type_hom_subset)
-    also have "... \<subseteq> type_hom \<gamma> (delta_hat msst (?q', w), u)" by (simp add: Cons)
-    finally show "type_hom \<gamma> (q, hat_hom ?e' ?uu) \<subseteq> type_hom \<gamma> (delta_hat msst (?q', w), u)" .
+  then show ?case (is "?a \<subseteq> ?b") proof -
+    have "?a \<subseteq> type_hom \<gamma> (delta msst (q, a), hat_hom (SST.eta_hat msst (delta msst (q, a), w)) u)"
+      using assms by (simp add: type_hom_subset compU_lem)
+    also have "... \<subseteq> ?b"
+      by (simp add: Cons)
+    finally show "?a \<subseteq> ?b" .
   qed    
 qed
 

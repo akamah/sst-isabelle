@@ -65,7 +65,7 @@ definition \<iota> :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y::
 
 
 definition \<Delta>' :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> ('k, 'y::enum) bc_shuffle, ('x, ('y, 'b) update) update) trans" where
-  "\<Delta>' B = (\<lambda>(\<beta>, \<theta>). Abs_alpha B (\<lambda>x. resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))))"
+  "\<Delta>' B = (\<lambda>(\<beta>, \<theta>). Abs_alpha B (\<lambda>x. \<pi>\<^sub>1 (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))))"
 
 
 definition H' :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> ('k, 'y::enum) bc_shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> ('y, 'k) index, 'b) update" where
@@ -93,7 +93,7 @@ definition convert_\<eta> :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::en
 definition convert_final :: "'i::enum boundedness \<Rightarrow> ('q, 'x, 'y::enum, 'a, 'b) MSST \<Rightarrow>
    ('q \<times> ('x \<Rightarrow> ('i, 'y) bc_shuffle) \<Rightarrow> ('x \<times> ('y, 'i) index + 'b) list option)" where
   "convert_final B msst = (\<lambda>(q, \<beta>).
-     (case final_update msst q of
+     (case final msst q of
         Some u \<Rightarrow> (case final_string msst q of
           Some v \<Rightarrow> Some ((valuate o ((hat_homU (\<iota> B (Rep_alpha B \<beta>)) u \<bullet> inr_list \<star> (\<lambda>x. v)))) ()) |
           None \<Rightarrow> None) |

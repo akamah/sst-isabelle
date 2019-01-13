@@ -6,13 +6,13 @@ theory Convert_Monoid_SST_Type_Misc
 begin
 
 lemma resolve_shuffle_iota:
-  "resolve_shuffle (\<iota> B \<alpha> x) = \<alpha> x"
+  "\<pi>\<^sub>1 (\<iota> B \<alpha> x) = \<alpha> x"
   unfolding \<iota>_def
   by (simp add: synthesize_inverse_shuffle)
 
 lemma iota_alpha_type_hom:
   assumes "\<forall>x. \<alpha> x \<in> \<gamma> (q, x)"
-  shows "resolve_shuffle (hat_homU (\<iota> B \<alpha>) u) \<in> type_hom \<gamma> (q, u)"
+  shows "\<pi>\<^sub>1 (hat_homU (\<iota> B \<alpha>) u) \<in> type_hom \<gamma> (q, u)"
 proof (induct u rule: xa_induct)
   case Nil
   then show ?case by (simp add: resolve_idU_idS)
@@ -48,20 +48,20 @@ proof (simp)
   have q: "q = delta msst (q', a)"
     using assm_states unfolding convert_MSST_def convert_\<delta>_def by simp
   let ?hhU = "hat_homU (\<iota> B (Rep_alpha B \<beta>')) (SST.eta msst (q', a) x)"
-  have "resolve_shuffle ?hhU \<in> type_hom \<gamma> (q', SST.eta msst (q', a) x)"
+  have "\<pi>\<^sub>1 ?hhU \<in> type_hom \<gamma> (q', SST.eta msst (q', a) x)"
     by (rule iota_alpha_type_hom, rule assm_prev)
   also have "... \<subseteq> \<gamma> (delta msst (q', a), x)"
     using assm_bctype by (simp add: bctype_step)
-  finally have hhU_typed: "resolve_shuffle ?hhU \<in> \<gamma> (delta msst (q', a), x)" .
+  finally have hhU_typed: "\<pi>\<^sub>1 ?hhU \<in> \<gamma> (delta msst (q', a), x)" .
   have "reachable msst (delta msst (q', a))" proof -
     have "reachable msst q'" using assm_reachable 
       by (rule reachable_convert)
     then show ?thesis by (rule reachable_delta)
   qed
-  then have hhU_bc: "bounded_shuffle k (resolve_shuffle ?hhU)"
+  then have hhU_bc: "bounded_shuffle k (\<pi>\<^sub>1 ?hhU)"
     using assm_bctype hhU_typed by (simp add: bctype_bounded)
-  have "Rep_bc_shuffle (Abs_bc_shuffle (resolve_shuffle ?hhU) :: ('k, 'y) bc_shuffle)
-     = resolve_shuffle ?hhU"
+  have "Rep_bc_shuffle (Abs_bc_shuffle (\<pi>\<^sub>1 ?hhU) :: ('k, 'y) bc_shuffle)
+     = \<pi>\<^sub>1 ?hhU"
     using assm_boundedness hhU_bc
     unfolding boundedness_def
     by (auto simp add: Abs_bc_shuffle_inverse)
@@ -69,7 +69,7 @@ proof (simp)
     by (rule iota_alpha_type_hom, rule assm_prev)
   also have "... \<subseteq> \<gamma> (delta msst (q', a), x)"
     using assm_bctype by (simp add: bctype_step)
-  finally show "Rep_bc_shuffle (Abs_bc_shuffle (resolve_shuffle ?hhU) :: ('k, 'y) bc_shuffle)
+  finally show "Rep_bc_shuffle (Abs_bc_shuffle (\<pi>\<^sub>1 ?hhU) :: ('k, 'y) bc_shuffle)
               \<in> \<gamma> (delta msst (q', a), x)" .
 qed
 
@@ -129,12 +129,12 @@ proof -
   have reach: "reachable msst q" by (rule reachable_convert[OF assm_reachable])
   then have tail: "\<forall>m\<in>type_hom \<gamma> (q, u). bounded_shuffle k m"
     using assm_bctype assm_tail by (simp add: bctype_tails)
-  have "resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u) 
+  have "\<pi>\<^sub>1 (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u) 
       \<in> type_hom \<gamma> (q, u)"
     apply (rule iota_alpha_type_hom[rule_format])
     apply (rule condition_of_convert_MSST_reachable_state[OF assms(1-3)])
     done
-  then have "bounded_shuffle k (resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u))"
+  then have "bounded_shuffle k (\<pi>\<^sub>1 (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u))"
     using tail by simp
   then show "bounded k (hat_homU (\<iota> B (Rep_alpha B \<beta>)) u)"
     by (simp add: resolve_bounded_inverse)
@@ -161,8 +161,8 @@ lemma resolve_shuffle_hat_homU_inverse:
   assumes assm_bctype: "bctype k msst \<gamma>"
   assumes assm_reachable: "reachable (convert_MSST B msst) (q, \<beta>)"
   shows "Rep_bc_shuffle (Abs_bc_shuffle
-          (resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))) :: ('k, 'y) bc_shuffle)
-       = resolve_shuffle (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))"
+          (\<pi>\<^sub>1 (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))) :: ('k, 'y) bc_shuffle)
+       = \<pi>\<^sub>1 (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (SST.eta_hat msst (q, w) x))"
   apply (rule Abs_bc_shuffle_inverse, simp)
   apply (subst assm_k_bounded[simplified boundedness_def, symmetric])
   apply (rule resolve_bounded)

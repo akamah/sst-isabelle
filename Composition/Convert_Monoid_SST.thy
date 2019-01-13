@@ -26,9 +26,9 @@ lemma \<Delta>'_assoc:
 proof -
   let ?alpha = "Rep_alpha B \<beta>"
   let ?theta = "SST.eta_hat msst (q, w)"
-  let ?inner = "(\<lambda>x. resolve_shuffle (hat_homU (\<iota> B ?alpha) (?theta x)))"
-  have \<Delta>'_assoc_string: "resolve_shuffle (hat_homU (\<iota> B ?alpha) (hat_hom ?theta u))
-       = resolve_shuffle (hat_homU (\<iota> B (\<lambda>y. resolve_shuffle (hat_homU (\<iota> B ?alpha) (?theta y)))) u)" for u
+  let ?inner = "(\<lambda>x. \<pi>\<^sub>1 (hat_homU (\<iota> B ?alpha) (?theta x)))"
+  have \<Delta>'_assoc_string: "\<pi>\<^sub>1 (hat_homU (\<iota> B ?alpha) (hat_hom ?theta u))
+       = \<pi>\<^sub>1 (hat_homU (\<iota> B (\<lambda>y. \<pi>\<^sub>1 (hat_homU (\<iota> B ?alpha) (?theta y)))) u)" for u
   proof (induct u rule: xa_induct)
     case Nil
     then show ?case by (simp add: resolve_shuffle_def idU_def)
@@ -324,7 +324,7 @@ theorem MSST_can_convert:
   assumes assm_k_bounded: "boundedness B k"
   assumes assm_bounded_type: "bctype k msst \<gamma>"
   shows "SST.run (convert_MSST B msst) w = Monoid_SST.run msst w"
-proof (cases "final_update msst (hat1 (delta msst) (initial msst, w))")
+proof (cases "final msst (hat1 (delta msst) (initial msst, w))")
   case None
   show ?thesis
     by (simp add: convert_MSST_def SST.run_def Monoid_SST.run_def convert_final_def convert_\<delta>_hat[OF assms reach0] None)    

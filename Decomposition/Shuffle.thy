@@ -54,7 +54,7 @@ lemma idS_bounded_enum: "bounded_shuffle (length (Enum.enum :: 'k::enum list)) (
 lemma resolve_bounded:
   fixes m :: "('x::finite, 'b) update"
   assumes "bounded k m"
-  shows "bounded_shuffle k (resolve_shuffle m)"
+  shows "bounded_shuffle k (\<pi>\<^sub>1 m)"
 proof (simp add: bounded_shuffle_def resolve_shuffle_def, rule allI)
   fix x
   show "(\<Sum>y\<in>UNIV. count_list (extract_variables (m y)) x) \<le> k"
@@ -64,7 +64,7 @@ qed
 
 lemma resolve_bounded_inverse:
   fixes m :: "('x::finite, 'b) update"
-  assumes "bounded_shuffle k (resolve_shuffle m)"
+  assumes "bounded_shuffle k (\<pi>\<^sub>1 m)"
   shows "bounded k m"
   unfolding bounded_def count_var_def proof (auto)
   fix x
@@ -99,9 +99,9 @@ lemma variable_count_in_bounded_update:
   shows "length (extract_variables (m x0)) \<le> card (UNIV::'x set) * k"
   using assms unfolding bounded_def count_var_def
 proof -
-  have "bounded_shuffle k (resolve_shuffle m)"
+  have "bounded_shuffle k (\<pi>\<^sub>1 m)"
     using assms by (simp add: resolve_bounded)
-  then have "length (resolve_shuffle m x0) \<le> card (UNIV::'x set) * k"
+  then have "length (\<pi>\<^sub>1 m x0) \<le> card (UNIV::'x set) * k"
     by (simp add: variable_count_in_bounded_shuffle)
   then show ?thesis by (simp add: resolve_shuffle_def)
 qed

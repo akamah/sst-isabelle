@@ -746,8 +746,6 @@ proof -
 qed
 
 
-
-
 lemma hat_alpha_remove_enum:
   fixes B :: "'k::enum boundedness"
   fixes m :: "('y::enum, 'b) update"
@@ -794,7 +792,7 @@ theorem resolve_inverse:
   fixes m :: "('y::enum, 'b) update"
   assumes "boundedness B k"
   assumes "bounded k m"
-  shows "synthesize B (\<pi>\<^sub>1 m, \<pi>\<^sub>2 B m) = m"
+  shows "\<pi>\<inverse> B (\<pi>\<^sub>1 m, \<pi>\<^sub>2 B m) = m"
 proof (rule ext, simp add: resolve_store_def synthesize_def del: to_enum.simps)
   fix x
   have bs: "bounded_shuffle k (\<pi>\<^sub>1 m)"

@@ -61,7 +61,7 @@ fun embed :: "'x \<Rightarrow> 'y \<Rightarrow> ('x \<times> 'y + 'b) list" wher
 
 definition \<iota> :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> 'y::enum shuffle) \<Rightarrow> 'x 
               \<Rightarrow> ('y, 'x \<times> ('y, 'k) index + 'b) update" where
-  "\<iota> B \<alpha> x = synthesize B (\<alpha> x, embed x)"
+  "\<iota> B \<alpha> x = \<pi>\<inverse> B (\<alpha> x, embed x)"
 
 
 definition \<Delta>' :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> ('k, 'y::enum) bc_shuffle, ('x, ('y, 'b) update) update) trans" where
@@ -69,9 +69,9 @@ definition \<Delta>' :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> ('
 
 
 definition H' :: "'k::enum boundedness \<Rightarrow> ('x \<Rightarrow> ('k, 'y::enum) bc_shuffle) \<times> ('x, ('y, 'b) update) update \<Rightarrow> ('x \<times> ('y, 'k) index, 'b) update" where
-  "H' B = (\<lambda>(\<beta>, \<theta>). \<lambda>(x, y'). resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x)) y')"
+  "H' B = (\<lambda>(\<beta>, \<theta>). \<lambda>(x, y'). \<pi>\<^sub>2 B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x)) y')"
 
-lemma H'_simp2: "H' B (\<beta>, \<theta>) (x, y') = resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x)) y'"
+lemma H'_simp2: "H' B (\<beta>, \<theta>) (x, y') = \<pi>\<^sub>2 B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x)) y'"
   by (simp add: H'_def)
 
 

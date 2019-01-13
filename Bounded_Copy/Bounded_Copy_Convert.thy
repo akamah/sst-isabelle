@@ -434,14 +434,14 @@ qed
 lemma sum_decompose_to_nat:
   fixes m :: "('y::enum, 'b) update"
   fixes B :: "'k::enum boundedness"
-  shows "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
-       = (\<Sum>xk\<in>valid_vars B. count_list (resolve_store_nat m xk) a)"
+  shows "(\<Sum>xk\<in>UNIV. count_list (\<pi>\<^sub>2 B m xk) a)
+       = (\<Sum>xk\<in>valid_vars B. count_list (\<pi>\<^sub>2' m xk) a)"
 proof -
-  have "(\<Sum>xk\<in>UNIV. count_list (resolve_store B m xk) a)
-      = (\<Sum>xk\<in>range (to_nat B). count_list (resolve_store_nat m xk) a)"
+  have "(\<Sum>xk\<in>UNIV. count_list (\<pi>\<^sub>2 B m xk) a)
+      = (\<Sum>xk\<in>range (to_nat B). count_list (\<pi>\<^sub>2' m xk) a)"
     unfolding resolve_store_def 
     by (simp add: compS_apply sum.reindex to_nat_inj)
-  also have "... = (\<Sum>xk\<in>valid_vars B. count_list (resolve_store_nat m xk) a)"
+  also have "... = (\<Sum>xk\<in>valid_vars B. count_list (\<pi>\<^sub>2' m xk) a)"
     by (simp add: valid_vars_eq_range)
   finally show ?thesis .
 qed
@@ -451,9 +451,9 @@ lemma sum_decompose_first_step:
   fixes B :: "'k::enum boundedness"
   assumes "boundedness B K"
   assumes "bounded K m"
-  shows "(\<Sum>(x, k)\<in>valid_vars B. count_list (resolve_store_nat m (x, k)) a)
+  shows "(\<Sum>(x, k)\<in>valid_vars B. count_list (\<pi>\<^sub>2' m (x, k)) a)
        = (\<Sum>(x, k)\<in>set (update_index_vars m).
-            count_list (resolve_store_nat m (x, k)) a)"
+            count_list (\<pi>\<^sub>2' m (x, k)) a)"
 proof (simp add: update_index_vars_set, rule sum.mono_neutral_right, auto)
   fix x0 k0 y
   assume *: "(x0, k0) \<in> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y))"
@@ -470,7 +470,7 @@ proof (simp add: update_index_vars_set, rule sum.mono_neutral_right, auto)
 next
   fix x0 k0
   assume asm: "\<forall>y. (x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y))"
-  show "count_list (resolve_store_nat m (x0, k0)) a = 0"
+  show "count_list (\<pi>\<^sub>2' m (x0, k0)) a = 0"
   proof (cases k0)
     case None
     then have "(x0, None) \<notin> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) x0))" using asm by simp
@@ -482,7 +482,7 @@ next
       using enum_distinct enum_ne_Nil lookup_rec_distinct by fast 
     moreover have "(x0, k0) \<notin> set (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y0))"
       using asm by simp
-    ultimately show "count_list (resolve_store_nat m (x0, k0)) a = 0"
+    ultimately show "count_list (\<pi>\<^sub>2' m (x0, k0)) a = 0"
       by (simp add: Some there_doesnt_exist_corresponding_string synthesize_shuffle_nat_def)
   qed
 qed
@@ -501,9 +501,9 @@ lemma count_list_sum_list_concat_map:
 
 
 lemma resolve_inverse_nat_valuate: 
-  "concat (map (resolve_store_nat m) (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) x))) = valuate (m x)"
+  "concat (map (\<pi>\<^sub>2' m) (valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) x))) = valuate (m x)"
 proof -
-  have "(resolve_store_nat m \<odot> (valuate o synthesize_shuffle_nat (\<pi>\<^sub>1 m))) x = valuate (m x)"
+  have "(\<pi>\<^sub>2' m \<odot> (valuate o synthesize_shuffle_nat (\<pi>\<^sub>1 m))) x = valuate (m x)"
     by (simp add: valuate_map_alpha[symmetric] resolve_inverse_nat)
   then show ?thesis by (simp add: compS_apply)
 qed
@@ -515,11 +515,11 @@ lemma sum_decompose:
   fixes B :: "'k::enum boundedness"
   assumes "boundedness B K"
   assumes "bounded K m"
-  shows "(\<Sum>yk\<in>UNIV. count_list (resolve_store B m yk) a)
+  shows "(\<Sum>yk\<in>UNIV. count_list (\<pi>\<^sub>2 B m yk) a)
        = (\<Sum>y\<in>UNIV. count_list (valuate (m y)) a)" (is "?from = ?to")
 proof -
   let ?vars = "\<lambda>y. valuate (synthesize_shuffle_nat (\<pi>\<^sub>1 m) y)"
-  let ?resolve = "\<lambda>xk. resolve_store_nat m xk"
+  let ?resolve = "\<lambda>xk. \<pi>\<^sub>2' m xk"
   let ?count = "\<lambda>xk. count_list (?resolve xk) a"
   have "?from = (\<Sum>xk::'y \<times> nat option\<in>valid_vars B. ?count xk)"
     by (simp add: sum_decompose_to_nat)
@@ -571,13 +571,13 @@ proof (intro allI, rule impI)
     note mado = convert_\<eta>_hat_gt_0[OF boundedness_l bc_type r_pair w_gt_0, simplified]
     then show ?thesis proof (auto simp add: mado count_var_def H'_def prod.case_eq_if delta_convert_MSST_simp eta_convert_MSST_simp)
       fix x0 y0 z0
-      have "(\<Sum>xyz\<in>UNIV. count_list (extract_variables (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb)))
+      have "(\<Sum>xyz\<in>UNIV. count_list (extract_variables (\<pi>\<^sub>2 B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb)))
                                                           (SST.eta_hat msst (fst qb, w) (fst xyz))) (snd xyz)))
            (x0, y0, z0))
-          = (\<Sum>(x, yk)\<in>UNIV. count_list (extract_variables (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk))
+          = (\<Sum>(x, yk)\<in>UNIV. count_list (extract_variables (\<pi>\<^sub>2 B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk))
            (x0, y0, z0))" (is "?lhs = _")
         by (simp add: prod.case_eq_if)
-      also have "... = (\<Sum>x\<in>UNIV. \<Sum>yk\<in>UNIV. count_list (extract_variables (resolve_store B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk))
+      also have "... = (\<Sum>x\<in>UNIV. \<Sum>yk\<in>UNIV. count_list (extract_variables (\<pi>\<^sub>2 B2 (hat_homU (\<iota> B2 (Rep_alpha B2 (snd qb))) (SST.eta_hat msst (fst qb, w) x)) yk))
            (x0, y0, z0))"
         apply (simp only: UNIV_Times_UNIV[symmetric])
         apply (rule sum.Sigma[symmetric], simp_all)

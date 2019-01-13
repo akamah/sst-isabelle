@@ -186,7 +186,7 @@ lemma iota_alpha0_remove:
  = valuate (hat_hom (concatU (valuate m)) u)"
   by (induct u rule: xa_induct, simp_all add: iota_alpha0_remove_aux)
 
-lemma H'_embed: "H' B (\<beta>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))"
+lemma H'_embed: "H' B (\<beta>, \<theta>) \<bullet> Convert_Monoid_SST_Def.embed x = \<pi>\<^sub>2 B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (\<theta> x))"
   by (auto simp add: compU_apply H'_def)
 
 (* SST.eta_hat msst (q, w) *)
@@ -226,9 +226,9 @@ lemma H'_assoc:
   shows "H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>)
        = H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)"
 proof -
-  have "resolve_store B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)) (y, e)
+  have "\<pi>\<^sub>2 B (hat_homU (\<iota> B (Rep_alpha B \<beta>)) (hat_hom (SST.eta_hat msst (q, w)) u)) (y, e)
        = (H' B (\<beta>, SST.eta_hat msst (q, w)) 
-         \<bullet> resolve_store B (hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u)) (y, e)" for u y e
+         \<bullet> \<pi>\<^sub>2 B (hat_homU (\<iota> B (Rep_alpha B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w))))) u)) (y, e)" for u y e
     by (simp add: hat_homU_iota[OF assms] map_alpha_resolve_store)
   then have "H' B (\<beta>, SST.eta_hat msst (q, w) \<bullet> \<psi>) (x, y, e) 
            = (H' B (\<beta>, SST.eta_hat msst (q, w)) \<bullet> H' B (\<Delta>' B (\<beta>, SST.eta_hat msst (q, w)), \<psi>)) (x, y, e)" for x y e
@@ -278,14 +278,14 @@ lemma list_all_isl_valuate:
 lemma valuate_H'_Nil_var: "valuate (H' B (\<alpha>, idU) (x, y, k)) = []"
 proof (simp add: H'_def idU_def \<iota>_def)
   let ?beta = "Rep_bc_shuffle (\<alpha> x)"
-  let ?m = "synthesize B (Rep_bc_shuffle (\<alpha> x), embed x)"
+  let ?m = "\<pi>\<inverse> B (Rep_bc_shuffle (\<alpha> x), embed x)"
   have "\<forall>y k. list_all isl (embed x (y, k))"
     by simp
   then have "\<forall>y. list_all isl (valuate (?m y))"
     by (rule synthesize_preserve_prop_on_string)
-  then have "list_all isl (resolve_store B ?m (y, k))"
+  then have "list_all isl (\<pi>\<^sub>2 B ?m (y, k))"
     using resolve_store_preserve_prop_on_string by blast
-  then show "valuate (resolve_store B ?m (y, k)) = []"
+  then show "valuate (\<pi>\<^sub>2 B ?m (y, k)) = []"
     by (rule list_all_isl_valuate)
 qed
 

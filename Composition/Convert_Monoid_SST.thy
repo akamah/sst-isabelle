@@ -107,13 +107,6 @@ lemma hat_homU_lem: "hat_homU (hat_homU \<phi> o \<theta>) m = hat_homU \<phi> (
   by (induct m rule: xa_induct, simp_all add: hat_homU_append)
 
 
-lemma valuate_retain_right: "valuate = concat o map retain_right"
-proof -
-  have 1: "\<And>xs. valuate xs = concat (map retain_right xs)"
-    by (induct_tac xs rule: xa_induct, auto)
-  show ?thesis by (rule ext, auto simp add: 1)
-qed
-
 lemma valuate_update: "valuate (valuate u) = valuate (hat_alpha retain_right u)"
 proof (induct u rule: xa_induct)
   case Nil
@@ -132,54 +125,28 @@ lemma valuate_update_map_alpha: "valuate (valuate (\<theta> x)) = valuate ((reta
 lemma retain_right_inr_list_eq_idS: "(retain_right \<odot> inr_list) = idS"
   by (rule ext, simp add: compS_apply idS_def)
 
-lemma retain_right_inr_list: "retain_right \<star> (inr_list \<star> a) = a"
-  by (auto simp add: map_alpha_assoc retain_right_inr_list_eq_idS)
-
 lemma retain_right_embed: "retain_right \<odot> Convert_Monoid_SST_Def.embed x = empty_store"
   by (rule ext_prod, simp add: compS_apply)
 
-lemma retain_right_iota_alpha0: "retain_right \<star> \<iota> B \<alpha>0 x = idU"
-  by (simp add: \<iota>_def \<alpha>0_def map_alpha_synthesize retain_right_embed synthesize_idU)
-
-
-lemma retain_right_hat_homU_iota_alpha0: "retain_right \<star> hat_homU (\<iota> B \<alpha>0) m = concatU (valuate m)"
+lemma retain_right_hat_homU_iota_alpha0:
+  "retain_right \<star> hat_homU (\<iota> B \<alpha>0) m = concatU (valuate m)"
 proof (induct m rule: xa_induct)
   case Nil
   then show ?case by simp
 next
   case (Var x xs)
-  then show ?case by (simp add: map_alpha_distrib retain_right_iota_alpha0)
+  then show ?case
+    by (simp add: map_alpha_distrib \<iota>_def \<alpha>0_def map_alpha_synthesize retain_right_embed synthesize_idU)
 next
   case (Alpha a xs)
-  then show ?case by (simp add: map_alpha_distrib retain_right_inr_list)
+  then show ?case
+    by (simp add: map_alpha_distrib map_alpha_assoc retain_right_inr_list_eq_idS)
 qed
-
-
-
 
 lemma iota_alpha0_remove_aux:
   "valuate (valuate (hat_homU (\<iota> B \<alpha>0) m x')) 
  = valuate (concatU (valuate m) x')"
-proof (induct m rule: xa_induct)
-  case Nil
-  then show ?case by (simp add: idU_def)
-next
-  case (Var x xs)
-  then show ?case 
-    apply simp
-
-    apply (simp add: concatU_append hat_homU_append valuate_update_map_alpha map_alpha_distrib)
-    apply (simp add: retain_right_iota_alpha0)
-    done
-next
-  case (Alpha m xs)
-  then show ?case 
-    apply (simp add: concatU_append hat_homU_append valuate_update_map_alpha)
-    apply (simp add: map_alpha_distrib retain_right_inr_list)
-    apply (simp add: retain_right_hat_homU_iota_alpha0)
-    done
-qed
-
+  by (simp add: valuate_update_map_alpha retain_right_hat_homU_iota_alpha0)
 
 lemma iota_alpha0_remove:
   "valuate (valuate (hat_hom (hat_homU (\<iota> B \<alpha>0) m) (hat_alpha inr_list u))) 

@@ -50,36 +50,12 @@ lemma [simp]: "orElse a None = a"
   by (cases a, simp_all)
 
 lemma orElse_assoc: "orElse (orElse a b) c = orElse a (orElse b c)"
-proof (cases a)
-  case None
-  then show ?thesis by simp
-next
-  case A: (Some a)
-  then show ?thesis proof (cases b)
-    case None
-    then show ?thesis by simp
-  next
-    case B: (Some b)
-    then show ?thesis proof (cases c)
-      case None
-      then show ?thesis by simp
-    next
-      case C: (Some c)
-      then show ?thesis by (simp add: A B C)
-    qed
-  qed
-qed
+  by (cases a; cases b; cases c; simp)
 
 lemma orElse_eq_Some:
   assumes "orElse x y = Some a"
   shows "x = Some a \<or> y = Some a"
-proof (cases x)
-  case None
-  then show ?thesis using assms by simp
-next
-  case (Some a)
-  then show ?thesis using assms by simp
-qed
+  using assms by (cases x, simp_all)
 
 lemma map_option_orElse:
   "map_option f (orElse a b) = orElse (map_option f a) (map_option f b)"
@@ -116,36 +92,33 @@ fun seek :: "'y \<Rightarrow> 'y list \<Rightarrow> 'y list" where
 
 subsection \<open>Auxiliary functions\<close>
 
-fun calc_index_rows where
+fun calc_index_rows :: "'y shuffle \<Rightarrow> 'y list \<Rightarrow> 'y \<Rightarrow> nat" where
   "calc_index_rows s [] x = 0" |
   "calc_index_rows s (y#ys) x = count_list (s y) x + calc_index_rows s ys x"
 
-definition calc_index where
+definition calc_index :: "'y shuffle \<Rightarrow> 'y list \<Rightarrow> 'y list \<Rightarrow> 'y \<Rightarrow> nat" where
   "calc_index s ys xs x = count_list xs x + calc_index_rows s ys x"
 
 
-fun lookup_row where
+fun lookup_row :: "'y shuffle \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'y list \<Rightarrow> ('y, 'b) scanned_tail \<Rightarrow> 'b list option" where
   "lookup_row s x0 k0 ys [] = None" |
   "lookup_row s x0 k0 ys ((x, as)#xas) = 
     (if x = x0 \<and> calc_index s ys (keys_pair xas) x = k0 then Some as else lookup_row s x0 k0 ys xas)"
 
-fun lookup_rec where
+fun lookup_rec :: "('y, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow> 'y list \<Rightarrow> 'b list option" where
   "lookup_rec m x0 k0 [] = None" |
   "lookup_rec m x0 k0 (y#ys) = orElse (lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y)))
                                        (lookup_rec m x0 k0 ys)"
 
-fun lookup_found where
-  "lookup_found s ys (x, as) xas (x0, k0) = (if x = x0 \<and> calc_index s ys (keys_pair xas) x = k0 then Some as else None)"
-
-fun lookup :: "('y, 'x, 'b) update' \<Rightarrow> 'x \<Rightarrow> nat \<Rightarrow>'y list \<Rightarrow> 'b list" where
+fun lookup :: "('y, 'b) update \<Rightarrow> 'y \<Rightarrow> nat \<Rightarrow>'y list \<Rightarrow> 'b list" where
   "lookup m x0 k0 ys = orNil (lookup_rec m x0 k0 ys)"
 
 
-fun give_index_row :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Rightarrow> 'x list \<Rightarrow> ('x + 'x \<times> nat option) list" where
+fun give_index_row :: "'y shuffle \<Rightarrow> 'y list \<Rightarrow> 'y list \<Rightarrow> ('y + 'y \<times> nat option) list" where
   "give_index_row s ys Nil    = []" |
   "give_index_row s ys (x#xs) = Inl x # Inr (x, Some (calc_index s ys xs x)) # give_index_row s ys xs"
 
-fun post_index_vars :: "('y \<Rightarrow> 'x list) \<Rightarrow> 'y list \<Rightarrow> 'x list \<Rightarrow> ('x \<times> nat option) list" where
+fun post_index_vars :: "'y shuffle \<Rightarrow> 'y list \<Rightarrow> 'y list \<Rightarrow> ('y \<times> nat option) list" where
   "post_index_vars s ys Nil    = []" |
   "post_index_vars s ys (x#xs) = (x, Some (calc_index s ys xs x)) # post_index_vars s ys xs"
 
@@ -189,11 +162,11 @@ lemma resolve_shuffle_keys_pair_scan_pair:
   by  (simp add: keys_pair_scan_pair)
 
 lemma there_exists_corresponding_string:
-  fixes m :: "('y, 'x, 'b) update'"
+  fixes m :: "('y, 'b) update"
   assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0))"
   shows "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = Some as"
 using assms proof (simp add: resolve_shuffle_keys_pair_scan_pair)
-  fix xas :: "('x \<times> 'b list) list"
+  fix xas :: "('y \<times> 'b list) list"
   assume "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (keys_pair xas))"
   then show "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys xas = Some as"
   by (induct xas rule: pair_induct, auto simp add: resolve_shuffle_def)

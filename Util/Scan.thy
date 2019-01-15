@@ -280,11 +280,11 @@ subsubsection \<open>Flat\<close>
 
 text \<open>flatten pairs\<close>
 
-fun flat_rec where
+fun flat_rec :: "('y, 'b) scanned_tail \<Rightarrow> ('y + 'b) list" where
   "flat_rec [] = []" |
   "flat_rec ((x, as)#xas) = Inl x # map Inr as @ flat_rec xas"
 
-definition flat where
+definition flat :: "('y, 'b) scanned \<Rightarrow> ('y + 'b) list" where
   "flat = (\<lambda>(b0, xas). map Inr b0 @ flat_rec xas)"
 
 lemma flat_simp:

@@ -107,20 +107,16 @@ lemma hat_homU_lem: "hat_homU (hat_homU \<phi> o \<theta>) m = hat_homU \<phi> (
   by (induct m rule: xa_induct, simp_all add: hat_homU_append)
 
 
-lemma valuate_update: "valuate (valuate u) = valuate (hat_alpha retain_right u)"
-proof (induct u rule: xa_induct)
-  case Nil
-  then show ?case by simp
-next
-  case (Var x xs)
-  then show ?case by simp
-next
-  case (Alpha a xs)
-  then show ?case by (cases a, simp_all)
+lemma valuate_update_map_alpha:
+  fixes \<theta> :: "('y, 'b + 'c) update"
+  shows "valuate (valuate (\<theta> x)) = valuate ((retain_right \<star> \<theta>) x)"
+proof (simp add: map_alpha_apply)
+  show "valuate (valuate u) = valuate (hat_alpha retain_right u)" for u :: "('y + 'b + 'c) list"
+  proof (induct u rule: xa_induct)
+    case (Alpha a xs)
+    then show ?case by (cases a, simp_all)
+  qed (simp_all)
 qed
-
-lemma valuate_update_map_alpha: "valuate (valuate (\<theta> x)) = valuate ((retain_right \<star> \<theta>) x)"
-  by (simp add: map_alpha_def valuate_update)
 
 lemma retain_right_inr_list_eq_idS: "(retain_right \<odot> inr_list) = idS"
   by (rule ext, simp add: compS_apply idS_def)

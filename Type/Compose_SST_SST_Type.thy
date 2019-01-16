@@ -46,7 +46,7 @@ lemma idS_in_all_shuffles:
   by (simp add: resolve_idU_idS)
 
 
-lemma compose_\<gamma>_subset:
+lemma compose_\<gamma>_subset_inner:
   "type_hom (compose_\<gamma> sst1 sst2)
      ((q1, f), Transducer.hat2 (delta2f f (delta sst2)) (eta2f (SST.eta sst2)) (q2, u))
  \<subseteq> all_shuffles sst2 q2 (hat1 (delta2f f (delta sst2)) (q2, u))"
@@ -76,24 +76,29 @@ next
     done
 qed
 
+lemma compose_\<gamma>_subset:
+  "type_hom (compose_\<gamma> sst1 sst2)
+     ((q1, f), H (delta sst2) (eta sst2) (f, \<theta>) (q2, x))
+ \<subseteq> all_shuffles sst2 q2 (\<Delta> (delta sst2) (f, \<theta>) (q2, x))"
+  by (simp add: \<Delta>_def H_def compose_\<gamma>_subset_inner)
+
+
 lemma eta2f_length:
   "length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q, w)) = length w"
   by (induct w arbitrary: q rule: xa_induct, simp_all)
 
 lemma eta2f_append_ex:
-  assumes "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
-                                     (q2, v)"
+  assumes "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v)"
   shows "\<exists>v1 v2. v = v1 @ v2 \<and>
                  u0 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v1) \<and>
                  u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (hat1 (delta2f f (delta sst2)) (q2, v1), v2)"
 proof (intro exI)
   let ?v1 = "take (length u0) v"
   let ?v2 = "drop (length u0) v"
-  have v: "v = ?v1 @ ?v2" by simp
   have len: "length (u0 @ u1) = length (Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, v))"
     using assms by (simp only: eta2f_length)
   have "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, ?v1 @ ?v2)"
-    using assms v by simp
+    using assms by simp
   then have "u0 @ u1 = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (q2, ?v1)
                 @ Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) (hat1 (delta2f f (delta sst2)) (q2, ?v1), ?v2)"
     by (simp only: Transducer.eta_append)
@@ -213,7 +218,7 @@ proof (auto simp add: bctype_def)
 next
   show "bctype_step k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
     unfolding bctype_step_def
-    by (auto simp add: compose_SST_SST_def compose_\<delta>_def \<Delta>_def compose_\<eta>_def H_def compose_\<gamma>_subset)
+    by (auto simp add: compose_SST_SST_def compose_\<delta>_def compose_\<eta>_def compose_\<gamma>_subset)
 next
   show "bctype_bounded k (compose_SST_SST sst1 sst2) (compose_\<gamma> sst1 sst2)"
     unfolding bctype_bounded_def 
@@ -233,9 +238,7 @@ next
     fix q1 f q2 w x u m
     assume "reachable (compose_SST_SST sst1 sst2) (q1, f)"
     let ?eta = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
-    let ?eta_hat = "SST.eta_hat (compose_SST_SST sst1 sst2) ((q1, f), w) (q2, x)"
-    assume "u \<in> tails ?eta"
-    then have u: "u \<in> tails ?eta_hat" by (simp add:)
+    assume u: "u \<in> tails ?eta"
     assume m0: "m \<in> type_hom (compose_\<gamma> sst1 sst2) ((q1, f), u)"
     obtain v1 v2 where v: "u = Transducer.hat2 (delta2f f (delta sst2)) (eta2f (eta sst2)) 
                                    (hat1 (delta2f f (delta sst2)) (q2, v1), v2)" using tail_substring_ex[OF u] by auto

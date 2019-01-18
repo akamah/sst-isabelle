@@ -38,7 +38,7 @@ text \<open>
     x -> (x, None) x (x, Some 2) x (x, Some 1)
     y -> (y, None) x (y, Some 0) y (y, Some 0)
 \<close>
-type_synonym ('y, 'i, 'b) store = "('y, 'i) index \<Rightarrow> 'b list"
+type_synonym ('y, 'k, 'b) store = "('y, 'k) index \<Rightarrow> 'b list"
 
 subsection \<open>Utility functions\<close>
 
@@ -127,7 +127,8 @@ fun to_nat :: "'k::enum boundedness \<Rightarrow> 'y \<times> 'k option \<Righta
   "to_nat B (y, Some k) = (y, Some (enum_to_nat k))"
 
 fun to_enum :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> 'y \<times> 'k option" where
-  "to_enum B = apsnd (map_option nat_to_enum)"
+  "to_enum B (y, None) = (y, None)" |
+  "to_enum B (y, Some n) = (y, Some (nat_to_enum n))"
 
 
 abbreviation to_nat_list :: "'k::enum boundedness \<Rightarrow> 'y \<times> 'k option \<Rightarrow> ('y \<times> nat option) list" where

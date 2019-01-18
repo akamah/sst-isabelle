@@ -245,6 +245,9 @@ next
 qed
 
 
+lemma to_enum_apsnd: "to_enum B = apsnd (map_option nat_to_enum)"
+  by (rule ext, case_tac x rule: index_cases, simp_all)
+
 lemma [simp]:
   "concat (map (embed x) xs) = map (embed_single x) xs"
   by (induct xs, simp_all)
@@ -271,8 +274,9 @@ qed
 
 lemma embed_single_inj: "inj (embed_single x)" unfolding inj_on_def by simp
 
+
 lemma to_enum_inj_on: "inj_on (to_enum B) (valid_vars B :: ('y::enum \<times> nat option) set)"
-  apply (simp only: valid_vars_def inj_on_apsnd to_enum.simps)
+  apply (simp only: valid_vars_def inj_on_apsnd to_enum_apsnd)
   apply (rule inj_on_map_option)
   apply (rule inj_nat_to_enum)
   done
@@ -286,7 +290,7 @@ proof (intro ballI, rule impI)
     apply (cases x rule: index_cases; cases y rule: index_cases; simp_all)
     using inj_enum_to_nat unfolding inj_on_def by auto
 qed
-    
+
 
 lemma count_list_embed_single:
   "count_list (map (embed_single x) u) (Inl (x, y, z)) = count_list u (y, z)"

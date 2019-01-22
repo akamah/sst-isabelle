@@ -675,48 +675,52 @@ lemma hat_alpha_ext:
 
 
 lemma resolve_inverse_nat:
-  "(\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x = m x"
+  "\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m) = m"
 proof -
-  have "(\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x
+  {
+    fix x
+    have "(\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x
        = (resolve_store_row (\<pi>\<^sub>1 m) (seek x Enum.enum) (fst (scan (m x))) (snd (scan (m x)))
         \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x"
-  proof (simp add: map_alpha_apply synthesize_shuffle_nat_def snd_scan, rule hat_alpha_ext, rule ballI, simp)
-    fix xa
-    assume *: "xa \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek x Enum.enum) (\<pi>\<^sub>1 m x))"
-    show "\<pi>\<^sub>2' m xa
+    proof (simp add: map_alpha_apply synthesize_shuffle_nat_def snd_scan, rule hat_alpha_ext, rule ballI, simp)
+      fix xa
+      assume *: "xa \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek x Enum.enum) (\<pi>\<^sub>1 m x))"
+      show "\<pi>\<^sub>2' m xa
         = resolve_store_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (fst (scan (m x))) (scan_pair (m x)) xa"
-    proof (cases xa rule: index_cases)
-      case (VarNone y)
-      then show ?thesis using * post_index_vars_does_not_contain_None by fast
-    next
-      case (VarSome y k)
-      have x: "x \<in> set Enum.enum" by (simp add: enum_UNIV)
-      then show ?thesis using inspect_only_this_row[OF x *[simplified VarSome]] by (simp add: VarSome)
+      proof (cases xa rule: index_cases)
+        case (VarNone y)
+        then show ?thesis using * post_index_vars_does_not_contain_None by fast
+      next
+        case (VarSome y k)
+        have x: "x \<in> set Enum.enum" by (simp add: enum_UNIV)
+        then show ?thesis using inspect_only_this_row[OF x *[simplified VarSome]] by (simp add: VarSome)
+      qed
     qed
-  qed
-  also have "... = flat (fst (scan (m x)), snd (scan (m x)))"
-  proof (simp add: map_alpha_apply resolve_shuffle_def snd_scan synthesize_shuffle_nat_def keys_pair_scan_pair[symmetric])
-    fix xas
-    show "map Inr (fst (scan (m x))) @
+    also have "... = flat (fst (scan (m x)), snd (scan (m x)))"
+    proof (simp add: map_alpha_apply resolve_shuffle_def snd_scan synthesize_shuffle_nat_def keys_pair_scan_pair[symmetric])
+      fix xas
+      show "map Inr (fst (scan (m x))) @
             hat_alpha (resolve_store_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (fst (scan (m x))) xas)
                  (give_index_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (keys_pair xas))
         = flat (fst (scan (m x)), xas)"
-    proof (simp add: flat_def, induct xas rule: pair_induct)
-      case Nil
-      then show ?case by simp
-    next
-      case (PairCons y as xas)
-      then show ?case proof -
-        have "hat_alpha (resolve_store_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (fst (scan (m x))) xas) (give_index_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (keys_pair xas))
+      proof (simp add: flat_def, induct xas rule: pair_induct)
+        case Nil
+        then show ?case by simp
+      next
+        case (PairCons y as xas)
+        then show ?case proof -
+          have "hat_alpha (resolve_store_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (fst (scan (m x))) xas) (give_index_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (keys_pair xas))
            = hat_alpha (resolve_store_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (fst (scan (m x))) ((y, as) # xas)) (give_index_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (keys_pair xas))"
-          by (rule hat_alpha_ext, simp add: resolve_store_row_induct_lemma)
-        then show ?thesis using PairCons by simp
+            by (rule hat_alpha_ext, simp add: resolve_store_row_induct_lemma)
+          then show ?thesis using PairCons by simp
+        qed
       qed
     qed
-  qed
-  also have "... = m x"
-    by (simp add: scan_inverse)
-  finally show ?thesis .
+    also have "... = m x"
+      by (simp add: scan_inverse)
+    finally have "(\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x = m x" .
+  }
+  then show ?thesis by (rule ext)
 qed
 
 
@@ -746,7 +750,7 @@ qed
 
 lemma synthesize_shuffle_nat_remove_enum:
   fixes B :: "'k::enum boundedness"
-  fixes m :: "('y::enum, 'b) update"
+  fixes s :: "'y::enum shuffle"
   assumes "boundedness B K"
   assumes "bounded_shuffle K s"
   shows "to_nat_list B \<star> to_enum_list B \<star> synthesize_shuffle_nat s

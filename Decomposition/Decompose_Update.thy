@@ -118,9 +118,6 @@ fun give_index_row :: "'y shuffle \<Rightarrow> 'y list \<Rightarrow> 'y list \<
   "give_index_row s ys Nil    = []" |
   "give_index_row s ys (x#xs) = Inl x # Inr (x, Some (calc_index s ys xs x)) # give_index_row s ys xs"
 
-fun post_index_vars :: "'y shuffle \<Rightarrow> 'y list \<Rightarrow> 'y list \<Rightarrow> ('y \<times> nat option) list" where
-  "post_index_vars s ys Nil    = []" |
-  "post_index_vars s ys (x#xs) = (x, Some (calc_index s ys xs x)) # post_index_vars s ys xs"
 
 fun to_nat :: "'k::enum boundedness \<Rightarrow> 'y \<times> 'k option \<Rightarrow> 'y \<times> nat option" where
   "to_nat B (y, None)   = (y, None)" |
@@ -137,14 +134,9 @@ abbreviation to_nat_list :: "'k::enum boundedness \<Rightarrow> 'y \<times> 'k o
 abbreviation to_enum_list :: "'k::enum boundedness \<Rightarrow> 'y \<times> nat option \<Rightarrow> ('y \<times> 'k option) list" where
   "to_enum_list B yk \<equiv> [to_enum B yk]"
 
-
-lemma give_index_row_post_index_vars[simp]:
-  "valuate (give_index_row s ys xs) = post_index_vars s ys xs"
-  by (induct xs, auto)
-
 lemma valuate_give_index_row_post_index_vars[iff]:
   "Inr (x0, k0') \<in> set (give_index_row s ys xs) \<longleftrightarrow>
-   (x0, k0') \<in> set (post_index_vars s ys xs)"
+   (x0, k0') \<in> set (valuate (give_index_row s ys xs))"
  by (induct xs, auto)
 
 
@@ -164,23 +156,23 @@ lemma resolve_shuffle_keys_pair_scan_pair:
 
 lemma there_exists_corresponding_string:
   fixes m :: "('y, 'b) update"
-  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0))"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0)))"
   shows "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = Some as"
 using assms proof (simp add: resolve_shuffle_keys_pair_scan_pair)
   fix xas :: "('y \<times> 'b list) list"
-  assume "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) ys (keys_pair xas))"
+  assume "(x0, Some k0) \<in> set (valuate (give_index_row (\<pi>\<^sub>1 m) ys (keys_pair xas)))"
   then show "\<exists>as. lookup_row (\<pi>\<^sub>1 m) x0 k0 ys xas = Some as"
   by (induct xas rule: pair_induct, auto simp add: resolve_shuffle_def)
 qed
 
 lemma there_doesnt_exist_corresponding_string_inner:
-  assumes "(x0, Some k0) \<notin> set (post_index_vars s ys (keys_pair xas))"
+  assumes "(x0, Some k0) \<notin> set (valuate (give_index_row s ys (keys_pair xas)))"
   shows "lookup_row s x0 k0 ys xas = None"
   using assms unfolding resolve_shuffle_def
   by (induct xas rule: pair_induct, auto)
 
 lemma there_doesnt_exist_corresponding_string:
-  assumes "(x0, Some k0) \<notin> set (post_index_vars (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0))"
+  assumes "(x0, Some k0) \<notin> set (valuate (give_index_row (\<pi>\<^sub>1 m) ys (\<pi>\<^sub>1 m y0)))"
   shows "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys (scan_pair (m y0)) = None"  
   apply (rule there_doesnt_exist_corresponding_string_inner)
   using assms
@@ -189,7 +181,7 @@ lemma there_doesnt_exist_corresponding_string:
   done
 
 lemma give_index_row_position_ge:
-  assumes "(x0, Some k0) \<in> set (post_index_vars s ys xs)"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row s ys xs))"
   shows "k0 \<ge> calc_index_rows s ys x0"
 using assms proof (induct xs)
   case Nil
@@ -200,7 +192,7 @@ next
 qed
 
 lemma give_index_row_position_lt:
-  assumes "(x0, Some k0) \<in> set (post_index_vars s ys xs)"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row s ys xs))"
   shows "k0 < calc_index s ys xs x0"
 using assms proof (induct xs)
   case Nil
@@ -249,7 +241,7 @@ qed
 
 lemma previous_row_does_not_have_same_variable:
   assumes "y0 \<in> set ys"
-  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0)))"
   shows "lookup_row (\<pi>\<^sub>1 m) x0 k0 ys xs = None"
 proof -
   let ?xs0 = "\<pi>\<^sub>1 m y0"
@@ -263,13 +255,13 @@ proof -
 qed
 
 lemma post_index_vars_does_not_contain_None: 
-  "(x0, None) \<notin> set (post_index_vars s ys xs)"
+  "(x0, None) \<notin> set (valuate (give_index_row s ys xs))"
   by (induct xs, simp_all)
 
 
 lemma inspect_only_this_row:
   assumes "y0 \<in> set ys"
-  assumes "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0)))"
   shows "lookup_rec m x0 k0 ys
        = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
   using assms proof (induct ys)
@@ -285,7 +277,7 @@ next
   next
     case False
     then have y0: "y0 \<in> set ys" using Cons(2) by simp
-    moreover have in_row: "(x0, Some k0) \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0))"
+    moreover have in_row: "(x0, Some k0) \<in> set (valuate (give_index_row (\<pi>\<^sub>1 m) (seek y0 ys) (\<pi>\<^sub>1 m y0)))"
       using Cons(3) False by simp 
     ultimately have *: "lookup_rec m x0 k0 ys = lookup_row (\<pi>\<^sub>1 m) x0 k0 (seek y0 ys) (scan_pair (m y0))"
       using Cons by simp
@@ -338,7 +330,7 @@ qed
 lemma all_var_index_less_than:
   fixes s :: "'y shuffle"
   assumes "y0 \<in> set ys"
-  assumes "(x0, Some k0) \<in> set (post_index_vars s (seek y0 ys) (s y0))"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y0 ys) (s y0)))"
   shows "k0 < calc_index_rows s ys x0"
 proof -
   have "k0 < calc_index s (seek y0 ys) (s y0) x0"
@@ -599,7 +591,7 @@ proof (auto simp add: synthesize_def map_alpha_apply valuate_hat_alpha synthesiz
   show "list_all P (a (to_enum B (x, None)))" using assms by simp
 next
   fix x xs ys
-  show "list_all P (concat (map (a \<circ> to_enum B) (post_index_vars s ys xs)))"
+  show "list_all P (concat (map (a \<circ> to_enum B) (valuate (give_index_row s ys xs))))"
     using assms by (induct xs, simp_all)
 qed
 
@@ -621,7 +613,7 @@ lemma calc_index_rows_eq_sum:
 lemma bounded_shuffle_less_than:
   fixes s :: "'y::enum shuffle"
   assumes "bounded_shuffle K s"
-  assumes "(x0, Some k0) \<in> set (post_index_vars s (seek y0 (Enum.enum :: 'y list)) (s y0))"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y0 (Enum.enum :: 'y list)) (s y0)))"
   shows "k0 < K"
 proof -
   let ?enum = "Enum.enum :: 'y list"
@@ -642,7 +634,7 @@ qed
 lemma bounded_shuffle_index_less_than:
   fixes s :: "'y::enum shuffle"
   assumes "bounded_shuffle K s"
-  shows "list_all (index_less_than K) (post_index_vars s (seek y0 (Enum.enum :: 'y list)) (s y0))"
+  shows "list_all (index_less_than K) (valuate (give_index_row s (seek y0 (Enum.enum :: 'y list)) (s y0)))"
 using assms by (auto simp add: list_all_iff bounded_shuffle_less_than)
 
 fun resolve_store_row where
@@ -651,7 +643,7 @@ fun resolve_store_row where
 
 
 lemma resolve_store_row_induct_lemma:
-  assumes "yk \<in> set (post_index_vars s ys (keys_pair xas))"
+  assumes "yk \<in> set (valuate (give_index_row s ys (keys_pair xas)))"
   shows "resolve_store_row s ys as ((x0, bs) # xas) yk
        = resolve_store_row s ys as xas yk"
 proof (cases yk rule: index_cases)
@@ -682,9 +674,9 @@ proof -
     have "(\<pi>\<^sub>2' m \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x
        = (resolve_store_row (\<pi>\<^sub>1 m) (seek x Enum.enum) (fst (scan (m x))) (snd (scan (m x)))
         \<star> synthesize_shuffle_nat (\<pi>\<^sub>1 m)) x"
-    proof (simp add: map_alpha_apply synthesize_shuffle_nat_def snd_scan, rule hat_alpha_ext, rule ballI, simp)
+    proof (simp add: map_alpha_apply synthesize_shuffle_nat_def snd_scan, rule hat_alpha_ext, rule ballI)
       fix xa
-      assume *: "xa \<in> set (post_index_vars (\<pi>\<^sub>1 m) (seek x Enum.enum) (\<pi>\<^sub>1 m x))"
+      assume *: "xa \<in> set (valuate (give_index_row (\<pi>\<^sub>1 m) (seek x Enum.enum) (\<pi>\<^sub>1 m x)))"
       show "\<pi>\<^sub>2' m xa
         = resolve_store_row (\<pi>\<^sub>1 m) (seek x enum_class.enum) (fst (scan (m x))) (scan_pair (m x)) xa"
       proof (cases xa rule: index_cases)

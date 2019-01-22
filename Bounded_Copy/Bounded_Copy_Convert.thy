@@ -73,14 +73,14 @@ lemma sum_count_list_concat_map:
 (* disjointness BEGIN *)
 
 lemma distinct_post_index_vars:
-  "distinct (post_index_vars s ys xs)"
+  "distinct (valuate (give_index_row s ys xs))"
 proof (induct xs)
   case Nil
   then show ?case by simp
 next
   case (Cons x xs)
   then show ?case proof (auto)
-    assume "(x, Some (calc_index s ys xs x)) \<in> set (post_index_vars s ys xs)"
+    assume "(x, Some (calc_index s ys xs x)) \<in> set (valuate (give_index_row s ys xs))"
     then have "calc_index s ys xs x < calc_index s ys xs x"
       by (rule give_index_row_position_lt)
     then show False by simp
@@ -90,8 +90,8 @@ qed
 
 lemma post_index_vars_seek_contr:
   assumes "y0 \<in> set ys"
-  assumes "(x0, Some k0) \<in> set (post_index_vars s (seek y0 ys) (s y0))"
-  assumes "(x0, Some k0) \<in> set (post_index_vars s ys (s y1))"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y0 ys) (s y0)))"
+  assumes "(x0, Some k0) \<in> set (valuate (give_index_row s ys (s y1)))"
   shows "False"
 proof -
   have "k0 < calc_index s (seek y0 ys) (s y0) x0"
@@ -130,12 +130,12 @@ lemma post_index_vars_not_in_two_rows_aux:
   assumes neq: "y1 \<noteq> y2"
   assumes y1: "y1 \<in> set ys"
   assumes y2: "y2 \<in> set ys"
-  assumes in1: "(x0, Some k0) \<in> set (post_index_vars s (seek y1 ys) (s y1))"
-  assumes in2: "(x0, Some k0) \<in> set (post_index_vars s (seek y2 ys) (s y2))"
+  assumes in1: "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y1 ys) (s y1)))"
+  assumes in2: "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y2 ys) (s y2)))"
   assumes *: "seek y1 (seek y2 ys) = seek y1 ys"
   shows False
 proof -
-  have 1: "(x0, Some k0) \<in> set (post_index_vars s (seek y1 (seek y2 ys)) (s y1))"
+  have 1: "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y1 (seek y2 ys)) (s y1)))"
     using in1 * by simp
   have in_y1: "y1 \<in> set (seek y2 ys)" using neq y1 y2 * proof (induct ys)
     case Nil
@@ -152,8 +152,8 @@ lemma post_index_vars_not_in_two_rows:
   assumes neq: "y1 \<noteq> y2"
   assumes y1: "y1 \<in> set ys"
   assumes y2: "y2 \<in> set ys"
-  assumes in1: "(x0, Some k0) \<in> set (post_index_vars s (seek y1 ys) (s y1))"
-  assumes in2: "(x0, Some k0) \<in> set (post_index_vars s (seek y2 ys) (s y2))"
+  assumes in1: "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y1 ys) (s y1)))"
+  assumes in2: "(x0, Some k0) \<in> set (valuate (give_index_row s (seek y2 ys) (s y2)))"
   shows False
   using seek_twice[OF neq] proof
   assume *: "seek y1 (seek y2 ys) = seek y1 ys"
@@ -177,8 +177,8 @@ next
   case (Some k)
   have y0: "y0 \<in> set Enum.enum" by (simp add: enum_UNIV)
   have y1: "y1 \<in> set Enum.enum" by (simp add: enum_UNIV)
-  have in1: "(x0, Some k) \<in> set (post_index_vars s (seek y0 Enum.enum) (s y0))" using assms by (simp add: synthesize_shuffle_nat_def Some)
-  have in2: "(x0, Some k) \<in> set (post_index_vars s (seek y1 Enum.enum) (s y1))" using assms by (simp add: synthesize_shuffle_nat_def Some)
+  have in1: "(x0, Some k) \<in> set (valuate (give_index_row s (seek y0 Enum.enum) (s y0)))" using assms by (simp add: synthesize_shuffle_nat_def Some)
+  have in2: "(x0, Some k) \<in> set (valuate (give_index_row s (seek y1 Enum.enum) (s y1)))" using assms by (simp add: synthesize_shuffle_nat_def Some)
   show ?thesis using post_index_vars_not_in_two_rows[OF neq y0 y1 in1 in2] by simp
 qed
 

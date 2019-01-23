@@ -54,6 +54,8 @@ proof -
     by (rule convert_MSST_bounded[OF bc_msst bound assms(2) bc_type])
 qed
 
+subsection \<open>Examples\<close>
+
 definition revrev where
   "revrev = compose_SST_SST rev rev"
 
@@ -61,6 +63,33 @@ definition revreset where
   "revreset = compose_SST_SST rev reset"
 
 value "SST.run rev [1, 2, 3]"
+
+
+definition rev :: "(Enum.finite_1, Enum.finite_1, Enum.finite_2, Enum.finite_2) SST" where
+  "rev = (|
+    initial = 0,
+    delta = \<lambda>(q, a). 0,
+    eta = \<lambda>(q, a) x. [Inr a, Inl 0],
+    final = \<lambda>q. Some [Inl 0] |)"
+
+definition revhoge :: "(Enum.finite_2, Enum.finite_2, Enum.finite_2, Enum.finite_2) SST" where
+  "revhoge = (|
+    initial = 0,
+    delta = \<lambda>(q, a). a,
+    eta = \<lambda>(q, a) x. (if x = 0 then [Inl 0, Inr a] else [Inr a, Inl 1]),
+    final = \<lambda>q. (if q = 0 then Some [Inl 0] else Some [Inl 1]) |)"
+
+definition
+  "revrevhoge = compose_SST_SST rev revhoge"
+
+definition
+  "revhogebound = (Boundedness :: Enum.finite_1 boundedness)"
+
+definition
+  "revrevhogeconv = convert_MSST revhogebound revrevhoge"
+
+
+
 
 
 end

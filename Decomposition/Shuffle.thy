@@ -85,7 +85,7 @@ proof -
   also have "... = (\<Sum>x\<in>?univ. (\<Sum>y\<in>?univ. count_list (s x) y))"
     by (rule sum.cong, simp_all add: sum_count_list_UNIV)
   also have "... = (\<Sum>y\<in>?univ. (\<Sum>x\<in>?univ. count_list (s x) y))"
-    by (rule sum.commute)
+    by (rule sum.swap)
   also have "... \<le> (\<Sum>y\<in>?univ. k)"
     by (rule sum_mono, simp add: *)
   also have "... = card ?univ * k"

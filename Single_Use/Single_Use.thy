@@ -107,7 +107,7 @@ lemma count_var_comp:
   shows "count_var (m1 \<bullet> m2) x
        = (\<Sum>y::'y\<in>UNIV. count_list (extract_variables (m1 y)) x * count_var m2 y)"
   unfolding compU_def count_alpha_def count_var_def
-  by (simp add: basic_count sum_distrib_left, rule sum.commute)
+  by (simp add: basic_count sum_distrib_left, rule sum.swap)
 
 
 lemma bounded_copy_closed:
@@ -157,7 +157,7 @@ lemma count_alpha_comp:
   shows "count_alpha (m1 \<bullet> m2) a
  = (\<Sum>y::'y\<in>UNIV. count_list (valuate (m1 y)) a * count_var m2 y) + count_alpha m2 a"
   unfolding compU_def count_alpha_def count_var_def
-  by (simp add: basic_count_alpha sum_distrib_right sum_distrib_left sum.distrib, rule sum.commute)
+  by (simp add: basic_count_alpha sum_distrib_right sum_distrib_left sum.distrib, rule sum.swap)
 
 lemma count_alpha_0_comp_count_alpha_n:
   assumes "count_alpha m1 a = 0"

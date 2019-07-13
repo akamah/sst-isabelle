@@ -7,10 +7,26 @@ section \<open>Composition of two SSTs\<close>
 theory Compose
   imports Main Compose_SST_SST Convert_Monoid_SST
           "../Type/Compose_SST_SST_Type" "../Bounded_Copy/Bounded_Copy_SST_SST" "../Type/Compose_SST_SST_Type" "../Bounded_Copy/Bounded_Copy_Convert"
+    "HOL-Library.Cardinality"
 begin
 
+(* This is type of the state of composed SST.
+ * bc_shuffle means M_{x2, \<emptyset>} which is e2-bounded-copy.
+ * e2 is type-level natural number
+ *)
+type_synonym ('e2, 'q1, 'q2, 'x1, 'x2) composed_state = "('q1 \<times> ('q2 \<times> 'x1 \<Rightarrow> 'q2)) \<times> ('q2 \<times> 'x1 \<Rightarrow> ('e2, 'x2) bc_shuffle)" 
 
-abbreviation compose where
+(* This is type of the variable of compose SST.
+ * `e2 'option` is type level natural number means `e2 + 1`
+ *)
+type_synonym ('e2, 'q2, 'x1, 'x2) composed_var = "('q2 \<times> 'x1) \<times> ('x2 \<times> 'e2 option)"
+
+
+abbreviation compose ::
+  "'e2::enum boundedness
+\<Rightarrow> ('q1::enum, 'x1::enum, 'a, 'b) SST
+\<Rightarrow> ('q2::enum, 'x2::enum, 'b, 'c) SST
+\<Rightarrow> (('e2, 'q1, 'q2, 'x1, 'x2) composed_state, ('e2, 'q2, 'x1, 'x2) composed_var, 'a, 'c) SST" where
   "compose B sst1 sst2 \<equiv> convert_MSST B (compose_SST_SST sst1 sst2)"
 
 
@@ -53,6 +69,25 @@ proof -
   show ?thesis
     by (rule convert_MSST_bounded[OF bc_msst bound assms(2) bc_type])
 qed
+
+
+theorem composed_SST_state:
+  fixes sst1 :: "('q1::enum, 'x1::enum, 'a, 'b) SST"
+  fixes sst2 :: "('q2::enum, 'x2::enum, 'b, 'c) SST"
+  fixes B2 :: "'e2::enum boundedness"
+  shows "CARD(('e2, 'q1, 'q2, 'x1, 'x2) composed_state)
+      = CARD('q1) * CARD('q2) ^ (CARD('q2) * CARD('x1)) 
+      * CARD(('e2, 'x2) bc_shuffle) ^ (CARD('q2) * CARD('x1))"
+  by (simp del: UNIV_Times_UNIV add: finite_UNIV_card_ge_0 card_fun)
+
+theorem composed_SST_var:
+  fixes sst1 :: "('q1::enum, 'x1::enum, 'a, 'b) SST"
+  fixes sst2 :: "('q2::enum, 'x2::enum, 'b, 'c) SST"
+  fixes B2 :: "'e2::enum boundedness"
+  shows "CARD(('e2, 'q2, 'x1, 'x2) composed_var)
+      = CARD('q2) * CARD('x1) * CARD('x2) * (CARD('e2) + 1)"
+  by (simp add: distrib_left)
+
 
 subsection \<open>Examples\<close>
 

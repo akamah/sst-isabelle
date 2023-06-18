@@ -346,7 +346,7 @@ qed
 
 subsection \<open>Resolve and Synthesize\<close>
 
-fun resolve_store_nat :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" ("\<pi>\<^sub>2'") where  
+fun \<pi>\<^sub>2' :: "('y::enum, 'b) update \<Rightarrow> ('y, nat, 'b) store" where  
   "\<pi>\<^sub>2' m (y, None) = fst (scan (m y))" |
   "\<pi>\<^sub>2' m (y, Some k) = lookup m y k (Enum.enum :: 'y list)"
 
